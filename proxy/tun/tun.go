@@ -23,6 +23,7 @@ import (
 	"github.com/google/netstack/tcpip/network/ipv6"
 	"github.com/google/netstack/tcpip/stack"
 	"github.com/google/netstack/tcpip/transport/tcp"
+	"github.com/google/netstack/tcpip/transport/udp"
 	"github.com/google/netstack/waiter"
 )
 
@@ -51,7 +52,7 @@ func NewTunProxy(linuxIfName string) (*TunAdapter, error) {
 
 	ipstack = stack.New(stack.Options{
 		NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol(), ipv6.NewProtocol()},
-		TransportProtocols: []stack.TransportProtocol{tcp.NewProtocol()},
+		TransportProtocols: []stack.TransportProtocol{tcp.NewProtocol(), udp.NewProtocol()},
 	})
 
 	mtu, err := rawfile.GetMTU(linuxIfName)
@@ -79,23 +80,37 @@ func NewTunProxy(linuxIfName string) (*TunAdapter, error) {
 	ipstack.AddAddressRange(1, ipv4.ProtocolNumber, subnet)
 
 	// TCP handler
-	tcpForwarder := tcp.NewForwarder(ipstack, 0, 16, func(r *tcp.ForwarderRequest) {
+	tcpFwd := tcp.NewForwarder(ipstack, 0, 16, func(r *tcp.ForwarderRequest) {
 		var wq waiter.Queue
 		ep, err := r.CreateEndpoint(&wq)
 		if err != nil {
-			log.Warnln("Can't create Endpoint in ipstack: %v", err)
+			log.Warnln("Can't create TCP Endpoint in ipstack: %v", err)
 		}
 		r.Complete(false)
+
 		conn := gonet.NewConn(&wq, ep)
-
 		target := getAddr(ep.Info().(*tcp.EndpointInfo).ID)
-
 		tun.Add(adapters.NewSocket(target, conn, C.TUN, C.TCP))
 
 	})
-	ipstack.SetTransportProtocolHandler(tcp.ProtocolNumber, tcpForwarder.HandlePacket)
+	ipstack.SetTransportProtocolHandler(tcp.ProtocolNumber, tcpFwd.HandlePacket)
 
-	// TODO: UDP Handler
+	// UDP handler
+
+	udpFwd := udp.NewForwarder(ipstack, func(r *udp.ForwarderRequest) {
+
+		var wq waiter.Queue
+		ep, err := r.CreateEndpoint(&wq)
+		if err != nil {
+			log.Warnln("Can't create UDP Endpoint in ipstack: %v", err)
+		}
+
+		conn := gonet.NewConn(&wq, ep)
+		target := getAddr(ep.Info().(*stack.TransportEndpointInfo).ID)
+		tun.Add(adapters.NewSocket(target, conn, C.TUN, C.UDP))
+
+	})
+	ipstack.SetTransportProtocolHandler(udp.ProtocolNumber, udpFwd.HandlePacket)
 
 	tl := &TunAdapter{
 		tunfd:   tunfd,

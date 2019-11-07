@@ -99,6 +99,7 @@ func GetGeneral() *config.General {
 		Port:           ports.Port,
 		SocksPort:      ports.SocksPort,
 		RedirPort:      ports.RedirPort,
+		Tun:            P.Tun(),
 		Authentication: authenticator,
 		AllowLan:       P.AllowLan(),
 		BindAddress:    P.BindAddress(),

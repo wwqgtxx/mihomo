@@ -96,7 +96,6 @@ func NewTunProxy(linuxIfName string) (*TunAdapter, error) {
 	ipstack.SetTransportProtocolHandler(tcp.ProtocolNumber, tcpFwd.HandlePacket)
 
 	// UDP handler
-
 	udpFwd := udp.NewForwarder(ipstack, func(r *udp.ForwarderRequest) {
 
 		var wq waiter.Queue
@@ -129,6 +128,7 @@ func (t *TunAdapter) Close() {
 		syscall.Close(t.tunfd)
 		t.tunfd = -1
 	}
+	ipstack.Close()
 }
 
 // IfName return the NIC name of tun

@@ -87,6 +87,7 @@ func GetGeneral() *config.General {
 			SocksPort:      ports.SocksPort,
 			RedirPort:      ports.RedirPort,
 			MixedPort:      ports.MixedPort,
+			Tun:            P.Tun(),
 			Authentication: authenticator,
 			AllowLan:       P.AllowLan(),
 			BindAddress:    P.BindAddress(),

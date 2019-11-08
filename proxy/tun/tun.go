@@ -3,22 +3,20 @@ package tun
 import (
 	"fmt"
 	"net"
+	"net/url"
 	"strings"
-	"syscall"
 
 	adapters "github.com/Dreamacro/clash/adapters/inbound"
 	"github.com/Dreamacro/clash/component/socks5"
 	C "github.com/Dreamacro/clash/constant"
 	"github.com/Dreamacro/clash/log"
+	"github.com/Dreamacro/clash/proxy/tun/dev"
 	"github.com/Dreamacro/clash/tunnel"
 
 	"encoding/binary"
 
 	"github.com/google/netstack/tcpip"
 	"github.com/google/netstack/tcpip/adapters/gonet"
-	"github.com/google/netstack/tcpip/link/fdbased"
-	"github.com/google/netstack/tcpip/link/rawfile"
-	netstacktun "github.com/google/netstack/tcpip/link/tun"
 	"github.com/google/netstack/tcpip/network/ipv4"
 	"github.com/google/netstack/tcpip/network/ipv6"
 	"github.com/google/netstack/tcpip/stack"
@@ -34,20 +32,23 @@ var (
 
 // TunAdapter is the wraper of tun
 type TunAdapter struct {
-	tunfd   int
+	device  dev.TunDevice
 	ipstack *stack.Stack
-	ifName  string
 }
 
 // NewTunProxy create TunProxy under Linux OS.
-func NewTunProxy(linuxIfName string) (*TunAdapter, error) {
+func NewTunProxy(deviceURL string) (*TunAdapter, error) {
 
 	var err error
-	tunfd, err := netstacktun.Open(linuxIfName)
 
+	url, err := url.Parse(deviceURL)
+	if err != nil {
+		return nil, fmt.Errorf("Invalid tun device url: %v", err)
+	}
+
+	tundev, err := dev.OpenTunDevice(*url)
 	if err != nil {
 		return nil, fmt.Errorf("Can't open tun: %v", err)
-
 	}
 
 	ipstack = stack.New(stack.Options{
@@ -55,20 +56,13 @@ func NewTunProxy(linuxIfName string) (*TunAdapter, error) {
 		TransportProtocols: []stack.TransportProtocol{tcp.NewProtocol(), udp.NewProtocol()},
 	})
 
-	mtu, err := rawfile.GetMTU(linuxIfName)
+	linkEP, err := tundev.AsLinkEndpoint()
 	if err != nil {
-		return nil, fmt.Errorf("Can't get MTU from tun: %v", err)
+		return nil, fmt.Errorf("Unable to create virtual endpoint: %v", err)
 	}
-
-	linkEP, err := fdbased.New(&fdbased.Options{
-		FDs:            []int{tunfd},
-		MTU:            mtu,
-		EthernetHeader: false,
-	})
 
 	if err := ipstack.CreateNIC(1, linkEP); err != nil {
 		return nil, fmt.Errorf("Fail to create NIC in ipstack: %v", err)
-
 	}
 
 	// IPv4 0.0.0.0/0
@@ -85,6 +79,7 @@ func NewTunProxy(linuxIfName string) (*TunAdapter, error) {
 		ep, err := r.CreateEndpoint(&wq)
 		if err != nil {
 			log.Warnln("Can't create TCP Endpoint in ipstack: %v", err)
+			return
 		}
 		r.Complete(false)
 
@@ -112,11 +107,10 @@ func NewTunProxy(linuxIfName string) (*TunAdapter, error) {
 	ipstack.SetTransportProtocolHandler(udp.ProtocolNumber, udpFwd.HandlePacket)
 
 	tl := &TunAdapter{
-		tunfd:   tunfd,
+		device:  tundev,
 		ipstack: ipstack,
-		ifName:  linuxIfName,
 	}
-	log.Infoln("Tun adapter have interface name: %s", linuxIfName)
+	log.Infoln("Tun adapter have interface name: %s", tundev.Name())
 
 	return tl, nil
 
@@ -124,19 +118,13 @@ func NewTunProxy(linuxIfName string) (*TunAdapter, error) {
 
 // Close close the TunAdapter
 func (t *TunAdapter) Close() {
-	if t.tunfd != -1 {
-		syscall.Close(t.tunfd)
-		t.tunfd = -1
-	}
 	ipstack.Close()
+	t.device.Close()
 }
 
-// IfName return the NIC name of tun
-func (t *TunAdapter) IfName() string {
-	if t.tunfd != -1 {
-		return t.ifName
-	}
-	return ""
+// IfName return device URL of tun
+func (t *TunAdapter) DeviceURL() string {
+	return t.device.URL()
 }
 
 func getAddr(id stack.TransportEndpointID) socks5.Addr {

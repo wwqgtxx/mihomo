@@ -201,7 +201,7 @@ func updateGeneral(general *config.General, force bool) {
 		log.Errorln("Start Mixed(http and socks5) server error: %s", err.Error())
 	}
 
-	if err := P.ReCreateTun(general.Tun.Enable, general.Tun.LinuxIfName); err != nil {
+	if err := P.ReCreateTun(general.Tun.Enable, general.Tun.DeviceURL); err != nil {
 		log.Errorln("Start Tun interface error: %s", err.Error())
 	}
 

@@ -53,8 +53,8 @@ func Tun() config.Tun {
 		return config.Tun{}
 	}
 	return config.Tun{
-		Enable:      true,
-		LinuxIfName: tunAdapter.IfName(),
+		Enable:    true,
+		DeviceURL: tunAdapter.DeviceURL(),
 	}
 }
 
@@ -172,9 +172,9 @@ func ReCreateRedir(port int) error {
 	return nil
 }
 
-func ReCreateTun(enable bool, ifname string) error {
+func ReCreateTun(enable bool, url string) error {
 	if tunAdapter != nil {
-		if enable && (ifname == "" || ifname == tunAdapter.IfName()) {
+		if enable && (url == "" || url == tunAdapter.DeviceURL()) {
 			return nil
 		}
 		tunAdapter.Close()
@@ -184,7 +184,7 @@ func ReCreateTun(enable bool, ifname string) error {
 		return nil
 	}
 	var err error
-	tunAdapter, err = tun.NewTunProxy(ifname)
+	tunAdapter, err = tun.NewTunProxy(url)
 	return err
 }
 

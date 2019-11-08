@@ -60,8 +60,8 @@ type FallbackFilter struct {
 
 // Tun config
 type Tun struct {
-	Enable      bool   `yaml:"enable" json:"enable"`
-	LinuxIfName string `yaml:"linux-if-name" json:"linux-if-name"`
+	Enable    bool   `yaml:"enable" json:"enable"`
+	DeviceURL string `yaml:"device-url" json:"device-url"`
 }
 
 // Experimental config
@@ -153,8 +153,8 @@ func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 		Proxy:          []map[string]interface{}{},
 		ProxyGroup:     []map[string]interface{}{},
 		Tun: Tun{
-			Enable:      false,
-			LinuxIfName: "clash0",
+			Enable:    false,
+			DeviceURL: "dev://clash0",
 		},
 		Experimental: Experimental{
 			IgnoreResolveFail: true,

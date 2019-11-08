@@ -70,7 +70,7 @@ func patchConfigs(w http.ResponseWriter, r *http.Request) {
 	P.ReCreateMixed(pointerOrDefault(general.MixedPort, ports.MixedPort))
 
 	if general.Tun != nil {
-		P.ReCreateTun(general.Tun.Enable, general.Tun.LinuxIfName)
+		P.ReCreateTun(general.Tun.Enable, general.Tun.DeviceURL)
 	}
 
 	if general.Mode != nil {

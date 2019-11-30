@@ -3,55 +3,73 @@
 package dev
 
 import (
+	"bytes"
 	"errors"
+	"fmt"
 	"net/url"
+	"os"
 	"strconv"
+	"sync"
 	"syscall"
 	"unsafe"
 
-	"github.com/google/netstack/tcpip/link/fdbased"
-	stacktun "github.com/google/netstack/tcpip/link/tun"
+	"github.com/Dreamacro/clash/log"
+	"github.com/google/netstack/tcpip"
+	"github.com/google/netstack/tcpip/buffer"
+	"github.com/google/netstack/tcpip/header"
+	"github.com/google/netstack/tcpip/link/channel"
 	"github.com/google/netstack/tcpip/stack"
+	"golang.org/x/sys/unix"
 )
 
-type tun struct {
+const (
+	cloneDevicePath = "/dev/net/tun"
+	ifReqSize       = unix.IFNAMSIZ + 64
+)
+
+type tunLinux struct {
 	url       string
 	name      string
-	fd        int
-	linkCache *stack.LinkEndpoint
+	tunFile   *os.File
+	linkCache *channel.Endpoint
+
+	closed   bool
+	stopW    chan struct{}
+	stopOnce sync.Once
+	wg       sync.WaitGroup // wait for goroutines to stop
 }
 
 // OpenTunDevice return a TunDevice according a URL
 func OpenTunDevice(deviceURL url.URL) (TunDevice, error) {
+
+	t := &tunLinux{
+		url:   deviceURL.String(),
+		stopW: make(chan struct{}),
+	}
 	switch deviceURL.Scheme {
 	case "dev":
-		return tun{
-			url: deviceURL.String(),
-		}.openDeviceByName(deviceURL.Host)
+		return t.openDeviceByName(deviceURL.Host)
 	case "fd":
 		fd, err := strconv.ParseInt(deviceURL.Host, 10, 32)
 		if err != nil {
 			return nil, err
 		}
-		return tun{
-			url: deviceURL.String(),
-		}.openDeviceByFd(int(fd))
+		return t.openDeviceByFd(int(fd))
 	}
-
-	return nil, errors.New("Unsupported device type " + deviceURL.Scheme)
+	return nil, fmt.Errorf("Unsupported device type `%s`", deviceURL.Scheme)
 }
 
-func (t tun) Name() string {
+func (t *tunLinux) Name() string {
 	return t.name
 }
 
-func (t tun) URL() string {
+func (t *tunLinux) URL() string {
 	return t.url
 }
 
-func (t tun) AsLinkEndpoint() (result stack.LinkEndpoint, err error) {
+func (t *tunLinux) AsLinkEndpoint() (result stack.LinkEndpoint, err error) {
 	if t.linkCache != nil {
-		return *t.linkCache, nil
+		return t.linkCache, nil
 	}
 
 	mtu, err := t.getInterfaceMtu()
@@ -60,34 +78,120 @@ func (t tun) AsLinkEndpoint() (result stack.LinkEndpoint, err error) {
 		return nil, errors.New("Unable to get device mtu")
 	}
 
-	result, err = fdbased.New(&fdbased.Options{
-		FDs:            []int{t.fd},
-		MTU:            mtu,
-		EthernetHeader: false,
+	linkEP := channel.New(512, uint32(mtu), "")
+
+	// start Read loop. read ip packet from tun and write it to ipstack
+	go func() {
+		t.wg.Add(1)
+		packet := make([]byte, mtu)
+		for {
+			n, err := t.Read(packet)
+			if err != nil {
+				if !t.closed {
+					log.Errorln("Can not read from tun: %v", err)
+				}
+				break
+			}
+			var p tcpip.NetworkProtocolNumber
+			switch header.IPVersion(packet) {
+			case header.IPv4Version:
+				p = header.IPv4ProtocolNumber
+			case header.IPv6Version:
+				p = header.IPv6ProtocolNumber
+			}
+			linkEP.Inject(p, buffer.View(packet[:n]).ToVectorisedView())
+		}
+		t.wg.Done()
+		t.Close()
+		log.Debugln("%v stop read loop", t.Name())
+	}()
+
+	// start write loop. read ip packet from ipstack and write it to tun
+	go func() {
+		t.wg.Add(1)
+	packetLoop:
+		for {
+			var packet channel.PacketInfo
+			select {
+			case packet = <-linkEP.C:
+			case <-t.stopW:
+				break packetLoop
+			}
+			_, err := t.Write(buffer.NewVectorisedView(len(packet.Header)+len(packet.Payload), []buffer.View{packet.Header, packet.Payload}).ToView())
+			if err != nil {
+				log.Errorln("Can not read from tun: %v", err)
+				break
+			}
+		}
+		t.wg.Done()
+		t.Close()
+		log.Debugln("%v stop write loop", t.Name())
+	}()
+
+	t.linkCache = linkEP
+	return t.linkCache, nil
+}
+
+func (t *tunLinux) Write(buff []byte) (int, error) {
+	return t.tunFile.Write(buff)
+}
+
+func (t *tunLinux) Read(buff []byte) (int, error) {
+	return t.tunFile.Read(buff)
+}
+
+func (t *tunLinux) Close() {
+	t.stopOnce.Do(func() {
+		t.closed = true
+		close(t.stopW)
+		t.tunFile.Close()
 	})
-
-	t.linkCache = &result
-
-	return result, nil
 }
 
-func (t tun) Close() {
-	syscall.Close(t.fd)
+// Wait wait goroutines to exit
+func (t *tunLinux) Wait() {
+	t.wg.Wait()
 }
 
-func (t tun) openDeviceByName(name string) (TunDevice, error) {
-	fd, err := stacktun.Open(name)
+func (t *tunLinux) openDeviceByName(name string) (TunDevice, error) {
+	nfd, err := unix.Open(cloneDevicePath, os.O_RDWR, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	t.name = name
-	t.fd = fd
+	var ifr [ifReqSize]byte
+	var flags uint16 = unix.IFF_TUN | unix.IFF_NO_PI
+	nameBytes := []byte(name)
+	if len(nameBytes) >= unix.IFNAMSIZ {
+		return nil, errors.New("interface name too long")
+	}
+	copy(ifr[:], nameBytes)
+	*(*uint16)(unsafe.Pointer(&ifr[unix.IFNAMSIZ])) = flags
+
+	_, _, errno := unix.Syscall(
+		unix.SYS_IOCTL,
+		uintptr(nfd),
+		uintptr(unix.TUNSETIFF),
+		uintptr(unsafe.Pointer(&ifr[0])),
+	)
+	if errno != 0 {
+		return nil, errno
+	}
+	err = unix.SetNonblock(nfd, true)
+
+	// Note that the above -- open,ioctl,nonblock -- must happen prior to handing it to netpoll as below this line.
+
+	t.tunFile = os.NewFile(uintptr(nfd), cloneDevicePath)
+	t.name, err = t.getName()
+	if err != nil {
+		t.tunFile.Close()
+		return nil, err
+	}
 
 	return t, nil
 }
 
-func (t tun) openDeviceByFd(fd int) (TunDevice, error) {
+func (t *tunLinux) openDeviceByFd(fd int) (TunDevice, error) {
 	var ifr struct {
 		name  [16]byte
 		flags uint16
@@ -108,13 +212,18 @@ func (t tun) openDeviceByFd(fd int) (TunDevice, error) {
 		return nil, errors.New("Only tun device and no pi mode supported")
 	}
 
-	t.name = convertInterfaceName(ifr.name)
-	t.fd = fd
+	nullStr := ifr.name[:]
+	i := bytes.IndexByte(nullStr, 0)
+	if i != -1 {
+		nullStr = nullStr[:i]
+	}
+	t.name = string(nullStr)
+	t.tunFile = os.NewFile(uintptr(fd), "/dev/tun")
 
 	return t, nil
 }
 
-func (t tun) getInterfaceMtu() (uint32, error) {
+func (t *tunLinux) getInterfaceMtu() (uint32, error) {
 	fd, err := syscall.Socket(syscall.AF_UNIX, syscall.SOCK_DGRAM, 0)
 	if err != nil {
 		return 0, err
@@ -137,15 +246,32 @@ func (t tun) getInterfaceMtu() (uint32, error) {
 	return uint32(ifreq.mtu), nil
 }
 
-func convertInterfaceName(buf [16]byte) string {
-	var n int
-
-	for i, c := range buf {
-		if c == 0 {
-			n = i
-			break
-		}
+func (t *tunLinux) getName() (string, error) {
+	sysconn, err := t.tunFile.SyscallConn()
+	if err != nil {
+		return "", err
 	}
-
-	return string(buf[:n])
+	var ifr [ifReqSize]byte
+	var errno syscall.Errno
+	err = sysconn.Control(func(fd uintptr) {
+		_, _, errno = unix.Syscall(
+			unix.SYS_IOCTL,
+			fd,
+			uintptr(unix.TUNGETIFF),
+			uintptr(unsafe.Pointer(&ifr[0])),
+		)
+	})
+	if err != nil {
+		return "", errors.New("failed to get name of TUN device: " + err.Error())
+	}
+	if errno != 0 {
+		return "", errors.New("failed to get name of TUN device: " + errno.Error())
+	}
+	nullStr := ifr[:]
+	i := bytes.IndexByte(nullStr, 0)
+	if i != -1 {
+		nullStr = nullStr[:i]
+	}
+	t.name = string(nullStr)
+	return t.name, nil
 }

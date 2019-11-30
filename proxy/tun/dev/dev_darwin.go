@@ -5,7 +5,6 @@ package dev
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/url"
 	"os"
@@ -54,11 +53,11 @@ type tunDarwin struct {
 	tunFile   *os.File
 	linkCache *channel.Endpoint
 	errors    chan error
-	closed    bool
 
-	wg       sync.WaitGroup // wait for goroutines to stop
+	closed   bool
 	stopW    chan struct{}
 	stopOnce sync.Once
+	wg       sync.WaitGroup // wait for goroutines to stop
 }
 
 // sockaddr_ctl specifeid in /usr/include/sys/kern_control.h
@@ -150,16 +149,9 @@ func OpenTunDevice(deviceURL url.URL) (TunDevice, error) {
 	}
 	tun, err := CreateTUNFromFile(os.NewFile(uintptr(fd), ""), mtu)
 
-	if err == nil && name == "utun" {
-		fname := os.Getenv("WG_TUN_NAME_FILE")
-		if fname != "" {
-			ioutil.WriteFile(fname, []byte(tun.(*tunDarwin).name+"\n"), 0400)
-		}
-	}
-
 	return tun, err
-
 }
+
 func CreateTUNFromFile(file *os.File, mtu int) (TunDevice, error) {
 	tun := &tunDarwin{
 		tunFile: file,
@@ -209,7 +201,7 @@ func (t *tunDarwin) Name() string {
 }
 
 func (t *tunDarwin) URL() string {
-	return t.url
+	return fmt.Sprintf("dev://%s", t.Name())
 }
 
 func (t *tunDarwin) AsLinkEndpoint() (result stack.LinkEndpoint, err error) {
@@ -248,7 +240,7 @@ func (t *tunDarwin) AsLinkEndpoint() (result stack.LinkEndpoint, err error) {
 			linkEP.Inject(p, buffer.View(packet[:n]).ToVectorisedView())
 		}
 		t.wg.Done()
-		t.stop()
+		t.Close()
 		log.Debugln("%v stop read loop", t.Name())
 	}()
 
@@ -270,7 +262,7 @@ func (t *tunDarwin) AsLinkEndpoint() (result stack.LinkEndpoint, err error) {
 			}
 		}
 		t.wg.Done()
-		t.stop()
+		t.Close()
 		log.Debugln("%v stop write loop", t.Name())
 	}()
 
@@ -278,12 +270,12 @@ func (t *tunDarwin) AsLinkEndpoint() (result stack.LinkEndpoint, err error) {
 	return t.linkCache, nil
 
 }
-func (tun *tunDarwin) Read(buff []byte) (int, error) {
+func (t *tunDarwin) Read(buff []byte) (int, error) {
 	select {
-	case err := <-tun.errors:
+	case err := <-t.errors:
 		return 0, err
 	default:
-		n, err := tun.tunFile.Read(buff)
+		n, err := t.tunFile.Read(buff)
 		if n < 4 {
 			return 0, err
 		}
@@ -293,7 +285,7 @@ func (tun *tunDarwin) Read(buff []byte) (int, error) {
 	}
 }
 
-func (tun *tunDarwin) Write(buff []byte) (int, error) {
+func (t *tunDarwin) Write(buff []byte) (int, error) {
 	// reserve space for header
 	buf := pool.BufPool.Get().([]byte)
 	defer pool.BufPool.Put(buf[:cap(buf)])
@@ -310,16 +302,23 @@ func (tun *tunDarwin) Write(buff []byte) (int, error) {
 	}
 
 	// write
-	return tun.tunFile.Write(buf[:4+len(buff)])
+	return t.tunFile.Write(buf[:4+len(buff)])
 }
 
-func (tun *tunDarwin) Close() {
-	tun.closed = true
-	tun.stop()
-	tun.wg.Wait()
+func (t *tunDarwin) Close() {
+	t.stopOnce.Do(func() {
+		t.closed = true
+		close(t.stopW)
+		t.tunFile.Close()
+	})
 }
 
-func (tun *tunDarwin) getInterfaceMtu() (int, error) {
+// Wait wait goroutines to exit
+func (t *tunDarwin) Wait() {
+	t.wg.Wait()
+}
+
+func (t *tunDarwin) getInterfaceMtu() (int, error) {
 
 	// open datagram socket
 
@@ -338,7 +337,7 @@ func (tun *tunDarwin) getInterfaceMtu() (int, error) {
 	// do ioctl call
 
 	var ifr [64]byte
-	copy(ifr[:], tun.name)
+	copy(ifr[:], t.name)
 	_, _, errno := unix.Syscall(
 		unix.SYS_IOCTL,
 		uintptr(fd),
@@ -346,7 +345,7 @@ func (tun *tunDarwin) getInterfaceMtu() (int, error) {
 		uintptr(unsafe.Pointer(&ifr[0])),
 	)
 	if errno != 0 {
-		return 0, fmt.Errorf("failed to get MTU on %s", tun.name)
+		return 0, fmt.Errorf("failed to get MTU on %s", t.name)
 	}
 
 	return int(*(*int32)(unsafe.Pointer(&ifr[16]))), nil
@@ -377,7 +376,7 @@ func (t *tunDarwin) getName() (string, error) {
 	return t.name, nil
 }
 
-func (tun *tunDarwin) setMTU(n int) error {
+func (t *tunDarwin) setMTU(n int) error {
 	// open datagram socket
 	fd, err := unix.Socket(
 		unix.AF_INET,
@@ -394,7 +393,7 @@ func (tun *tunDarwin) setMTU(n int) error {
 	// do ioctl call
 
 	var ifr [32]byte
-	copy(ifr[:], tun.name)
+	copy(ifr[:], t.name)
 	*(*uint32)(unsafe.Pointer(&ifr[unix.IFNAMSIZ])) = uint32(n)
 	_, _, errno := unix.Syscall(
 		unix.SYS_IOCTL,
@@ -404,28 +403,28 @@ func (tun *tunDarwin) setMTU(n int) error {
 	)
 
 	if errno != 0 {
-		return fmt.Errorf("failed to set MTU on %s", tun.name)
+		return fmt.Errorf("failed to set MTU on %s", t.name)
 	}
 
 	return nil
 }
 
-func (tun *tunDarwin) operateOnFd(fn func(fd uintptr)) {
-	sysconn, err := tun.tunFile.SyscallConn()
+func (t *tunDarwin) operateOnFd(fn func(fd uintptr)) {
+	sysconn, err := t.tunFile.SyscallConn()
 	// TODO: consume the errors
 	if err != nil {
-		tun.errors <- fmt.Errorf("unable to find sysconn for tunfile: %s", err.Error())
+		t.errors <- fmt.Errorf("unable to find sysconn for tunfile: %s", err.Error())
 		return
 	}
 	err = sysconn.Control(fn)
 	if err != nil {
-		tun.errors <- fmt.Errorf("unable to control sysconn for tunfile: %s", err.Error())
+		t.errors <- fmt.Errorf("unable to control sysconn for tunfile: %s", err.Error())
 	}
 }
 
-func (tun *tunDarwin) setTunAddress(addr net.IP) error {
+func (t *tunDarwin) setTunAddress(addr net.IP) error {
 	var ifr [unix.IFNAMSIZ]byte
-	copy(ifr[:], tun.name)
+	copy(ifr[:], t.name)
 
 	// set IPv4 address
 	fd4, err := unix.Socket(
@@ -476,15 +475,15 @@ func (tun *tunDarwin) setTunAddress(addr net.IP) error {
 		uintptr(unix.SIOCAIFADDR),
 		uintptr(unsafe.Pointer(&ifra4)),
 	); errno != 0 {
-		return fmt.Errorf("Failed to set ip address on %s: %v", tun.name, errno)
+		return fmt.Errorf("Failed to set ip address on %s: %v", t.name, errno)
 	}
 
 	return nil
 }
 
-func (tun *tunDarwin) attachLinkLocal() error {
+func (t *tunDarwin) attachLinkLocal() error {
 	var ifr [unix.IFNAMSIZ]byte
-	copy(ifr[:], tun.name)
+	copy(ifr[:], t.name)
 
 	// attach link-local address
 	fd6, err := unix.Socket(
@@ -525,7 +524,7 @@ func (tun *tunDarwin) attachLinkLocal() error {
 		uintptr(_SIOCPROTOATTACH_IN6),
 		uintptr(unsafe.Pointer(&ifra6)),
 	); errno != 0 {
-		return fmt.Errorf("Failed to attach link-local address on %s: SIOCPROTOATTACH_IN6 %v", tun.name, errno)
+		return fmt.Errorf("Failed to attach link-local address on %s: SIOCPROTOATTACH_IN6 %v", t.name, errno)
 	}
 
 	if _, _, errno := unix.Syscall(
@@ -534,18 +533,8 @@ func (tun *tunDarwin) attachLinkLocal() error {
 		uintptr(_SIOCLL_START),
 		uintptr(unsafe.Pointer(&ifra6)),
 	); errno != 0 {
-		return fmt.Errorf("Failed to set ipv6 address on %s: SIOCLL_START %v", tun.name, errno)
+		return fmt.Errorf("Failed to set ipv6 address on %s: SIOCLL_START %v", t.name, errno)
 	}
 
 	return nil
-}
-
-func (tun *tunDarwin) stop() {
-	tun.stopOnce.Do(func() {
-		tun.closed = true
-		close(tun.stopW)
-		tun.tunFile.Close()
-		close(tun.errors)
-	})
-
 }

@@ -28,8 +28,7 @@ import (
 )
 
 var (
-	tun     = tunnel.Instance()
-	ipstack *stack.Stack
+	tun = tunnel.Instance()
 )
 
 // tunAdapter is the wraper of tun
@@ -53,7 +52,7 @@ func NewTunProxy(deviceURL string) (TunAdapter, error) {
 		return nil, fmt.Errorf("Can't open tun: %v", err)
 	}
 
-	ipstack = stack.New(stack.Options{
+	ipstack := stack.New(stack.Options{
 		NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol(), ipv6.NewProtocol()},
 		TransportProtocols: []stack.TransportProtocol{tcp.NewProtocol(), udp.NewProtocol()},
 	})
@@ -121,7 +120,7 @@ func NewTunProxy(deviceURL string) (TunAdapter, error) {
 // Close close the TunAdapter
 func (t *tunAdapter) Close() {
 	t.device.Close()
-	ipstack.Close()
+	t.ipstack.Close()
 }
 
 // IfName return device URL of tun

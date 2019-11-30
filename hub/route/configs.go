@@ -70,7 +70,11 @@ func patchConfigs(w http.ResponseWriter, r *http.Request) {
 	P.ReCreateMixed(pointerOrDefault(general.MixedPort, ports.MixedPort))
 
 	if general.Tun != nil {
-		P.ReCreateTun(general.Tun.Enable, general.Tun.DeviceURL)
+		if err := P.ReCreateTun(general.Tun.Enable, general.Tun.DeviceURL); err != nil {
+			render.Status(r, http.StatusBadRequest)
+			render.JSON(w, r, newError(err.Error()))
+			return
+		}
 	}
 
 	if general.Mode != nil {

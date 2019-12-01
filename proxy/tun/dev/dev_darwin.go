@@ -237,7 +237,9 @@ func (t *tunDarwin) AsLinkEndpoint() (result stack.LinkEndpoint, err error) {
 			case header.IPv6Version:
 				p = header.IPv6ProtocolNumber
 			}
-			linkEP.Inject(p, buffer.View(packet[:n]).ToVectorisedView())
+			linkEP.InjectInbound(p, tcpip.PacketBuffer{
+				Data: buffer.View(packet[:n]).ToVectorisedView(),
+			})
 		}
 		t.wg.Done()
 		t.Close()
@@ -255,7 +257,9 @@ func (t *tunDarwin) AsLinkEndpoint() (result stack.LinkEndpoint, err error) {
 			case <-t.stopW:
 				break packetLoop
 			}
-			_, err := t.Write(buffer.NewVectorisedView(len(packet.Header)+len(packet.Payload), []buffer.View{packet.Header, packet.Payload}).ToView())
+			header := packet.Pkt.Header.View()
+			data := packet.Pkt.Data.ToView()
+			_, err := t.Write(buffer.NewVectorisedView(len(header)+len(data), []buffer.View{header, data}).ToView())
 			if err != nil {
 				log.Errorln("Can not read from tun: %v", err)
 				break

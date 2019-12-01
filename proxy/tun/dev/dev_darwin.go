@@ -51,7 +51,7 @@ type tunDarwin struct {
 	url       string
 	name      string
 	tunFile   *os.File
-	linkCache *channel.Endpoint
+	linkCache stack.LinkEndpoint
 	errors    chan error
 
 	closed   bool
@@ -221,8 +221,8 @@ func (t *tunDarwin) AsLinkEndpoint() (result stack.LinkEndpoint, err error) {
 	// start Read loop. read ip packet from tun and write it to ipstack
 	go func() {
 		t.wg.Add(1)
-		packet := make([]byte, mtu)
 		for {
+			packet := make([]byte, mtu)
 			n, err := t.Read(packet)
 			if err != nil {
 				if !t.closed {

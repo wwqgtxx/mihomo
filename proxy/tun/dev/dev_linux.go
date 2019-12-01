@@ -32,6 +32,7 @@ type tunLinux struct {
 	name      string
 	tunFile   *os.File
 	linkCache *channel.Endpoint
+	mtu       int
 
 	closed   bool
 	stopW    chan struct{}
@@ -41,10 +42,12 @@ type tunLinux struct {
 
 // OpenTunDevice return a TunDevice according a URL
 func OpenTunDevice(deviceURL url.URL) (TunDevice, error) {
+	mtu, _ := strconv.ParseInt(deviceURL.Query().Get("mtu"), 0, 32)
 
 	t := &tunLinux{
 		url:   deviceURL.String(),
 		stopW: make(chan struct{}),
+		mtu:   int(mtu),
 	}
 	switch deviceURL.Scheme {
 	case "dev":
@@ -72,7 +75,7 @@ func (t *tunLinux) AsLinkEndpoint() (result stack.LinkEndpoint, err error) {
 		return t.linkCache, nil
 	}
 
-	mtu, err := t.getInterfaceMtu()
+	mtu, err := t.MTU()
 
 	if err != nil {
 		return nil, errors.New("Unable to get device mtu")
@@ -155,6 +158,15 @@ func (t *tunLinux) Close() {
 // Wait wait goroutines to exit
 func (t *tunLinux) Wait() {
 	t.wg.Wait()
+}
+
+func (t *tunLinux) MTU() (int, error) {
+	// Sometime, we can't read MTU by SIOCGIFMTU. Then we should return the preset MTU
+	if t.mtu > 0 {
+		return t.mtu, nil
+	}
+	mtu, err := t.getInterfaceMtu()
+	return int(mtu), err
 }
 
 func (t *tunLinux) openDeviceByName(name string) (TunDevice, error) {

@@ -73,6 +73,7 @@ func ParseProxyGroup(config map[string]interface{}, proxyMap map[string]C.Proxy,
 				healthOption := &provider.HealthCheckOption{
 					URL:      groupOption.URL,
 					Interval: uint(groupOption.Interval),
+					GType:    groupOption.Type,
 				}
 				pd, err := provider.NewCompatibleProvier(groupName, ps, healthOption)
 				if err != nil {

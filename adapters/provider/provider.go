@@ -234,7 +234,7 @@ func (pp *ProxySetProvider) setProxies(proxies []C.Proxy) {
 		if pp.healthCheck != nil {
 			pp.healthCheck.close()
 		}
-		pp.healthCheck = newHealthCheck(proxies, pp.healthCheckOption.URL, pp.healthCheckOption.Interval)
+		pp.healthCheck = newHealthCheck(proxies, pp.healthCheckOption.URL, pp.healthCheckOption.Interval, pp.healthCheckOption.GType)
 		go pp.healthCheck.process()
 		pp.mux.Unlock()
 	}
@@ -320,7 +320,7 @@ func NewCompatibleProvier(name string, proxies []C.Proxy, option *HealthCheckOpt
 		if _, err := url.Parse(option.URL); err != nil {
 			return nil, fmt.Errorf("URL format error: %w", err)
 		}
-		hc = newHealthCheck(proxies, option.URL, option.Interval)
+		hc = newHealthCheck(proxies, option.URL, option.Interval, option.GType)
 	}
 
 	return &CompatibleProvier{

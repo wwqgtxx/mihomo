@@ -35,6 +35,8 @@ var (
 type tunAdapter struct {
 	device  dev.TunDevice
 	ipstack *stack.Stack
+
+	dnsserver *DNSServer
 }
 
 // NewTunProxy create TunProxy under Linux OS.
@@ -112,7 +114,6 @@ func NewTunProxy(deviceURL string) (TunAdapter, error) {
 		ipstack: ipstack,
 	}
 	log.Infoln("Tun adapter have interface name: %s", tundev.Name())
-
 	return tl, nil
 
 }
@@ -120,6 +121,9 @@ func NewTunProxy(deviceURL string) (TunAdapter, error) {
 // Close close the TunAdapter
 func (t *tunAdapter) Close() {
 	t.device.Close()
+	if t.dnsserver != nil {
+		t.dnsserver.Stop()
+	}
 	t.ipstack.Close()
 }
 

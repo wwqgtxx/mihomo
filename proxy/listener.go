@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/Dreamacro/clash/config"
+	"github.com/Dreamacro/clash/dns"
 	"github.com/Dreamacro/clash/log"
 	"github.com/Dreamacro/clash/proxy/http"
 	"github.com/Dreamacro/clash/proxy/redir"
@@ -55,6 +56,7 @@ func Tun() config.Tun {
 	return config.Tun{
 		Enable:    true,
 		DeviceURL: tunAdapter.DeviceURL(),
+		DNSListen: tunAdapter.DNSListen(),
 	}
 }
 
@@ -172,10 +174,13 @@ func ReCreateRedir(port int) error {
 	return nil
 }
 
-func ReCreateTun(enable bool, url string) error {
+func ReCreateTun(conf config.Tun) error {
+	enable := conf.Enable
+	url := conf.DeviceURL
 	if tunAdapter != nil {
 		if enable && (url == "" || url == tunAdapter.DeviceURL()) {
-			return nil
+			// Though we don't need to recreate tun device, we should update tun DNSServer
+			return tunAdapter.ReCreateDNSServer(dns.DefaultResolver, conf.DNSListen)
 		}
 		tunAdapter.Close()
 		tunAdapter = nil
@@ -185,7 +190,13 @@ func ReCreateTun(enable bool, url string) error {
 	}
 	var err error
 	tunAdapter, err = tun.NewTunProxy(url)
-	return err
+	if err != nil {
+		return err
+	}
+	if dns.DefaultResolver != nil {
+		return tunAdapter.ReCreateDNSServer(dns.DefaultResolver, conf.DNSListen)
+	}
+	return nil
 }
 
 // GetPorts return the ports of proxy servers

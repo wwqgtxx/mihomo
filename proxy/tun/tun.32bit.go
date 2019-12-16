@@ -9,5 +9,4 @@ import (
 
 func NewTunProxy(deviceURL string) (TunAdapter, error) {
 	return nil, errors.New("Unsupported platform " + runtime.GOOS + "/" + runtime.GOARCH)
-
 }

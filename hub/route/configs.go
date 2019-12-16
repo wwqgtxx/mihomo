@@ -67,7 +67,7 @@ func patchConfigs(w http.ResponseWriter, r *http.Request) {
 	P.ReCreateSocks(pointerOrDefault(general.SocksPort, ports.SocksPort))
 	P.ReCreateRedir(pointerOrDefault(general.RedirPort, ports.RedirPort))
 	if general.Tun != nil {
-		if err := P.ReCreateTun(general.Tun.Enable, general.Tun.DeviceURL); err != nil {
+		if err := P.ReCreateTun(*general.Tun); err != nil {
 			render.Status(r, http.StatusBadRequest)
 			render.JSON(w, r, newError(err.Error()))
 			return

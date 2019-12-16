@@ -78,12 +78,12 @@ func ParseWithBytes(buf []byte) (*config.Config, error) {
 // ApplyConfig dispatch configure to all parts
 func ApplyConfig(cfg *config.Config, force bool) {
 	updateUsers(cfg.Users)
+	updateDNS(cfg.DNS)
 	if force {
 		updateGeneral(cfg.General)
 	}
 	updateProxies(cfg.Proxies, cfg.Providers)
 	updateRules(cfg.Rules)
-	updateDNS(cfg.DNS)
 	updateHosts(cfg.Hosts)
 	updateExperimental(cfg)
 }
@@ -188,7 +188,7 @@ func updateGeneral(general *config.General) {
 		log.Errorln("Start Redir server error: %s", err.Error())
 	}
 
-	if err := P.ReCreateTun(general.Tun.Enable, general.Tun.DeviceURL); err != nil {
+	if err := P.ReCreateTun(general.Tun); err != nil {
 		log.Errorln("Start Tun interface error: %s", err.Error())
 	}
 

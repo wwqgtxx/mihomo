@@ -47,6 +47,8 @@ func (t Type) String() string {
 		return "Socks5"
 	case REDIR:
 		return "Redir"
+	case TUN:
+		return "Tun"
 	default:
 		return "Unknown"
 	}

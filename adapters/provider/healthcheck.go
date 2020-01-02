@@ -17,34 +17,54 @@ const (
 type HealthCheckOption struct {
 	URL      string
 	Interval uint
-	GType string
 }
 
-type healthCheck struct {
-	url     string
-	proxies []C.Proxy
-	ticker  *time.Ticker
+type HealthCheck struct {
+	url      string
+	proxies  []C.Proxy
+	interval uint
+	done     chan struct{}
 	gtype string
 	mutex    sync.Mutex
 	checking bool
 }
 
-func (hc *healthCheck) process() {
+func (hc *HealthCheck) process() {
+	ticker := time.NewTicker(time.Duration(hc.interval) * time.Second)
+
 	switch hc.gtype {
 		case "fallback":
 			go hc.fallbackCheck()
-			for range hc.ticker.C {
-				go hc.fallbackCheck()
-			}
 		default:
 			go hc.check()
-			for range hc.ticker.C {
-				hc.check()
+	}
+
+	
+	for {
+		select {
+		case <-ticker.C:
+			switch hc.gtype {
+				case "fallback":
+					go hc.fallbackCheck()
+				default:
+					hc.check()
 			}
+		case <-hc.done:
+			ticker.Stop()
+			return
+		}
 	}
 }
 
-func (hc *healthCheck) check() {
+func (hc *HealthCheck) setProxy(proxies []C.Proxy) {
+	hc.proxies = proxies
+}
+
+func (hc *HealthCheck) auto() bool {
+	return hc.interval != 0
+}
+
+func (hc *HealthCheck) check() {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultURLTestTimeout)
 	for _, proxy := range hc.proxies {
 		go proxy.URLTest(ctx, hc.url)
@@ -54,7 +74,7 @@ func (hc *healthCheck) check() {
 	cancel()
 }
 
-func (hc *healthCheck) fallbackCheck() {
+func (hc *HealthCheck) fallbackCheck() {
 	hc.mutex.Lock()
 	if hc.checking{
 		hc.mutex.Unlock()
@@ -85,17 +105,17 @@ func (hc *healthCheck) fallbackCheck() {
 	log.Infoln("Finish A Health Checking")
 }
 
-func (hc *healthCheck) close() {
-	hc.ticker.Stop()
+func (hc *HealthCheck) close() {
+	hc.done <- struct{}{}
 }
 
-func newHealthCheck(proxies []C.Proxy, url string, interval uint, gtype string) *healthCheck {
-	ticker := time.NewTicker(time.Duration(interval) * time.Second)
-	return &healthCheck{
-		proxies: proxies,
-		url:     url,
-		ticker:  ticker,
-		gtype:   gtype,
-		checking:false,
+func NewHealthCheck(proxies []C.Proxy, url string, interval uint, gtype string) *HealthCheck {
+	return &HealthCheck{
+		proxies:  proxies,
+		url:      url,
+		interval: interval,
+		done:     make(chan struct{}, 1),
+		gtype:    gtype,
+		checking: false,
 	}
 }

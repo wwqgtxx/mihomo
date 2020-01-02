@@ -13,6 +13,7 @@ var (
 	errFormat            = errors.New("format error")
 	errType              = errors.New("unsupport type")
 	errMissUse           = errors.New("`use` field should not be empty")
+	errMissProxy         = errors.New("`use` or `proxies` missing")
 	errMissHealthCheck   = errors.New("`url` or `interval` missing")
 	errDuplicateProvider = errors.New("`duplicate provider name")
 )
@@ -41,6 +42,11 @@ func ParseProxyGroup(config map[string]interface{}, proxyMap map[string]C.Proxy,
 	groupName := groupOption.Name
 
 	providers := []provider.ProxyProvider{}
+
+	if len(groupOption.Proxies) == 0 && len(groupOption.Use) == 0 {
+		return nil, errMissProxy
+	}
+
 	if len(groupOption.Proxies) != 0 {
 		ps, err := getProxies(proxyMap, groupOption.Proxies)
 		if err != nil {
@@ -49,7 +55,8 @@ func ParseProxyGroup(config map[string]interface{}, proxyMap map[string]C.Proxy,
 
 		// if Use not empty, drop health check options
 		if len(groupOption.Use) != 0 {
-			pd, err := provider.NewCompatibleProvier(groupName, ps, nil)
+			hc := provider.NewHealthCheck(ps, "", 0, groupOption.Type)
+			pd, err := provider.NewCompatibleProvier(groupName, ps, hc)
 			if err != nil {
 				return nil, err
 			}
@@ -58,7 +65,8 @@ func ParseProxyGroup(config map[string]interface{}, proxyMap map[string]C.Proxy,
 		} else {
 			// select don't need health check
 			if groupOption.Type == "select" {
-				pd, err := provider.NewCompatibleProvier(groupName, ps, nil)
+				hc := provider.NewHealthCheck(ps, "", 0, groupOption.Type)
+				pd, err := provider.NewCompatibleProvier(groupName, ps, hc)
 				if err != nil {
 					return nil, err
 				}
@@ -70,12 +78,8 @@ func ParseProxyGroup(config map[string]interface{}, proxyMap map[string]C.Proxy,
 					return nil, errMissHealthCheck
 				}
 
-				healthOption := &provider.HealthCheckOption{
-					URL:      groupOption.URL,
-					Interval: uint(groupOption.Interval),
-					GType:    groupOption.Type,
-				}
-				pd, err := provider.NewCompatibleProvier(groupName, ps, healthOption)
+				hc := provider.NewHealthCheck(ps, groupOption.URL, uint(groupOption.Interval), groupOption.Type)
+				pd, err := provider.NewCompatibleProvier(groupName, ps, hc)
 				if err != nil {
 					return nil, err
 				}

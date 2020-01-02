@@ -3,10 +3,9 @@ package rules
 import (
 	"sync"
 
-	C "github.com/whojave/clash/constant"
-
 	"github.com/oschwald/geoip2-golang"
-	log "github.com/sirupsen/logrus"
+	"github.com/whojave/clash/log"
+	C "github.com/whojave/clash/constant"
 )
 
 var (
@@ -50,7 +49,7 @@ func NewGEOIP(country string, adapter string, noResolveIP bool) *GEOIP {
 		var err error
 		mmdb, err = geoip2.Open(C.Path.MMDB())
 		if err != nil {
-			log.Fatalf("Can't load mmdb: %s", err.Error())
+			log.Fatalln("Can't load mmdb: %s", err.Error())
 		}
 	})
 

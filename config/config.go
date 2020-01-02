@@ -81,6 +81,7 @@ type rawDNS struct {
 	Listen         string            `yaml:"listen"`
 	EnhancedMode   dns.EnhancedMode  `yaml:"enhanced-mode"`
 	FakeIPRange    string            `yaml:"fake-ip-range"`
+	FakeIPFilter   []string          `yaml:"fake-ip-filter"`
 }
 
 type rawFallbackFilter struct {
@@ -314,7 +315,8 @@ func parseProxies(cfg *rawConfig) (proxies map[string]C.Proxy, providersMap map[
 	for _, v := range proxyList {
 		ps = append(ps, proxies[v])
 	}
-	pd, _ := provider.NewCompatibleProvier(provider.ReservedName, ps, nil)
+	hc := provider.NewHealthCheck(ps, "", 0, provider.ReservedName)
+	pd, _ := provider.NewCompatibleProvier(provider.ReservedName, ps, hc)
 	providersMap[provider.ReservedName] = pd
 
 	global := outboundgroup.NewSelector("GLOBAL", []provider.ProxyProvider{pd})
@@ -522,7 +524,17 @@ func parseDNS(cfg rawDNS) (*DNS, error) {
 		if err != nil {
 			return nil, err
 		}
-		pool, err := fakeip.New(ipnet, 1000)
+
+		var host *trie.Trie
+		// fake ip skip host filter
+		if len(cfg.FakeIPFilter) != 0 {
+			host = trie.New()
+			for _, domain := range cfg.FakeIPFilter {
+				host.Insert(domain, true)
+			}
+		}
+
+		pool, err := fakeip.New(ipnet, 1000, host)
 		if err != nil {
 			return nil, err
 		}

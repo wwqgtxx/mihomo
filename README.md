@@ -36,6 +36,8 @@ $ go get -u -v github.com/whojave/clash
 
 Pre-built binaries are available here: [release](https://github.com/whojave/clash/releases)
 
+Pre-built TUN mode binaries are available here: [TUN release](https://github.com/Dreamacro/clash/releases/tag/TUN)
+
 Check Clash version with:
 
 ```sh
@@ -131,6 +133,9 @@ experimental:
   # listen: 0.0.0.0:53
   # enhanced-mode: redir-host # or fake-ip
   # # fake-ip-range: 198.18.0.1/16 # if you don't know what it is, don't change it
+  # fake-ip-filter: # fake ip white domain list
+  #   - *.lan
+  #   - localhost.ptlogin2.qq.com
   # nameserver:
   #   - 114.114.114.114
   #   - tls://dns.rubyfish.cn:853 # dns over tls

@@ -102,9 +102,14 @@ func (t *tunLinux) AsLinkEndpoint() (result stack.LinkEndpoint, err error) {
 			case header.IPv6Version:
 				p = header.IPv6ProtocolNumber
 			}
-			linkEP.InjectInbound(p, tcpip.PacketBuffer{
-				Data: buffer.View(packet[:n]).ToVectorisedView(),
-			})
+			if linkEP.IsAttached() {
+				linkEP.InjectInbound(p, tcpip.PacketBuffer{
+					Data: buffer.View(packet[:n]).ToVectorisedView(),
+				})
+			} else {
+				log.Debugln("Received packet from tun when %s is not attached to any dispatcher.", t.Name())
+			}
+
 		}
 		t.wg.Done()
 		t.Close()

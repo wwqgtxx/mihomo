@@ -17,6 +17,7 @@ import (
 
 	"github.com/google/netstack/tcpip"
 	"github.com/google/netstack/tcpip/adapters/gonet"
+	"github.com/google/netstack/tcpip/header"
 	"github.com/google/netstack/tcpip/network/ipv4"
 	"github.com/google/netstack/tcpip/network/ipv6"
 	"github.com/google/netstack/tcpip/stack"
@@ -57,6 +58,11 @@ func NewTunProxy(deviceURL string) (TunAdapter, error) {
 		TransportProtocols: []stack.TransportProtocol{tcp.NewProtocol(), udp.NewProtocol()},
 	})
 
+	tl := &tunAdapter{
+		device:  tundev,
+		ipstack: ipstack,
+	}
+
 	linkEP, err := tundev.AsLinkEndpoint()
 	if err != nil {
 		return nil, fmt.Errorf("Unable to create virtual endpoint: %v", err)
@@ -92,25 +98,8 @@ func NewTunProxy(deviceURL string) (TunAdapter, error) {
 	ipstack.SetTransportProtocolHandler(tcp.ProtocolNumber, tcpFwd.HandlePacket)
 
 	// UDP handler
-	udpFwd := udp.NewForwarder(ipstack, func(r *udp.ForwarderRequest) {
+	ipstack.SetTransportProtocolHandler(udp.ProtocolNumber, tl.udpHandlePacket)
 
-		var wq waiter.Queue
-		ep, err := r.CreateEndpoint(&wq)
-		if err != nil {
-			log.Warnln("Can't create UDP Endpoint in ipstack: %v", err)
-		}
-
-		conn := gonet.NewConn(&wq, ep)
-		target := getAddr(ep.Info().(*stack.TransportEndpointInfo).ID)
-		tun.Add(adapters.NewSocket(target, conn, C.TUN, C.UDP))
-
-	})
-	ipstack.SetTransportProtocolHandler(udp.ProtocolNumber, udpFwd.HandlePacket)
-
-	tl := &tunAdapter{
-		device:  tundev,
-		ipstack: ipstack,
-	}
 	log.Infoln("Tun adapter have interface name: %s", tundev.Name())
 	return tl, nil
 
@@ -128,6 +117,28 @@ func (t *tunAdapter) Close() {
 // IfName return device URL of tun
 func (t *tunAdapter) DeviceURL() string {
 	return t.device.URL()
+}
+
+func (t *tunAdapter) udpHandlePacket(r *stack.Route, id stack.TransportEndpointID, pkt tcpip.PacketBuffer) bool {
+
+	hdr := header.UDP(pkt.Data.First())
+	if int(hdr.Length()) > pkt.Data.Size() {
+		// Malformed packet.
+		t.ipstack.Stats().UDP.MalformedPacketsReceived.Increment()
+		return true
+	}
+	pkt.Data.TrimFront(header.UDPMinimumSize)
+
+	target := getAddr(id)
+
+	packet := &fakeConn{
+		id:      id,
+		r:       r,
+		payload: pkt.Data.ToView(),
+	}
+	tun.AddPacket(adapters.NewPacket(target, packet, C.SOCKS))
+
+	return true
 }
 
 func getAddr(id stack.TransportEndpointID) socks5.Addr {

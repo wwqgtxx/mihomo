@@ -113,45 +113,7 @@ func (w *dnsResponseWriter) Write(b []byte) (int, error) {
 	v := buffer.NewView(len(b))
 	copy(v, b)
 	data := v.ToVectorisedView()
-	ProtocolNumber := udp.ProtocolNumber
-	r := w.r
-
-	// Copy from netstack udp.endpoint.sendUDP
-	// Allocate a buffer for the UDP header.
-	hdr := buffer.NewPrependable(header.UDPMinimumSize + int(r.MaxHeaderLength()))
-
-	// Initialize the header.
-	udp := header.UDP(hdr.Prepend(header.UDPMinimumSize))
-
-	length := uint16(hdr.UsedLength() + data.Size())
-	udp.Encode(&header.UDPFields{
-		SrcPort: w.id.LocalPort,
-		DstPort: w.id.RemotePort,
-		Length:  length,
-	})
-
-	// Only calculate the checksum if offloading isn't supported.
-	if r.Capabilities()&stack.CapabilityTXChecksumOffload == 0 {
-		xsum := r.PseudoHeaderChecksum(ProtocolNumber, length)
-		for _, v := range data.Views() {
-			xsum = header.Checksum(v, xsum)
-		}
-		udp.SetChecksum(^udp.CalculateChecksum(xsum))
-	}
-
-	ttl := r.DefaultTTL()
-
-	if err := r.WritePacket(nil /* gso */, stack.NetworkHeaderParams{Protocol: ProtocolNumber, TTL: ttl, TOS: 0 /* default */}, tcpip.PacketBuffer{
-		Header: hdr,
-		Data:   data,
-	}); err != nil {
-		r.Stats().UDP.PacketSendErrors.Increment()
-		return 0, fmt.Errorf("%v", err)
-	}
-
-	// Track count of packets sent.
-	r.Stats().UDP.PacketsSent.Increment()
-	return len(b), nil
+	return writeUDP(w.r, data, w.id.LocalPort, w.id.RemotePort)
 }
 
 func (w *dnsResponseWriter) Close() error {

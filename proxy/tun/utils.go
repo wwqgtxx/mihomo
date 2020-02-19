@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/Dreamacro/clash/component/resolver"
+	"github.com/Dreamacro/clash/dns"
 	"github.com/google/netstack/tcpip"
 	"github.com/google/netstack/tcpip/buffer"
 	"github.com/google/netstack/tcpip/header"
@@ -15,6 +17,7 @@ type fakeConn struct {
 	id      stack.TransportEndpointID
 	r       *stack.Route
 	payload []byte
+	fakeip  *bool
 }
 
 func (c *fakeConn) Data() []byte {
@@ -25,7 +28,7 @@ func (c *fakeConn) WriteBack(b []byte, addr net.Addr) (n int, err error) {
 	v := buffer.View(b)
 	data := v.ToVectorisedView()
 	// if addr is not provided, write back use original dst Addr as src Addr
-	if addr == nil {
+	if c.FakeIP() || addr == nil {
 		return writeUDP(c.r, data, uint16(c.id.LocalPort), c.id.RemotePort)
 	}
 
@@ -45,6 +48,16 @@ func (c *fakeConn) LocalAddr() net.Addr {
 
 func (c *fakeConn) Close() error {
 	return nil
+}
+
+func (c *fakeConn) FakeIP() bool {
+	if c.fakeip != nil {
+		return *c.fakeip
+	}
+	resolver := resolver.DefaultResolver.(*dns.Resolver)
+	fakeip := resolver.IsFakeIP(net.IP(c.id.LocalAddress.To4()))
+	c.fakeip = &fakeip
+	return fakeip
 }
 
 func writeUDP(r *stack.Route, data buffer.VectorisedView, localPort, remotePort uint16) (int, error) {

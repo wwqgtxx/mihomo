@@ -26,10 +26,6 @@ import (
 	"github.com/google/netstack/waiter"
 )
 
-var (
-	tun = tunnel.Instance()
-)
-
 // tunAdapter is the wraper of tun
 type tunAdapter struct {
 	device  dev.TunDevice
@@ -95,7 +91,7 @@ func NewTunProxy(deviceURL string) (TunAdapter, error) {
 
 		conn := gonet.NewConn(&wq, ep)
 		target := getAddr(ep.Info().(*tcp.EndpointInfo).ID)
-		tun.Add(adapters.NewSocket(target, conn, C.TUN, C.TCP))
+		tunnel.Add(adapters.NewSocket(target, conn, C.TUN, C.TCP))
 
 	})
 	ipstack.SetTransportProtocolHandler(tcp.ProtocolNumber, tcpFwd.HandlePacket)
@@ -139,7 +135,7 @@ func (t *tunAdapter) udpHandlePacket(r *stack.Route, id stack.TransportEndpointI
 		r:       r,
 		payload: pkt.Data.ToView(),
 	}
-	tun.AddPacket(adapters.NewPacket(target, packet, C.TUN))
+	tunnel.AddPacket(adapters.NewPacket(target, packet, C.TUN))
 
 	return true
 }

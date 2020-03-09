@@ -26,7 +26,7 @@ var (
 	redirUDPListener *redir.RedirUDPListener
 	mixedListener    *mixed.MixedListener
 	mixedUDPLister   *socks.SockUDPListener
-	tunAdapter       *tun.TunAdapter
+	tunAdapter       tun.TunAdapter
 
 	// lock for recreate function
 	socksMux sync.Mutex

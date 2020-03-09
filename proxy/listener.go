@@ -5,8 +5,8 @@ import (
 	"net"
 	"strconv"
 
-	"github.com/Dreamacro/clash/log"
 	"github.com/Dreamacro/clash/config"
+	"github.com/Dreamacro/clash/log"
 	"github.com/Dreamacro/clash/proxy/http"
 	"github.com/Dreamacro/clash/proxy/redir"
 	"github.com/Dreamacro/clash/proxy/socks"
@@ -22,7 +22,7 @@ var (
 	httpListener     *http.HttpListener
 	redirListener    *redir.RedirListener
 	redirUDPListener *redir.RedirUDPListener
-	tunAdapter       *tun.TunAdapter
+	tunAdapter       tun.TunAdapter
 )
 
 type listener interface {

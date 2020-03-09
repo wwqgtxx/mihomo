@@ -1,14 +1,13 @@
-// +build !linux,!android
+// +build !amd64,!arm64,!mips64
 
-package dev
+package tun
 
 import (
 	"errors"
 	"runtime"
-
-	"net/url"
 )
 
-func OpenTunDevice(_ url.URL) (TunDevice, error) {
+func NewTunProxy(deviceURL string) (TunAdapter, error) {
 	return nil, errors.New("Unsupported platform " + runtime.GOOS + "/" + runtime.GOARCH)
+
 }

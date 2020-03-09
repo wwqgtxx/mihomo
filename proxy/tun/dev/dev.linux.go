@@ -21,6 +21,7 @@ type tun struct {
 	linkCache *stack.LinkEndpoint
 }
 
+// OpenTunDevice return a TunDevice according a URL
 func OpenTunDevice(deviceURL url.URL) (TunDevice, error) {
 	switch deviceURL.Scheme {
 	case "dev":

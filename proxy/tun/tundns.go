@@ -38,6 +38,7 @@ type DNSServer struct {
 	tcpip.NICID
 }
 
+// dnsEndpoint is a TransportEndpoint that will register to stack
 type dnsEndpoint struct {
 	stack.TransportEndpoint
 	stack    *stack.Stack

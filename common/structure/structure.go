@@ -115,6 +115,7 @@ func (d *Decoder) decodeString(name string, data interface{}, val reflect.Value)
 	case kind == reflect.Int && d.option.WeaklyTypedInput:
 		val.SetString(strconv.FormatInt(dataVal.Int(), 10))
 	default:
+		println(dataVal.Type())
 		err = fmt.Errorf(
 			"'%s' expected type '%s', got unconvertible type '%s'",
 			name, val.Type(), dataVal.Type(),

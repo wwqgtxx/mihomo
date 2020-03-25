@@ -1,5 +1,3 @@
-// +build amd64 arm64 mips64
-
 package tun
 
 import (

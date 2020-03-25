@@ -20,6 +20,7 @@ const (
 	SOCKS
 	REDIR
 	TPROXY
+	TUN
 )
 
 type NetWork int

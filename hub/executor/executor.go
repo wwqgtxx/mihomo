@@ -186,6 +186,11 @@ func updateGeneral(general *config.General) {
 	if err := P.ReCreateRedir(general.RedirPort); err != nil {
 		log.Errorln("Start Redir server error: %s", err.Error())
 	}
+
+	if err := P.ReCreateTun(general.Tun.Enable, general.Tun.LinuxIfName); err != nil {
+		log.Errorln("Start Tun interface error: %s", err.Error())
+	}
+
 }
 
 func updateUsers(users []auth.AuthUser) {

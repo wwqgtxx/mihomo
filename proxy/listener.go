@@ -9,6 +9,7 @@ import (
 	"github.com/Dreamacro/clash/proxy/http"
 	"github.com/Dreamacro/clash/proxy/redir"
 	"github.com/Dreamacro/clash/proxy/socks"
+	"github.com/Dreamacro/clash/proxy/tun"
 )
 
 var (
@@ -20,6 +21,7 @@ var (
 	httpListener     *http.HttpListener
 	redirListener    *redir.RedirListener
 	redirUDPListener *redir.RedirUDPListener
+	tunAdapter       *tun.TunAdapter
 )
 
 type listener interface {
@@ -157,6 +159,22 @@ func ReCreateRedir(port int) error {
 	}
 
 	return nil
+}
+
+func ReCreateTun(enable bool, ifname string) error {
+	if tunAdapter != nil {
+		if enable && (ifname == "" || ifname == tunAdapter.IfName()) {
+			return nil
+		}
+		tunAdapter.Close()
+		tunAdapter = nil
+	}
+	if !enable {
+		return nil
+	}
+	var err error
+	tunAdapter, err = tun.NewTunProxy(ifname)
+	return err
 }
 
 // GetPorts return the ports of proxy servers

@@ -27,6 +27,7 @@ type configSchema struct {
 	SocksPort   *int               `json:"socks-port"`
 	RedirPort   *int               `json:"redir-port"`
 	MixedPort   *int               `json:"mixed-port"`
+	Tun         *config.Tun        `json:"tun"`
 	AllowLan    *bool              `json:"allow-lan"`
 	BindAddress *string            `json:"bind-address"`
 	Mode        *tunnel.TunnelMode `json:"mode"`
@@ -67,6 +68,10 @@ func patchConfigs(w http.ResponseWriter, r *http.Request) {
 	P.ReCreateSocks(pointerOrDefault(general.SocksPort, ports.SocksPort))
 	P.ReCreateRedir(pointerOrDefault(general.RedirPort, ports.RedirPort))
 	P.ReCreateMixed(pointerOrDefault(general.MixedPort, ports.MixedPort))
+
+	if general.Tun != nil {
+		P.ReCreateTun(general.Tun.Enable, general.Tun.LinuxIfName)
+	}
 
 	if general.Mode != nil {
 		tunnel.SetMode(*general.Mode)

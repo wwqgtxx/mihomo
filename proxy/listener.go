@@ -11,6 +11,7 @@ import (
 	"github.com/Dreamacro/clash/proxy/mixed"
 	"github.com/Dreamacro/clash/proxy/redir"
 	"github.com/Dreamacro/clash/proxy/socks"
+	"github.com/Dreamacro/clash/proxy/tun"
 )
 
 var (
@@ -24,6 +25,7 @@ var (
 	redirUDPListener *redir.RedirUDPListener
 	mixedListener    *mixed.MixedListener
 	mixedUDPLister   *socks.SockUDPListener
+	tunAdapter       *tun.TunAdapter
 
 	// lock for recreate function
 	socksMux sync.Mutex
@@ -227,6 +229,25 @@ func ReCreateMixed(port int) error {
 	}
 
 	return nil
+}
+
+func ReCreateTun(enable bool, ifname string) error {
+	tunMux.Lock()
+	defer tunMux.Unlock()
+	
+	if tunAdapter != nil {
+		if enable && (ifname == "" || ifname == tunAdapter.IfName()) {
+			return nil
+		}
+		tunAdapter.Close()
+		tunAdapter = nil
+	}
+	if !enable {
+		return nil
+	}
+	var err error
+	tunAdapter, err = tun.NewTunProxy(ifname)
+	return err
 }
 
 // GetPorts return the ports of proxy servers

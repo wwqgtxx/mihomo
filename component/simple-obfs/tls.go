@@ -8,7 +8,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/whojave/clash/common/pool"
+	"github.com/brobird/clash/common/pool"
 )
 
 func init() {

@@ -2,16 +2,16 @@ package provider
 
 import (
 	"context"
-	"time"
 	"sync"
+	"time"
 
-	C "github.com/whojave/clash/constant"
-	"github.com/whojave/clash/log"
+	C "github.com/brobird/clash/constant"
+	"github.com/brobird/clash/log"
 )
 
 const (
 	defaultURLTestTimeout = time.Second * 5
-	waitAfterAURLTest =  time.Second * 1
+	waitAfterAURLTest     = time.Second * 1
 )
 
 type HealthCheckOption struct {
@@ -24,7 +24,7 @@ type HealthCheck struct {
 	proxies  []C.Proxy
 	interval uint
 	done     chan struct{}
-	gtype string
+	gtype    string
 	mutex    sync.Mutex
 	checking bool
 }
@@ -33,21 +33,20 @@ func (hc *HealthCheck) process() {
 	ticker := time.NewTicker(time.Duration(hc.interval) * time.Second)
 
 	switch hc.gtype {
-		case "fallback":
-			go hc.fallbackCheck()
-		default:
-			go hc.check()
+	case "fallback":
+		go hc.fallbackCheck()
+	default:
+		go hc.check()
 	}
 
-	
 	for {
 		select {
 		case <-ticker.C:
 			switch hc.gtype {
-				case "fallback":
-					go hc.fallbackCheck()
-				default:
-					hc.check()
+			case "fallback":
+				go hc.fallbackCheck()
+			default:
+				hc.check()
 			}
 		case <-hc.done:
 			ticker.Stop()
@@ -76,7 +75,7 @@ func (hc *HealthCheck) check() {
 
 func (hc *HealthCheck) fallbackCheck() {
 	hc.mutex.Lock()
-	if hc.checking{
+	if hc.checking {
 		hc.mutex.Unlock()
 		log.Infoln("A Health Checking is Running, break")
 		return
@@ -87,7 +86,7 @@ func (hc *HealthCheck) fallbackCheck() {
 		hc.mutex.Lock()
 		hc.checking = false
 		hc.mutex.Unlock()
-	} ()
+	}()
 	log.Infoln("Start New Health Checking")
 	for _, proxy := range hc.proxies {
 		ctx, cancel := context.WithTimeout(context.Background(), defaultURLTestTimeout)
@@ -97,7 +96,7 @@ func (hc *HealthCheck) fallbackCheck() {
 		cancel()
 		log.Infoln("Health Checked %s : %t %d ms", proxy.Name(), proxy.Alive(), proxy.LastDelay())
 		if proxy.Alive() {
-			break;
+			break
 		}
 		<-time.After(waitAfterAURLTest)
 	}

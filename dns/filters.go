@@ -1,6 +1,10 @@
 package dns
 
-import "net"
+import (
+	"net"
+
+	"github.com/brobird/clash/component/mmdb"
+)
 
 type fallbackFilter interface {
 	Match(net.IP) bool
@@ -9,12 +13,8 @@ type fallbackFilter interface {
 type geoipFilter struct{}
 
 func (gf *geoipFilter) Match(ip net.IP) bool {
-	if mmdb == nil {
-		return false
-	}
-
-	record, _ := mmdb.Country(ip)
-	return record.Country.IsoCode == "CN" || record.Country.IsoCode == ""
+	record, _ := mmdb.Instance().Country(ip)
+	return record.Country.IsoCode != "CN" && record.Country.IsoCode != ""
 }
 
 type ipnetFilter struct {

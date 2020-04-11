@@ -6,16 +6,18 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/whojave/clash/adapters/provider"
-	"github.com/whojave/clash/component/auth"
-	trie "github.com/whojave/clash/component/domain-trie"
-	"github.com/whojave/clash/config"
-	C "github.com/whojave/clash/constant"
-	"github.com/whojave/clash/dns"
-	"github.com/whojave/clash/log"
-	P "github.com/whojave/clash/proxy"
-	authStore "github.com/whojave/clash/proxy/auth"
-	T "github.com/whojave/clash/tunnel"
+	"github.com/brobird/clash/adapters/provider"
+	"github.com/brobird/clash/component/auth"
+	"github.com/brobird/clash/component/dialer"
+	trie "github.com/brobird/clash/component/domain-trie"
+	"github.com/brobird/clash/component/resolver"
+	"github.com/brobird/clash/config"
+	C "github.com/brobird/clash/constant"
+	"github.com/brobird/clash/dns"
+	"github.com/brobird/clash/log"
+	P "github.com/brobird/clash/proxy"
+	authStore "github.com/brobird/clash/proxy/auth"
+	"github.com/brobird/clash/tunnel"
 )
 
 // forward compatibility before 1.0
@@ -83,7 +85,7 @@ func ApplyConfig(cfg *config.Config, force bool) {
 	updateRules(cfg.Rules)
 	updateDNS(cfg.DNS)
 	updateHosts(cfg.Hosts)
-	updateExperimental(cfg.Experimental)
+	updateExperimental(cfg)
 }
 
 func GetGeneral() *config.General {
@@ -100,21 +102,31 @@ func GetGeneral() *config.General {
 		Authentication: authenticator,
 		AllowLan:       P.AllowLan(),
 		BindAddress:    P.BindAddress(),
-		Mode:           T.Instance().Mode(),
+		Mode:           tunnel.Mode(),
 		LogLevel:       log.Level(),
 	}
 
 	return general
 }
 
-func updateExperimental(c *config.Experimental) {
-	T.Instance().UpdateExperimental(c.IgnoreResolveFail)
+func updateExperimental(c *config.Config) {
+	cfg := c.Experimental
+
+	tunnel.UpdateExperimental(cfg.IgnoreResolveFail)
+	if cfg.Interface != "" && c.DNS.Enable {
+		dialer.DialHook = dialer.DialerWithInterface(cfg.Interface)
+		dialer.ListenPacketHook = dialer.ListenPacketWithInterface(cfg.Interface)
+	} else {
+		dialer.DialHook = nil
+		dialer.ListenPacketHook = nil
+	}
 }
 
 func updateDNS(c *config.DNS) {
 	if c.Enable == false {
-		dns.DefaultResolver = nil
-		_ = dns.ReCreateServer("", nil)
+		resolver.DefaultResolver = nil
+		tunnel.SetResolver(nil)
+		dns.ReCreateServer("", nil)
 		return
 	}
 	r := dns.New(dns.Config{
@@ -127,8 +139,10 @@ func updateDNS(c *config.DNS) {
 			GeoIP:  c.FallbackFilter.GeoIP,
 			IPCIDR: c.FallbackFilter.IPCIDR,
 		},
+		Default: c.DefaultNameserver,
 	})
-	dns.DefaultResolver = r
+	resolver.DefaultResolver = r
+	tunnel.SetResolver(r)
 	if err := dns.ReCreateServer(c.Listen, r); err != nil {
 		log.Errorln("Start DNS server error: %s", err.Error())
 		return
@@ -140,11 +154,10 @@ func updateDNS(c *config.DNS) {
 }
 
 func updateHosts(tree *trie.Trie) {
-	dns.DefaultHosts = tree
+	resolver.DefaultHosts = tree
 }
 
 func updateProxies(proxies map[string]C.Proxy, providers map[string]provider.ProxyProvider) {
-	tunnel := T.Instance()
 	oldProviders := tunnel.Providers()
 
 	// close providers goroutine
@@ -156,12 +169,12 @@ func updateProxies(proxies map[string]C.Proxy, providers map[string]provider.Pro
 }
 
 func updateRules(rules []C.Rule) {
-	T.Instance().UpdateRules(rules)
+	tunnel.UpdateRules(rules)
 }
 
 func updateGeneral(general *config.General) {
 	log.SetLevel(general.LogLevel)
-	T.Instance().SetMode(general.Mode)
+	tunnel.SetMode(general.Mode)
 
 	allowLan := general.AllowLan
 	P.SetAllowLan(allowLan)

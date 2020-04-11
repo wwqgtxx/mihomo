@@ -8,16 +8,12 @@ import (
 	"strings"
 	"time"
 
-	adapters "github.com/whojave/clash/adapters/inbound"
-	"github.com/whojave/clash/common/cache"
-	"github.com/whojave/clash/component/auth"
-	"github.com/whojave/clash/log"
-	authStore "github.com/whojave/clash/proxy/auth"
-	"github.com/whojave/clash/tunnel"
-)
-
-var (
-	tun = tunnel.Instance()
+	adapters "github.com/brobird/clash/adapters/inbound"
+	"github.com/brobird/clash/common/cache"
+	"github.com/brobird/clash/component/auth"
+	"github.com/brobird/clash/log"
+	authStore "github.com/brobird/clash/proxy/auth"
+	"github.com/brobird/clash/tunnel"
 )
 
 type HttpListener struct {
@@ -100,9 +96,9 @@ func handleConn(conn net.Conn, cache *cache.Cache) {
 		if err != nil {
 			return
 		}
-		tun.Add(adapters.NewHTTPS(request, conn))
+		tunnel.Add(adapters.NewHTTPS(request, conn))
 		return
 	}
 
-	tun.Add(adapters.NewHTTP(request, conn))
+	tunnel.Add(adapters.NewHTTP(request, conn))
 }

@@ -3,8 +3,8 @@ package inbound
 import (
 	"net"
 
-	"github.com/whojave/clash/component/socks5"
-	C "github.com/whojave/clash/constant"
+	"github.com/brobird/clash/component/socks5"
+	C "github.com/brobird/clash/constant"
 )
 
 // SocketAdapter is a adapter for socks and redir connection

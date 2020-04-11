@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"net"
 
-	"github.com/whojave/clash/adapters/outbound"
-	"github.com/whojave/clash/adapters/provider"
-	"github.com/whojave/clash/common/murmur3"
-	"github.com/whojave/clash/common/singledo"
-	C "github.com/whojave/clash/constant"
+	"github.com/brobird/clash/adapters/outbound"
+	"github.com/brobird/clash/adapters/provider"
+	"github.com/brobird/clash/common/murmur3"
+	"github.com/brobird/clash/common/singledo"
+	C "github.com/brobird/clash/constant"
 
 	"golang.org/x/net/publicsuffix"
 )
@@ -74,7 +74,7 @@ func (lb *LoadBalance) DialContext(ctx context.Context, metadata *C.Metadata) (c
 	return
 }
 
-func (lb *LoadBalance) DialUDP(metadata *C.Metadata) (pc C.PacketConn, addr net.Addr, err error) {
+func (lb *LoadBalance) DialUDP(metadata *C.Metadata) (pc C.PacketConn, err error) {
 	defer func() {
 		if err == nil {
 			pc.AppendToChains(lb)
@@ -120,7 +120,7 @@ func (lb *LoadBalance) MarshalJSON() ([]byte, error) {
 
 func NewLoadBalance(name string, providers []provider.ProxyProvider) *LoadBalance {
 	return &LoadBalance{
-		Base:      outbound.NewBase(name, C.LoadBalance, false),
+		Base:      outbound.NewBase(name, "", C.LoadBalance, false),
 		single:    singledo.NewSingle(defaultGetProxiesDuration),
 		maxRetry:  3,
 		providers: providers,

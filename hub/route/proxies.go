@@ -7,10 +7,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/whojave/clash/adapters/outbound"
-	"github.com/whojave/clash/adapters/outboundgroup"
-	C "github.com/whojave/clash/constant"
-	T "github.com/whojave/clash/tunnel"
+	"github.com/brobird/clash/adapters/outbound"
+	"github.com/brobird/clash/adapters/outboundgroup"
+	C "github.com/brobird/clash/constant"
+	"github.com/brobird/clash/tunnel"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
@@ -40,7 +40,7 @@ func parseProxyName(next http.Handler) http.Handler {
 func findProxyByName(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		name := r.Context().Value(CtxKeyProxyName).(string)
-		proxies := T.Instance().Proxies()
+		proxies := tunnel.Proxies()
 		proxy, exist := proxies[name]
 		if !exist {
 			render.Status(r, http.StatusNotFound)
@@ -54,7 +54,7 @@ func findProxyByName(next http.Handler) http.Handler {
 }
 
 func getProxies(w http.ResponseWriter, r *http.Request) {
-	proxies := T.Instance().Proxies()
+	proxies := tunnel.Proxies()
 	render.JSON(w, r, render.M{
 		"proxies": proxies,
 	})

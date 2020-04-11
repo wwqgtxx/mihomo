@@ -7,160 +7,167 @@ import (
 	"sync"
 	"time"
 
-	"github.com/whojave/clash/adapters/inbound"
-	"github.com/whojave/clash/adapters/provider"
-	"github.com/whojave/clash/component/nat"
-	C "github.com/whojave/clash/constant"
-	"github.com/whojave/clash/dns"
-	"github.com/whojave/clash/log"
+	"github.com/brobird/clash/adapters/inbound"
+	"github.com/brobird/clash/adapters/provider"
+	"github.com/brobird/clash/component/nat"
+	"github.com/brobird/clash/component/resolver"
+	C "github.com/brobird/clash/constant"
+	"github.com/brobird/clash/dns"
+	"github.com/brobird/clash/log"
 
 	channels "gopkg.in/eapache/channels.v1"
 )
 
 var (
-	tunnel *Tunnel
-	once   sync.Once
-
-	// default timeout for UDP session
-	udpTimeout = 60 * time.Second
-)
-
-// Tunnel handle relay inbound proxy and outbound proxy
-type Tunnel struct {
-	tcpQueue  *channels.InfiniteChannel
-	udpQueue  *channels.InfiniteChannel
-	natTable  *nat.Table
-	rules     []C.Rule
-	proxies   map[string]C.Proxy
-	providers map[string]provider.ProxyProvider
-	configMux sync.RWMutex
+	tcpQueue     = channels.NewInfiniteChannel()
+	udpQueue     = channels.NewInfiniteChannel()
+	natTable     = nat.New()
+	rules        []C.Rule
+	proxies      = make(map[string]C.Proxy)
+	providers    map[string]provider.ProxyProvider
+	configMux    sync.RWMutex
+	enhancedMode *dns.Resolver
 
 	// experimental features
 	ignoreResolveFail bool
 
 	// Outbound Rule
-	mode Mode
+	mode = Rule
+
+	// default timeout for UDP session
+	udpTimeout = 60 * time.Second
+)
+
+func init() {
+	go process()
 }
 
 // Add request to queue
-func (t *Tunnel) Add(req C.ServerAdapter) {
-	t.tcpQueue.In() <- req
+func Add(req C.ServerAdapter) {
+	tcpQueue.In() <- req
 }
 
 // AddPacket add udp Packet to queue
-func (t *Tunnel) AddPacket(packet *inbound.PacketAdapter) {
-	t.udpQueue.In() <- packet
+func AddPacket(packet *inbound.PacketAdapter) {
+	udpQueue.In() <- packet
 }
 
 // Rules return all rules
-func (t *Tunnel) Rules() []C.Rule {
-	return t.rules
+func Rules() []C.Rule {
+	return rules
 }
 
 // UpdateRules handle update rules
-func (t *Tunnel) UpdateRules(rules []C.Rule) {
-	t.configMux.Lock()
-	t.rules = rules
-	t.configMux.Unlock()
+func UpdateRules(newRules []C.Rule) {
+	configMux.Lock()
+	rules = newRules
+	configMux.Unlock()
 }
 
 // Proxies return all proxies
-func (t *Tunnel) Proxies() map[string]C.Proxy {
-	return t.proxies
+func Proxies() map[string]C.Proxy {
+	return proxies
 }
 
 // Providers return all compatible providers
-func (t *Tunnel) Providers() map[string]provider.ProxyProvider {
-	return t.providers
+func Providers() map[string]provider.ProxyProvider {
+	return providers
 }
 
 // UpdateProxies handle update proxies
-func (t *Tunnel) UpdateProxies(proxies map[string]C.Proxy, providers map[string]provider.ProxyProvider) {
-	t.configMux.Lock()
-	t.proxies = proxies
-	t.providers = providers
-	t.configMux.Unlock()
+func UpdateProxies(newProxies map[string]C.Proxy, newProviders map[string]provider.ProxyProvider) {
+	configMux.Lock()
+	proxies = newProxies
+	providers = newProviders
+	configMux.Unlock()
 }
 
 // UpdateExperimental handle update experimental config
-func (t *Tunnel) UpdateExperimental(ignoreResolveFail bool) {
-	t.configMux.Lock()
-	t.ignoreResolveFail = ignoreResolveFail
-	t.configMux.Unlock()
+func UpdateExperimental(value bool) {
+	configMux.Lock()
+	ignoreResolveFail = value
+	configMux.Unlock()
 }
 
 // Mode return current mode
-func (t *Tunnel) Mode() Mode {
-	return t.mode
+func Mode() TunnelMode {
+	return mode
 }
 
 // SetMode change the mode of tunnel
-func (t *Tunnel) SetMode(mode Mode) {
-	t.mode = mode
+func SetMode(m TunnelMode) {
+	mode = m
+}
+
+// SetResolver set custom dns resolver for enhanced mode
+func SetResolver(r *dns.Resolver) {
+	enhancedMode = r
 }
 
 // processUDP starts a loop to handle udp packet
-func (t *Tunnel) processUDP() {
-	queue := t.udpQueue.Out()
+func processUDP() {
+	queue := udpQueue.Out()
 	for elm := range queue {
 		conn := elm.(*inbound.PacketAdapter)
-		t.handleUDPConn(conn)
+		handleUDPConn(conn)
 	}
 }
 
-func (t *Tunnel) process() {
+func process() {
 	numUDPWorkers := 4
 	if runtime.NumCPU() > numUDPWorkers {
 		numUDPWorkers = runtime.NumCPU()
 	}
 	for i := 0; i < numUDPWorkers; i++ {
-		go t.processUDP()
+		go processUDP()
 	}
 
-	queue := t.tcpQueue.Out()
+	queue := tcpQueue.Out()
 	for elm := range queue {
 		conn := elm.(C.ServerAdapter)
-		go t.handleTCPConn(conn)
+		go handleTCPConn(conn)
 	}
 }
 
-func (t *Tunnel) resolveIP(host string) (net.IP, error) {
-	return dns.ResolveIP(host)
+func needLookupIP(metadata *C.Metadata) bool {
+	return enhancedMode != nil && (enhancedMode.IsMapping() || enhancedMode.FakeIPEnabled()) && metadata.Host == "" && metadata.DstIP != nil
 }
 
-func (t *Tunnel) needLookupIP(metadata *C.Metadata) bool {
-	return dns.DefaultResolver != nil && (dns.DefaultResolver.IsMapping() || dns.DefaultResolver.FakeIPEnabled()) && metadata.Host == "" && metadata.DstIP != nil
-}
-
-func (t *Tunnel) resolveMetadata(metadata *C.Metadata) (C.Proxy, C.Rule, error) {
-	// handle host equal IP string
+func preHandleMetadata(metadata *C.Metadata) error {
+	// handle IP string on host
 	if ip := net.ParseIP(metadata.Host); ip != nil {
 		metadata.DstIP = ip
 	}
 
 	// preprocess enhanced-mode metadata
-	if t.needLookupIP(metadata) {
-		host, exist := dns.DefaultResolver.IPToHost(metadata.DstIP)
+	if needLookupIP(metadata) {
+		host, exist := enhancedMode.IPToHost(metadata.DstIP)
 		if exist {
 			metadata.Host = host
 			metadata.AddrType = C.AtypDomainName
-			if dns.DefaultResolver.FakeIPEnabled() {
+			if enhancedMode.FakeIPEnabled() {
 				metadata.DstIP = nil
 			}
+		} else if enhancedMode.IsFakeIP(metadata.DstIP) {
+			return fmt.Errorf("fake DNS record %s missing", metadata.DstIP)
 		}
 	}
 
+	return nil
+}
+
+func resolveMetadata(metadata *C.Metadata) (C.Proxy, C.Rule, error) {
 	var proxy C.Proxy
 	var rule C.Rule
-	switch t.mode {
+	switch mode {
 	case Direct:
-		proxy = t.proxies["DIRECT"]
+		proxy = proxies["DIRECT"]
 	case Global:
-		proxy = t.proxies["GLOBAL"]
+		proxy = proxies["GLOBAL"]
 	// Rule
 	default:
 		var err error
-		proxy, rule, err = t.match(metadata)
+		proxy, rule, err = match(metadata)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -168,71 +175,80 @@ func (t *Tunnel) resolveMetadata(metadata *C.Metadata) (C.Proxy, C.Rule, error) 
 	return proxy, rule, nil
 }
 
-func (t *Tunnel) handleUDPConn(packet *inbound.PacketAdapter) {
+func handleUDPConn(packet *inbound.PacketAdapter) {
 	metadata := packet.Metadata()
 	if !metadata.Valid() {
 		log.Warnln("[Metadata] not valid: %#v", metadata)
 		return
 	}
 
-	src := packet.LocalAddr().String()
-	dst := metadata.RemoteAddress()
-	key := src + "-" + dst
+	// make a fAddr if requset ip is fakeip
+	var fAddr net.Addr
+	if enhancedMode != nil && enhancedMode.IsFakeIP(metadata.DstIP) {
+		fAddr = metadata.UDPAddr()
+	}
 
-	pc, addr := t.natTable.Get(key)
+	if err := preHandleMetadata(metadata); err != nil {
+		log.Debugln("[Metadata PreHandle] error: %s", err)
+		return
+	}
+
+	key := packet.LocalAddr().String()
+	pc := natTable.Get(key)
 	if pc != nil {
-		t.handleUDPToRemote(packet, pc, addr)
+		handleUDPToRemote(packet, pc, metadata)
 		return
 	}
 
 	lockKey := key + "-lock"
-	wg, loaded := t.natTable.GetOrCreateLock(lockKey)
-
-	isFakeIP := dns.DefaultResolver != nil && dns.DefaultResolver.IsFakeIP(metadata.DstIP)
+	wg, loaded := natTable.GetOrCreateLock(lockKey)
 
 	go func() {
 		if !loaded {
 			wg.Add(1)
-			proxy, rule, err := t.resolveMetadata(metadata)
+			proxy, rule, err := resolveMetadata(metadata)
 			if err != nil {
 				log.Warnln("[UDP] Parse metadata failed: %s", err.Error())
-				t.natTable.Delete(lockKey)
+				natTable.Delete(lockKey)
 				wg.Done()
 				return
 			}
 
-			rawPc, nAddr, err := proxy.DialUDP(metadata)
+			rawPc, err := proxy.DialUDP(metadata)
 			if err != nil {
 				log.Warnln("[UDP] dial %s error: %s", proxy.Name(), err.Error())
-				t.natTable.Delete(lockKey)
+				natTable.Delete(lockKey)
 				wg.Done()
 				return
 			}
-			addr = nAddr
 			pc = newUDPTracker(rawPc, DefaultManager, metadata, rule)
 
-			if rule != nil {
-				log.Infoln("[UDP] %s --> %v match %s using %s", metadata.SrcIP.String(), metadata.String(), rule.RuleType().String(), rawPc.Chains().String())
-			} else {
-				log.Infoln("[UDP] %s --> %v doesn't match any rule using DIRECT", metadata.SrcIP.String(), metadata.String())
+			switch true {
+			case rule != nil:
+				log.Infoln("[UDP] %s --> %v match %s using %s", metadata.SourceAddress(), metadata.String(), rule.RuleType().String(), rawPc.Chains().String())
+			case mode == Global:
+				log.Infoln("[UDP] %s --> %v using GLOBAL", metadata.SourceAddress(), metadata.String())
+			case mode == Direct:
+				log.Infoln("[UDP] %s --> %v using DIRECT", metadata.SourceAddress(), metadata.String())
+			default:
+				log.Infoln("[UDP] %s --> %v doesn't match any rule using DIRECT", metadata.SourceAddress(), metadata.String())
 			}
 
-			t.natTable.Set(key, pc, addr)
-			t.natTable.Delete(lockKey)
+			natTable.Set(key, pc)
+			natTable.Delete(lockKey)
 			wg.Done()
-			// in fake-ip mode, Full-Cone NAT can never achieve, fallback to omitting src Addr
-			go t.handleUDPToLocal(packet.UDPPacket, pc, key, isFakeIP, udpTimeout)
+			go handleUDPToLocal(packet.UDPPacket, pc, key, fAddr)
 		}
 
 		wg.Wait()
-		pc, addr := t.natTable.Get(key)
+		pc := natTable.Get(key)
 		if pc != nil {
-			t.handleUDPToRemote(packet, pc, addr)
+			handleUDPToRemote(packet, pc, metadata)
 		}
 	}()
 }
 
-func (t *Tunnel) handleTCPConn(localConn C.ServerAdapter) {
+func handleTCPConn(localConn C.ServerAdapter) {
 	defer localConn.Close()
 
 	metadata := localConn.Metadata()
@@ -241,7 +257,12 @@ func (t *Tunnel) handleTCPConn(localConn C.ServerAdapter) {
 		return
 	}
 
-	proxy, rule, err := t.resolveMetadata(metadata)
+	if err := preHandleMetadata(metadata); err != nil {
+		log.Debugln("[Metadata PreHandle] error: %s", err)
+		return
+	}
+
+	proxy, rule, err := resolveMetadata(metadata)
 	if err != nil {
 		log.Warnln("Parse metadata failed: %v", err)
 		return
@@ -255,41 +276,46 @@ func (t *Tunnel) handleTCPConn(localConn C.ServerAdapter) {
 	remoteConn = newTCPTracker(remoteConn, DefaultManager, metadata, rule)
 	defer remoteConn.Close()
 
-	if rule != nil {
-		log.Infoln("%s --> %v match %s using %s", metadata.SrcIP.String(), metadata.String(), rule.RuleType().String(), remoteConn.Chains().String())
-	} else {
-		log.Infoln("%s --> %v doesn't match any rule using DIRECT", metadata.SrcIP.String(), metadata.String())
+	switch true {
+	case rule != nil:
+		log.Infoln("[TCP] %s --> %v match %s using %s", metadata.SourceAddress(), metadata.String(), rule.RuleType().String(), remoteConn.Chains().String())
+	case mode == Global:
+		log.Infoln("[TCP] %s --> %v using GLOBAL", metadata.SourceAddress(), metadata.String())
+	case mode == Direct:
+		log.Infoln("[TCP] %s --> %v using DIRECT", metadata.SourceAddress(), metadata.String())
+	default:
+		log.Infoln("[TCP] %s --> %v doesn't match any rule using DIRECT", metadata.SourceAddress(), metadata.String())
 	}
 
 	switch adapter := localConn.(type) {
 	case *inbound.HTTPAdapter:
-		t.handleHTTP(adapter, remoteConn)
+		handleHTTP(adapter, remoteConn)
 	case *inbound.SocketAdapter:
-		t.handleSocket(adapter, remoteConn)
+		handleSocket(adapter, remoteConn)
 	}
 }
 
-func (t *Tunnel) shouldResolveIP(rule C.Rule, metadata *C.Metadata) bool {
+func shouldResolveIP(rule C.Rule, metadata *C.Metadata) bool {
 	return !rule.NoResolveIP() && metadata.Host != "" && metadata.DstIP == nil
 }
 
-func (t *Tunnel) match(metadata *C.Metadata) (C.Proxy, C.Rule, error) {
-	t.configMux.RLock()
-	defer t.configMux.RUnlock()
+func match(metadata *C.Metadata) (C.Proxy, C.Rule, error) {
+	configMux.RLock()
+	defer configMux.RUnlock()
 
 	var resolved bool
 
-	if node := dns.DefaultHosts.Search(metadata.Host); node != nil {
+	if node := resolver.DefaultHosts.Search(metadata.Host); node != nil {
 		ip := node.Data.(net.IP)
 		metadata.DstIP = ip
 		resolved = true
 	}
 
-	for _, rule := range t.rules {
-		if !resolved && t.shouldResolveIP(rule, metadata) {
-			ip, err := t.resolveIP(metadata.Host)
+	for _, rule := range rules {
+		if !resolved && shouldResolveIP(rule, metadata) {
+			ip, err := resolver.ResolveIP(metadata.Host)
 			if err != nil {
-				if !t.ignoreResolveFail {
+				if !ignoreResolveFail {
 					return nil, nil, fmt.Errorf("[DNS] resolve %s error: %s", metadata.Host, err.Error())
 				}
 				log.Debugln("[DNS] resolve %s error: %s", metadata.Host, err.Error())
@@ -301,7 +327,7 @@ func (t *Tunnel) match(metadata *C.Metadata) (C.Proxy, C.Rule, error) {
 		}
 
 		if rule.Match(metadata) {
-			adapter, ok := t.proxies[rule.Adapter()]
+			adapter, ok := proxies[rule.Adapter()]
 			if !ok {
 				continue
 			}
@@ -313,24 +339,6 @@ func (t *Tunnel) match(metadata *C.Metadata) (C.Proxy, C.Rule, error) {
 			return adapter, rule, nil
 		}
 	}
-	return t.proxies["DIRECT"], nil, nil
-}
 
-func newTunnel() *Tunnel {
-	return &Tunnel{
-		tcpQueue: channels.NewInfiniteChannel(),
-		udpQueue: channels.NewInfiniteChannel(),
-		natTable: nat.New(),
-		proxies:  make(map[string]C.Proxy),
-		mode:     Rule,
-	}
-}
-
-// Instance return singleton instance of Tunnel
-func Instance() *Tunnel {
-	once.Do(func() {
-		tunnel = newTunnel()
-		go tunnel.process()
-	})
-	return tunnel
+	return proxies["DIRECT"], nil, nil
 }

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/whojave/clash/common/structure"
-	C "github.com/whojave/clash/constant"
+	"github.com/brobird/clash/common/structure"
+	C "github.com/brobird/clash/constant"
 )
 
 var (
@@ -41,7 +41,7 @@ func ParseProxyProvider(name string, mapping map[string]interface{}) (ProxyProvi
 	}
 	hc := NewHealthCheck([]C.Proxy{}, schema.HealthCheck.URL, hcInterval, schema.Type)
 
-	path := C.Path.Reslove(schema.Path)
+	path := C.Path.Resolve(schema.Path)
 
 	var vehicle Vehicle
 	switch schema.Type {

@@ -4,8 +4,8 @@ import (
 	"net"
 	"time"
 
+	C "github.com/brobird/clash/constant"
 	"github.com/gofrs/uuid"
-	C "github.com/whojave/clash/constant"
 )
 
 type tracker interface {
@@ -97,6 +97,14 @@ func (ut *udpTracker) ReadFrom(b []byte) (int, net.Addr, error) {
 
 func (ut *udpTracker) WriteTo(b []byte, addr net.Addr) (int, error) {
 	n, err := ut.PacketConn.WriteTo(b, addr)
+	upload := int64(n)
+	ut.manager.Upload() <- upload
+	ut.UploadTotal += upload
+	return n, err
+}
+
+func (ut *udpTracker) WriteWithMetadata(p []byte, metadata *C.Metadata) (int, error) {
+	n, err := ut.PacketConn.WriteWithMetadata(p, metadata)
 	upload := int64(n)
 	ut.manager.Upload() <- upload
 	ut.UploadTotal += upload

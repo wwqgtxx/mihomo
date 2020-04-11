@@ -1,8 +1,8 @@
 package inbound
 
 import (
-	"github.com/whojave/clash/component/socks5"
-	C "github.com/whojave/clash/constant"
+	"github.com/brobird/clash/component/socks5"
+	C "github.com/brobird/clash/constant"
 )
 
 // PacketAdapter is a UDP Packet adapter for socks/redir/tun
@@ -17,9 +17,9 @@ func (s *PacketAdapter) Metadata() *C.Metadata {
 }
 
 // NewPacket is PacketAdapter generator
-func NewPacket(target socks5.Addr, packet C.UDPPacket, source C.Type, netType C.NetWork) *PacketAdapter {
+func NewPacket(target socks5.Addr, packet C.UDPPacket, source C.Type) *PacketAdapter {
 	metadata := parseSocksAddr(target)
-	metadata.NetWork = netType
+	metadata.NetWork = C.UDP
 	metadata.Type = source
 	if ip, port, err := parseAddr(packet.LocalAddr().String()); err == nil {
 		metadata.SrcIP = ip

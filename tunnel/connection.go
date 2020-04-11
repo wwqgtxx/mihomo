@@ -8,13 +8,13 @@ import (
 	"strings"
 	"time"
 
-	adapters "github.com/whojave/clash/adapters/inbound"
-	C "github.com/whojave/clash/constant"
+	adapters "github.com/brobird/clash/adapters/inbound"
+	C "github.com/brobird/clash/constant"
 
-	"github.com/whojave/clash/common/pool"
+	"github.com/brobird/clash/common/pool"
 )
 
-func (t *Tunnel) handleHTTP(request *adapters.HTTPAdapter, outbound net.Conn) {
+func handleHTTP(request *adapters.HTTPAdapter, outbound net.Conn) {
 	req := request.R
 	host := req.Host
 
@@ -81,38 +81,37 @@ func (t *Tunnel) handleHTTP(request *adapters.HTTPAdapter, outbound net.Conn) {
 	}
 }
 
-func (t *Tunnel) handleUDPToRemote(packet C.UDPPacket, pc net.PacketConn, addr net.Addr) {
-	if _, err := pc.WriteTo(packet.Data(), addr); err != nil {
+func handleUDPToRemote(packet C.UDPPacket, pc C.PacketConn, metadata *C.Metadata) {
+	if _, err := pc.WriteWithMetadata(packet.Data(), metadata); err != nil {
 		return
 	}
-	DefaultManager.Upload() <- int64(len(packet.Data()))
 }
 
-func (t *Tunnel) handleUDPToLocal(packet C.UDPPacket, pc net.PacketConn, key string, omitSrcAddr bool, timeout time.Duration) {
+func handleUDPToLocal(packet C.UDPPacket, pc net.PacketConn, key string, fAddr net.Addr) {
 	buf := pool.BufPool.Get().([]byte)
 	defer pool.BufPool.Put(buf[:cap(buf)])
-	defer t.natTable.Delete(key)
+	defer natTable.Delete(key)
 	defer pc.Close()
 
 	for {
-		pc.SetReadDeadline(time.Now().Add(timeout))
+		pc.SetReadDeadline(time.Now().Add(udpTimeout))
 		n, from, err := pc.ReadFrom(buf)
 		if err != nil {
 			return
 		}
-		if from != nil && omitSrcAddr {
-			from = nil
+
+		if fAddr != nil {
+			from = fAddr
 		}
 
 		n, err = packet.WriteBack(buf[:n], from)
 		if err != nil {
 			return
 		}
-		DefaultManager.Download() <- int64(n)
 	}
 }
 
-func (t *Tunnel) handleSocket(request *adapters.SocketAdapter, outbound net.Conn) {
+func handleSocket(request *adapters.SocketAdapter, outbound net.Conn) {
 	relay(request, outbound)
 }
 

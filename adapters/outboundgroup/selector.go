@@ -4,12 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"net"
 
-	"github.com/whojave/clash/adapters/outbound"
-	"github.com/whojave/clash/adapters/provider"
-	"github.com/whojave/clash/common/singledo"
-	C "github.com/whojave/clash/constant"
+	"github.com/brobird/clash/adapters/outbound"
+	"github.com/brobird/clash/adapters/provider"
+	"github.com/brobird/clash/common/singledo"
+	C "github.com/brobird/clash/constant"
 )
 
 type Selector struct {
@@ -27,12 +26,12 @@ func (s *Selector) DialContext(ctx context.Context, metadata *C.Metadata) (C.Con
 	return c, err
 }
 
-func (s *Selector) DialUDP(metadata *C.Metadata) (C.PacketConn, net.Addr, error) {
-	pc, addr, err := s.selected.DialUDP(metadata)
+func (s *Selector) DialUDP(metadata *C.Metadata) (C.PacketConn, error) {
+	pc, err := s.selected.DialUDP(metadata)
 	if err == nil {
 		pc.AppendToChains(s)
 	}
-	return pc, addr, err
+	return pc, err
 }
 
 func (s *Selector) SupportUDP() bool {
@@ -78,7 +77,7 @@ func (s *Selector) proxies() []C.Proxy {
 func NewSelector(name string, providers []provider.ProxyProvider) *Selector {
 	selected := providers[0].Proxies()[0]
 	return &Selector{
-		Base:      outbound.NewBase(name, C.Selector, false),
+		Base:      outbound.NewBase(name, "", C.Selector, false),
 		single:    singledo.NewSingle(defaultGetProxiesDuration),
 		providers: providers,
 		selected:  selected,

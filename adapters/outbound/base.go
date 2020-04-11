@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/whojave/clash/common/queue"
-	C "github.com/whojave/clash/constant"
+	"github.com/brobird/clash/common/queue"
+	C "github.com/brobird/clash/constant"
 )
 
 var (
@@ -18,6 +18,7 @@ var (
 
 type Base struct {
 	name string
+	addr string
 	tp   C.AdapterType
 	udp  bool
 }
@@ -30,8 +31,12 @@ func (b *Base) Type() C.AdapterType {
 	return b.tp
 }
 
-func (b *Base) DialUDP(metadata *C.Metadata) (C.PacketConn, net.Addr, error) {
-	return nil, nil, errors.New("no support")
+func (b *Base) StreamConn(c net.Conn, metadata *C.Metadata) (net.Conn, error) {
+	return c, errors.New("no support")
+}
+
+func (b *Base) DialUDP(metadata *C.Metadata) (C.PacketConn, error) {
+	return nil, errors.New("no support")
 }
 
 func (b *Base) SupportUDP() bool {
@@ -44,8 +49,12 @@ func (b *Base) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func NewBase(name string, tp C.AdapterType, udp bool) *Base {
-	return &Base{name, tp, udp}
+func (b *Base) Addr() string {
+	return b.addr
+}
+
+func NewBase(name string, addr string, tp C.AdapterType, udp bool) *Base {
+	return &Base{name, addr, tp, udp}
 }
 
 type conn struct {
@@ -61,12 +70,17 @@ func (c *conn) AppendToChains(a C.ProxyAdapter) {
 	c.chain = append(c.chain, a.Name())
 }
 
-func newConn(c net.Conn, a C.ProxyAdapter) C.Conn {
+func NewConn(c net.Conn, a C.ProxyAdapter) C.Conn {
 	return &conn{c, []string{a.Name()}}
 }
 
-type packetConn struct {
+type PacketConn interface {
 	net.PacketConn
+	WriteWithMetadata(p []byte, metadata *C.Metadata) (n int, err error)
+}
+
+type packetConn struct {
+	PacketConn
 	chain C.Chain
 }
 
@@ -78,8 +92,8 @@ func (c *packetConn) AppendToChains(a C.ProxyAdapter) {
 	c.chain = append(c.chain, a.Name())
 }
 
-func newPacketConn(c net.PacketConn, a C.ProxyAdapter) C.PacketConn {
-	return &packetConn{c, []string{a.Name()}}
+func newPacketConn(pc PacketConn, a C.ProxyAdapter) C.PacketConn {
+	return &packetConn{pc, []string{a.Name()}}
 }
 
 type Proxy struct {
@@ -189,7 +203,12 @@ func (p *Proxy) URLTest(ctx context.Context, url string) (t uint16, err error) {
 		ExpectContinueTimeout: 1 * time.Second,
 	}
 
-	client := http.Client{Transport: transport}
+	client := http.Client{
+		Transport: transport,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return

@@ -3,14 +3,10 @@ package redir
 import (
 	"net"
 
-	"github.com/whojave/clash/adapters/inbound"
-	C "github.com/whojave/clash/constant"
-	"github.com/whojave/clash/log"
-	"github.com/whojave/clash/tunnel"
-)
-
-var (
-	tun = tunnel.Instance()
+	"github.com/brobird/clash/adapters/inbound"
+	C "github.com/brobird/clash/constant"
+	"github.com/brobird/clash/log"
+	"github.com/brobird/clash/tunnel"
 )
 
 type RedirListener struct {
@@ -59,5 +55,5 @@ func handleRedir(conn net.Conn) {
 		return
 	}
 	conn.(*net.TCPConn).SetKeepAlive(true)
-	tun.Add(inbound.NewSocket(target, conn, C.REDIR, C.TCP))
+	tunnel.Add(inbound.NewSocket(target, conn, C.REDIR, C.TCP))
 }

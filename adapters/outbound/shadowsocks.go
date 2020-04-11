@@ -2,24 +2,24 @@ package outbound
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"strconv"
 
-	"github.com/whojave/clash/common/structure"
-	obfs "github.com/whojave/clash/component/simple-obfs"
-	"github.com/whojave/clash/component/socks5"
-	v2rayObfs "github.com/whojave/clash/component/v2ray-plugin"
-	C "github.com/whojave/clash/constant"
+	"github.com/brobird/clash/common/structure"
+	"github.com/brobird/clash/component/dialer"
+	obfs "github.com/brobird/clash/component/simple-obfs"
+	"github.com/brobird/clash/component/socks5"
+	v2rayObfs "github.com/brobird/clash/component/v2ray-plugin"
+	C "github.com/brobird/clash/constant"
 
 	"github.com/Dreamacro/go-shadowsocks2/core"
 )
 
 type ShadowSocks struct {
 	*Base
-	server string
 	cipher core.Cipher
 
 	// obfs
@@ -58,48 +58,49 @@ type v2rayObfsOption struct {
 	Mux            bool              `obfs:"mux,omitempty"`
 }
 
-func (ss *ShadowSocks) DialContext(ctx context.Context, metadata *C.Metadata) (C.Conn, error) {
-	c, err := dialContext(ctx, "tcp", ss.server)
-	if err != nil {
-		return nil, fmt.Errorf("%s connect error: %w", ss.server, err)
-	}
-	tcpKeepAlive(c)
+func (ss *ShadowSocks) StreamConn(c net.Conn, metadata *C.Metadata) (net.Conn, error) {
 	switch ss.obfsMode {
 	case "tls":
 		c = obfs.NewTLSObfs(c, ss.obfsOption.Host)
 	case "http":
-		_, port, _ := net.SplitHostPort(ss.server)
+		_, port, _ := net.SplitHostPort(ss.addr)
 		c = obfs.NewHTTPObfs(c, ss.obfsOption.Host, port)
 	case "websocket":
 		var err error
 		c, err = v2rayObfs.NewV2rayObfs(c, ss.v2rayOption)
 		if err != nil {
-			return nil, fmt.Errorf("%s connect error: %w", ss.server, err)
+			return nil, fmt.Errorf("%s connect error: %w", ss.addr, err)
 		}
 	}
 	c = ss.cipher.StreamConn(c)
-	_, err = c.Write(serializesSocksAddr(metadata))
-	return newConn(c, ss), err
+	_, err := c.Write(serializesSocksAddr(metadata))
+	return c, err
 }
 
-func (ss *ShadowSocks) DialUDP(metadata *C.Metadata) (C.PacketConn, net.Addr, error) {
-	pc, err := net.ListenPacket("udp", "")
+func (ss *ShadowSocks) DialContext(ctx context.Context, metadata *C.Metadata) (C.Conn, error) {
+	c, err := dialer.DialContext(ctx, "tcp", ss.addr)
 	if err != nil {
-		return nil, nil, err
+		return nil, fmt.Errorf("%s connect error: %w", ss.addr, err)
+	}
+	tcpKeepAlive(c)
+
+	c, err = ss.StreamConn(c, metadata)
+	return NewConn(c, ss), err
+}
+
+func (ss *ShadowSocks) DialUDP(metadata *C.Metadata) (C.PacketConn, error) {
+	pc, err := dialer.ListenPacket("udp", "")
+	if err != nil {
+		return nil, err
 	}
 
-	addr, err := resolveUDPAddr("udp", ss.server)
+	addr, err := resolveUDPAddr("udp", ss.addr)
 	if err != nil {
-		return nil, nil, err
-	}
-
-	targetAddr := socks5.ParseAddr(metadata.RemoteAddress())
-	if targetAddr == nil {
-		return nil, nil, fmt.Errorf("parse address %s error: %s", metadata.String(), metadata.DstPort)
+		return nil, err
 	}
 
 	pc = ss.cipher.PacketConn(pc)
-	return newPacketConn(&ssUDPConn{PacketConn: pc, rAddr: targetAddr}, ss), addr, nil
+	return newPacketConn(&ssPacketConn{PacketConn: pc, rAddr: addr}, ss), nil
 }
 
 func (ss *ShadowSocks) MarshalJSON() ([]byte, error) {
@@ -109,12 +110,12 @@ func (ss *ShadowSocks) MarshalJSON() ([]byte, error) {
 }
 
 func NewShadowSocks(option ShadowSocksOption) (*ShadowSocks, error) {
-	server := net.JoinHostPort(option.Server, strconv.Itoa(option.Port))
+	addr := net.JoinHostPort(option.Server, strconv.Itoa(option.Port))
 	cipher := option.Cipher
 	password := option.Password
 	ciph, err := core.PickCipher(cipher, nil, password)
 	if err != nil {
-		return nil, fmt.Errorf("ss %s initialize error: %w", server, err)
+		return nil, fmt.Errorf("ss %s initialize error: %w", addr, err)
 	}
 
 	var v2rayOption *v2rayObfs.Option
@@ -136,49 +137,45 @@ func NewShadowSocks(option ShadowSocksOption) (*ShadowSocks, error) {
 	if option.Plugin == "obfs" {
 		opts := simpleObfsOption{Host: "bing.com"}
 		if err := decoder.Decode(option.PluginOpts, &opts); err != nil {
-			return nil, fmt.Errorf("ss %s initialize obfs error: %w", server, err)
+			return nil, fmt.Errorf("ss %s initialize obfs error: %w", addr, err)
 		}
 
 		if opts.Mode != "tls" && opts.Mode != "http" {
-			return nil, fmt.Errorf("ss %s obfs mode error: %s", server, opts.Mode)
+			return nil, fmt.Errorf("ss %s obfs mode error: %s", addr, opts.Mode)
 		}
 		obfsMode = opts.Mode
 		obfsOption = &opts
 	} else if option.Plugin == "v2ray-plugin" {
 		opts := v2rayObfsOption{Host: "bing.com", Mux: true}
 		if err := decoder.Decode(option.PluginOpts, &opts); err != nil {
-			return nil, fmt.Errorf("ss %s initialize v2ray-plugin error: %w", server, err)
+			return nil, fmt.Errorf("ss %s initialize v2ray-plugin error: %w", addr, err)
 		}
 
 		if opts.Mode != "websocket" {
-			return nil, fmt.Errorf("ss %s obfs mode error: %s", server, opts.Mode)
+			return nil, fmt.Errorf("ss %s obfs mode error: %s", addr, opts.Mode)
 		}
 		obfsMode = opts.Mode
-
-		var tlsConfig *tls.Config
-		if opts.TLS {
-			tlsConfig = &tls.Config{
-				ServerName:         opts.Host,
-				InsecureSkipVerify: opts.SkipCertVerify,
-				ClientSessionCache: getClientSessionCache(),
-			}
-		}
 		v2rayOption = &v2rayObfs.Option{
-			Host:      opts.Host,
-			Path:      opts.Path,
-			Headers:   opts.Headers,
-			TLSConfig: tlsConfig,
-			Mux:       opts.Mux,
+			Host:    opts.Host,
+			Path:    opts.Path,
+			Headers: opts.Headers,
+			Mux:     opts.Mux,
+		}
+
+		if opts.TLS {
+			v2rayOption.TLS = true
+			v2rayOption.SkipCertVerify = opts.SkipCertVerify
+			v2rayOption.SessionCache = getClientSessionCache()
 		}
 	}
 
 	return &ShadowSocks{
 		Base: &Base{
 			name: option.Name,
+			addr: addr,
 			tp:   C.Shadowsocks,
 			udp:  option.UDP,
 		},
-		server: server,
 		cipher: ciph,
 
 		obfsMode:    obfsMode,
@@ -187,27 +184,43 @@ func NewShadowSocks(option ShadowSocksOption) (*ShadowSocks, error) {
 	}, nil
 }
 
-type ssUDPConn struct {
+type ssPacketConn struct {
 	net.PacketConn
-	rAddr socks5.Addr
+	rAddr net.Addr
 }
 
-func (uc *ssUDPConn) WriteTo(b []byte, addr net.Addr) (n int, err error) {
-	packet, err := socks5.EncodeUDPPacket(uc.rAddr, b)
+func (spc *ssPacketConn) WriteTo(b []byte, addr net.Addr) (n int, err error) {
+	packet, err := socks5.EncodeUDPPacket(socks5.ParseAddrToSocksAddr(addr), b)
 	if err != nil {
 		return
 	}
-	return uc.PacketConn.WriteTo(packet[3:], addr)
+	return spc.PacketConn.WriteTo(packet[3:], spc.rAddr)
 }
 
-func (uc *ssUDPConn) ReadFrom(b []byte) (int, net.Addr, error) {
-	n, _, e := uc.PacketConn.ReadFrom(b)
-	addr := socks5.SplitAddr(b[:n])
-	var from net.Addr
-	if e == nil {
-		// Get the source IP/Port of packet.
-		from = addr.UDPAddr()
+func (spc *ssPacketConn) WriteWithMetadata(p []byte, metadata *C.Metadata) (n int, err error) {
+	packet, err := socks5.EncodeUDPPacket(socks5.ParseAddr(metadata.RemoteAddress()), p)
+	if err != nil {
+		return
 	}
+	return spc.PacketConn.WriteTo(packet[3:], spc.rAddr)
+}
+
+func (spc *ssPacketConn) ReadFrom(b []byte) (int, net.Addr, error) {
+	n, _, e := spc.PacketConn.ReadFrom(b)
+	if e != nil {
+		return 0, nil, e
+	}
+
+	addr := socks5.SplitAddr(b[:n])
+	if addr == nil {
+		return 0, nil, errors.New("parse addr error")
+	}
+
+	udpAddr := addr.UDPAddr()
+	if udpAddr == nil {
+		return 0, nil, errors.New("parse addr error")
+	}
+
 	copy(b, b[len(addr):])
-	return n - len(addr), from, e
+	return n - len(addr), udpAddr, e
 }

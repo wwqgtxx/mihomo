@@ -8,12 +8,13 @@ import (
 	"strconv"
 	"strings"
 
-	C "github.com/whojave/clash/constant"
-	"github.com/whojave/gossr/obfs"
-	"github.com/whojave/gossr/protocol"
+	"github.com/brobird/clash/component/dialer"
+	C "github.com/brobird/clash/constant"
+	"github.com/brobird/gossr/obfs"
+	"github.com/brobird/gossr/protocol"
 
-	shadowsocksr "github.com/whojave/gossr"
-	"github.com/whojave/gossr/ssr"
+	shadowsocksr "github.com/brobird/gossr"
+	"github.com/brobird/gossr/ssr"
 )
 
 type ShadowsocksR struct {
@@ -44,7 +45,7 @@ func (ssrins *ShadowsocksR) DialContext(ctx context.Context, metadata *C.Metadat
 		return nil, err
 	}
 
-	conn, err := dialContext(ctx, "tcp", ssrins.server)
+	conn, err := dialer.DialContext(ctx, "tcp", ssrins.server)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +102,7 @@ func (ssrins *ShadowsocksR) DialContext(ctx context.Context, metadata *C.Metadat
 		_ = dstcon.Close()
 		return nil, err
 	}
-	return newConn(dstcon, ssrins), err
+	return NewConn(dstcon, ssrins), err
 
 }
 
@@ -125,6 +126,6 @@ func (ssr *ShadowsocksR) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func (ssr *ShadowsocksR) DialUDP(metadata *C.Metadata) (pac C.PacketConn, netaddr net.Addr, err error) {
-	return nil, nil, nil
+func (ssr *ShadowsocksR) DialUDP(metadata *C.Metadata) (pac C.PacketConn, err error) {
+	return nil, nil
 }

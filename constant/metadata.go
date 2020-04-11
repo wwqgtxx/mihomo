@@ -3,6 +3,7 @@ package constant
 import (
 	"encoding/json"
 	"net"
+	"strconv"
 )
 
 // Socks addr type
@@ -68,6 +69,25 @@ type Metadata struct {
 
 func (m *Metadata) RemoteAddress() string {
 	return net.JoinHostPort(m.String(), m.DstPort)
+}
+
+func (m *Metadata) SourceAddress() string {
+	return net.JoinHostPort(m.SrcIP.String(), m.SrcPort)
+}
+
+func (m *Metadata) Resolved() bool {
+	return m.DstIP != nil
+}
+
+func (m *Metadata) UDPAddr() *net.UDPAddr {
+	if m.NetWork != UDP || m.DstIP == nil {
+		return nil
+	}
+	port, _ := strconv.Atoi(m.DstPort)
+	return &net.UDPAddr{
+		IP:   m.DstIP,
+		Port: port,
+	}
 }
 
 func (m *Metadata) String() string {

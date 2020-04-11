@@ -20,23 +20,25 @@
 
 ## Features
 
-- Local HTTP/HTTPS/SOCKS server
-- GeoIP rule support
-- Supports Vmess, Shadowsocks, Snell and SOCKS5 protocol
-- Supports Netfilter TCP redirecting
-- Comprehensive HTTP API
+- Local HTTP/HTTPS/SOCKS server with/without authentication
+- VMess, Shadowsocks, Trojan (experimental), Snell protocol support for remote connections. UDP is supported.
+- Built-in DNS server that aims to minimize DNS pollution attacks, supports DoH/DoT upstream. Fake IP is also supported.
+- Rules based off domains, GEOIP, IP CIDR or ports to forward packets to different nodes
+- Remote groups allow users to implement powerful rules. Supports automatic fallback, load balancing or auto select node based off latency
+- Remote providers, allowing users to get node lists remotely instead of hardcoding in config
+- Netfilter TCP redirecting. You can deploy Clash on your Internet gateway with `iptables`.
+- Comprehensive HTTP API controller
 
 ## Install
 
-Clash Requires Go >= 1.13. You can build it from source:
+Clash requires Go >= 1.13. You can build it from source:
 
 ```sh
 $ go get -u -v github.com/whojave/clash
 ```
 
-Pre-built binaries are available here: [release](https://github.com/whojave/clash/releases)
-
-Pre-built TUN mode binaries are available here: [TUN release](https://github.com/Dreamacro/clash/releases/tag/TUN)
+Pre-built binaries are available here: [release](https://github.com/Dreamacro/clash/releases)  
+Pre-built TUN mode binaries are available here: [TUN release](https://github.com/Dreamacro/clash/releases/tag/TUN). Source is not currently available.
 
 Check Clash version with:
 
@@ -44,21 +46,17 @@ Check Clash version with:
 $ clash -v
 ```
 
-## Daemon
+## Daemonize Clash
 
-Unfortunately, there is no native and elegant way to implement daemons on Golang.
+Unfortunately, there is no native or elegant way to implement daemons on Golang. We recommend using third-party daemon management tools like PM2, Supervisor or the like to keep Clash running as a service.
 
-So we can use third-party daemon tools like PM2, Supervisor or the like.
-
-In the case of [pm2](https://github.com/Unitech/pm2), we can start the daemon this way:
+In the case of [pm2](https://github.com/Unitech/pm2), start the daemon this way:
 
 ```sh
 $ pm2 start clash
 ```
 
-If you have Docker installed, you can run clash directly using `docker-compose`.
-
-[Run clash in docker](https://github.com/whojave/clash/wiki/Run-clash-in-docker)
+If you have Docker installed, it's recommended to deploy Clash directly using `docker-compose`: [run Clash in Docker](https://github.com/Dreamacro/clash/wiki/Run-clash-in-docker)
 
 ## Config
 
@@ -95,7 +93,7 @@ allow-lan: false
 # "[aaaa::a8aa:ff:fe09:57d8]": bind a single IPv6 address
 # bind-address: "*"
 
-# Rule / Global/ Direct (default is Rule)
+# Rule / Global / Direct (default is Rule)
 mode: Rule
 
 # set log level to stdout (default is info)
@@ -115,6 +113,7 @@ external-controller: 127.0.0.1:9090
 # experimental feature
 experimental:
   ignore-resolve-fail: true # ignore dns resolve fail, default value is true
+  # interface-name: en0 # outbound interface name
 
 # authentication of local SOCKS5/HTTP(S) server
 # authentication:
@@ -131,10 +130,13 @@ experimental:
   # enable: true # set true to enable dns (default is false)
   # ipv6: false # default is false
   # listen: 0.0.0.0:53
+  # # default-nameserver: # resolve dns nameserver host, should fill pure IP
+  # #   - 114.114.114.114
+  # #   - 8.8.8.8
   # enhanced-mode: redir-host # or fake-ip
   # # fake-ip-range: 198.18.0.1/16 # if you don't know what it is, don't change it
   # fake-ip-filter: # fake ip white domain list
-  #   - *.lan
+  #   - '*.lan'
   #   - localhost.ptlogin2.qq.com
   # nameserver:
   #   - 114.114.114.114
@@ -147,7 +149,7 @@ experimental:
   #   ipcidr: # ips in these subnets will be considered polluted
   #     - 240.0.0.0/4
 
-Proxy:
+proxies:
   # shadowsocks
   # The supported ciphers(encrypt methods):
   #   aes-128-gcm aes-192-gcm aes-256-gcm
@@ -208,6 +210,24 @@ Proxy:
     # ws-path: /path
     # ws-headers:
     #   Host: v2ray.com
+  
+  - name: "vmess-http"
+    type: vmess
+    server: server
+    port: 443
+    uuid: uuid
+    alterId: 32
+    cipher: auto
+    # udp: true
+    # network: http
+    # http-opts:
+    #   # method: "GET"
+    #   # path:
+    #   #   - '/'
+    #   #   - '/video'
+    #   # headers:
+    #   #   Connection:
+    #   #     - keep-alive
 
   # socks5
   - name: "socks"
@@ -240,7 +260,30 @@ Proxy:
       # mode: http # or tls
       # host: bing.com
 
-Proxy Group:
+  # trojan
+  - name: "trojan"
+    type: trojan
+    server: server
+    port: 443
+    password: yourpsk
+    # udp: true
+    # sni: example.com # aka server name
+    # alpn:
+    #   - h2
+    #   - http/1.1
+    # skip-cert-verify: true
+
+proxy-groups:
+  # relay chains the proxies. proxies shall not contain a proxy-group. No UDP support.
+  # Traffic: clash <-> http <-> vmess <-> ss1 <-> ss2 <-> Internet
+  - name: "relay"
+    type: relay
+    proxies:
+      - http
+      - vmess
+      - ss1
+      - ss2
+
   # url-test select which proxy will be used by benchmarking speed to a URL.
   - name: "auto"
     type: url-test
@@ -280,8 +323,34 @@ Proxy Group:
       - ss2
       - vmess1
       - auto
+  
+  - name: UseProvider
+    type: select
+    use:
+      - provider1
+    proxies:
+      - Proxy
+      - DIRECT
 
-Rule:
+proxy-providers:
+  provider1:
+    type: http
+    url: "url"
+    interval: 3600
+    path: ./hk.yaml
+    health-check:
+      enable: true
+      interval: 600
+      url: http://www.gstatic.com/generate_204
+  test:
+    type: file
+    path: /test.yaml
+    health-check:
+      enable: true
+      interval: 36000
+      url: http://www.gstatic.com/generate_204
+
+rules:
   - DOMAIN-SUFFIX,google.com,auto
   - DOMAIN-KEYWORD,google,auto
   - DOMAIN,google.com,auto
@@ -305,7 +374,7 @@ Rule:
 ## Documentations
 https://clash.gitbook.io/
 
-## Thanks
+## Credits
 
 [riobard/go-shadowsocks2](https://github.com/riobard/go-shadowsocks2)
 

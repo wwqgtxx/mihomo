@@ -3,8 +3,8 @@ package dns
 import (
 	"strings"
 
-	"github.com/whojave/clash/component/fakeip"
-	"github.com/whojave/clash/log"
+	"github.com/brobird/clash/component/fakeip"
+	"github.com/brobird/clash/log"
 
 	D "github.com/miekg/dns"
 )
@@ -39,7 +39,8 @@ func withFakeIP(fakePool *fakeip.Pool) middleware {
 			msg.Answer = []D.RR{rr}
 
 			setMsgTTL(msg, 1)
-			msg.SetReply(r)
+			msg.SetRcode(r, msg.Rcode)
+			msg.Authoritative = true
 			w.WriteMsg(msg)
 			return
 		}
@@ -55,8 +56,9 @@ func withResolver(resolver *Resolver) handler {
 			D.HandleFailed(w, r)
 			return
 		}
-		msg.SetReply(r)
-		_ = w.WriteMsg(msg)
+		msg.SetRcode(r, msg.Rcode)
+		msg.Authoritative = true
+		w.WriteMsg(msg)
 		return
 	}
 }

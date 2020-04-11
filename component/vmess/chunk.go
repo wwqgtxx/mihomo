@@ -5,7 +5,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/whojave/clash/common/pool"
+	"github.com/brobird/clash/common/pool"
 )
 
 const (

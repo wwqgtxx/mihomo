@@ -3,13 +3,12 @@ package outboundgroup
 import (
 	"context"
 	"encoding/json"
-	"net"
 	"time"
 
-	"github.com/whojave/clash/adapters/outbound"
-	"github.com/whojave/clash/adapters/provider"
-	"github.com/whojave/clash/common/singledo"
-	C "github.com/whojave/clash/constant"
+	"github.com/brobird/clash/adapters/outbound"
+	"github.com/brobird/clash/adapters/provider"
+	"github.com/brobird/clash/common/singledo"
+	C "github.com/brobird/clash/constant"
 )
 
 type URLTest struct {
@@ -31,12 +30,12 @@ func (u *URLTest) DialContext(ctx context.Context, metadata *C.Metadata) (c C.Co
 	return c, err
 }
 
-func (u *URLTest) DialUDP(metadata *C.Metadata) (C.PacketConn, net.Addr, error) {
-	pc, addr, err := u.fast().DialUDP(metadata)
+func (u *URLTest) DialUDP(metadata *C.Metadata) (C.PacketConn, error) {
+	pc, err := u.fast().DialUDP(metadata)
 	if err == nil {
 		pc.AppendToChains(u)
 	}
-	return pc, addr, err
+	return pc, err
 }
 
 func (u *URLTest) proxies() []C.Proxy {
@@ -87,7 +86,7 @@ func (u *URLTest) MarshalJSON() ([]byte, error) {
 
 func NewURLTest(name string, providers []provider.ProxyProvider) *URLTest {
 	return &URLTest{
-		Base:       outbound.NewBase(name, C.URLTest, false),
+		Base:       outbound.NewBase(name, "", C.URLTest, false),
 		single:     singledo.NewSingle(defaultGetProxiesDuration),
 		fastSingle: singledo.NewSingle(time.Second * 10),
 		providers:  providers,

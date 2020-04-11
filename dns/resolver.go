@@ -4,38 +4,25 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"math/rand"
 	"net"
 	"strings"
-	"sync"
 	"time"
 
-	"github.com/whojave/clash/common/cache"
-	"github.com/whojave/clash/common/picker"
-	trie "github.com/whojave/clash/component/domain-trie"
-	"github.com/whojave/clash/component/fakeip"
-	C "github.com/whojave/clash/constant"
+	"github.com/brobird/clash/common/cache"
+	"github.com/brobird/clash/common/picker"
+	"github.com/brobird/clash/component/fakeip"
+	"github.com/brobird/clash/component/resolver"
 
 	D "github.com/miekg/dns"
-	geoip2 "github.com/oschwald/geoip2-golang"
 	"golang.org/x/sync/singleflight"
 )
 
 var (
-	// DefaultResolver aim to resolve ip
-	DefaultResolver *Resolver
-
-	// DefaultHosts aim to resolve hosts
-	DefaultHosts = trie.New()
-)
-
-var (
 	globalSessionCache = tls.NewLRUClientSessionCache(64)
-
-	mmdb *geoip2.Reader
-	once sync.Once
 )
 
-type resolver interface {
+type dnsClient interface {
 	Exchange(m *D.Msg) (msg *D.Msg, err error)
 	ExchangeContext(ctx context.Context, m *D.Msg) (msg *D.Msg, err error)
 }
@@ -50,36 +37,33 @@ type Resolver struct {
 	mapping         bool
 	fakeip          bool
 	pool            *fakeip.Pool
-	main            []resolver
-	fallback        []resolver
+	main            []dnsClient
+	fallback        []dnsClient
 	fallbackFilters []fallbackFilter
 	group           singleflight.Group
 	cache           *cache.Cache
 }
 
-// ResolveIP request with TypeA and TypeAAAA, priority return TypeAAAA
+// ResolveIP request with TypeA and TypeAAAA, priority return TypeA
 func (r *Resolver) ResolveIP(host string) (ip net.IP, err error) {
-	ch := make(chan net.IP)
+	ch := make(chan net.IP, 1)
 	go func() {
 		defer close(ch)
-		ip, err := r.resolveIP(host, D.TypeA)
+		ip, err := r.resolveIP(host, D.TypeAAAA)
 		if err != nil {
 			return
 		}
 		ch <- ip
 	}()
 
-	ip, err = r.resolveIP(host, D.TypeAAAA)
+	ip, err = r.resolveIP(host, D.TypeA)
 	if err == nil {
-		go func() {
-			<-ch
-		}()
 		return
 	}
 
 	ip, open := <-ch
 	if !open {
-		return nil, errIPNotFound
+		return nil, resolver.ErrIPNotFound
 	}
 
 	return ip, nil
@@ -131,11 +115,10 @@ func (r *Resolver) Exchange(m *D.Msg) (msg *D.Msg, err error) {
 		}
 	}()
 
-	ret, err, _ := r.group.Do(q.String(), func() (interface{}, error) {
+	ret, err, shared := r.group.Do(q.String(), func() (interface{}, error) {
 		isIPReq := isIPRequest(q)
 		if isIPReq {
-			msg, err := r.fallbackExchange(m)
-			return msg, err
+			return r.fallbackExchange(m)
 		}
 
 		return r.batchExchange(r.main, m)
@@ -143,6 +126,9 @@ func (r *Resolver) Exchange(m *D.Msg) (msg *D.Msg, err error) {
 
 	if err == nil {
 		msg = ret.(*D.Msg)
+		if shared {
+			msg = msg.Copy()
+		}
 	}
 
 	return
@@ -179,16 +165,18 @@ func (r *Resolver) IsFakeIP(ip net.IP) bool {
 	return false
 }
 
-func (r *Resolver) batchExchange(clients []resolver, m *D.Msg) (msg *D.Msg, err error) {
-	fast, ctx := picker.WithTimeout(context.Background(), time.Second)
+func (r *Resolver) batchExchange(clients []dnsClient, m *D.Msg) (msg *D.Msg, err error) {
+	fast, ctx := picker.WithTimeout(context.Background(), time.Second*5)
 	for _, client := range clients {
 		r := client
 		fast.Go(func() (interface{}, error) {
-			msg, err := r.ExchangeContext(ctx, m)
-			if err != nil || msg.Rcode != D.RcodeSuccess {
-				return nil, errors.New("resolve error")
+			m, err := r.ExchangeContext(ctx, m)
+			if err != nil {
+				return nil, err
+			} else if m.Rcode == D.RcodeServerFailure || m.Rcode == D.RcodeRefused {
+				return nil, errors.New("server failure")
 			}
-			return msg, nil
+			return m, nil
 		})
 	}
 
@@ -212,9 +200,9 @@ func (r *Resolver) fallbackExchange(m *D.Msg) (msg *D.Msg, err error) {
 	res := <-msgCh
 	if res.Error == nil {
 		if ips := r.msgToIP(res.Msg); len(ips) != 0 {
-			if r.shouldFallback(ips[0]) {
-				go func() { <-fallbackMsg }()
+			if !r.shouldFallback(ips[0]) {
 				msg = res.Msg
+				err = res.Error
 				return msg, err
 			}
 		}
@@ -233,6 +221,8 @@ func (r *Resolver) resolveIP(host string, dnsType uint16) (ip net.IP, err error)
 			return ip, nil
 		} else if dnsType == D.TypeA && isIPv4 {
 			return ip, nil
+		} else {
+			return nil, resolver.ErrIPVersion
 		}
 	}
 
@@ -245,11 +235,12 @@ func (r *Resolver) resolveIP(host string, dnsType uint16) (ip net.IP, err error)
 	}
 
 	ips := r.msgToIP(msg)
-	if len(ips) == 0 {
-		return nil, errIPNotFound
+	ipLength := len(ips)
+	if ipLength == 0 {
+		return nil, resolver.ErrIPNotFound
 	}
 
-	ip = ips[0]
+	ip = ips[rand.Intn(ipLength)]
 	return
 }
 
@@ -268,8 +259,8 @@ func (r *Resolver) msgToIP(msg *D.Msg) []net.IP {
 	return ips
 }
 
-func (r *Resolver) asyncExchange(client []resolver, msg *D.Msg) <-chan *result {
-	ch := make(chan *result)
+func (r *Resolver) asyncExchange(client []dnsClient, msg *D.Msg) <-chan *result {
+	ch := make(chan *result, 1)
 	go func() {
 		res, err := r.batchExchange(client, msg)
 		ch <- &result{Msg: res, Error: err}
@@ -289,6 +280,7 @@ type FallbackFilter struct {
 
 type Config struct {
 	Main, Fallback []NameServer
+	Default        []NameServer
 	IPv6           bool
 	EnhancedMode   EnhancedMode
 	FallbackFilter FallbackFilter
@@ -296,9 +288,14 @@ type Config struct {
 }
 
 func New(config Config) *Resolver {
+	defaultResolver := &Resolver{
+		main:  transform(config.Default, nil),
+		cache: cache.New(time.Second * 60),
+	}
+
 	r := &Resolver{
 		ipv6:    config.IPv6,
-		main:    transform(config.Main),
+		main:    transform(config.Main, defaultResolver),
 		cache:   cache.New(time.Second * 60),
 		mapping: config.EnhancedMode == MAPPING,
 		fakeip:  config.EnhancedMode == FAKEIP,
@@ -306,15 +303,11 @@ func New(config Config) *Resolver {
 	}
 
 	if len(config.Fallback) != 0 {
-		r.fallback = transform(config.Fallback)
+		r.fallback = transform(config.Fallback, defaultResolver)
 	}
 
 	fallbackFilters := []fallbackFilter{}
 	if config.FallbackFilter.GeoIP {
-		once.Do(func() {
-			mmdb, _ = geoip2.Open(C.Path.MMDB())
-		})
-
 		fallbackFilters = append(fallbackFilters, &geoipFilter{})
 	}
 	for _, ipnet := range config.FallbackFilter.IPCIDR {

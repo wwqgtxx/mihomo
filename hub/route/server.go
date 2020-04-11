@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	C "github.com/whojave/clash/constant"
-	"github.com/whojave/clash/log"
-	T "github.com/whojave/clash/tunnel"
+	C "github.com/brobird/clash/constant"
+	"github.com/brobird/clash/log"
+	T "github.com/brobird/clash/tunnel"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/cors"
@@ -57,10 +57,10 @@ func Start(addr string, secret string) {
 	})
 
 	r.Use(cors.Handler)
-	r.Get("/", hello)
 	r.Group(func(r chi.Router) {
 		r.Use(authentication)
 
+		r.Get("/", hello)
 		r.Get("/logs", getLogs)
 		r.Get("/version", version)
 		r.Get("/traffic", traffic)

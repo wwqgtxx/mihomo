@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/whojave/clash/adapters/provider"
-	"github.com/whojave/clash/common/structure"
-	C "github.com/whojave/clash/constant"
+	"github.com/brobird/clash/adapters/provider"
+	"github.com/brobird/clash/common/structure"
+	C "github.com/brobird/clash/constant"
 )
 
 var (
@@ -56,7 +56,7 @@ func ParseProxyGroup(config map[string]interface{}, proxyMap map[string]C.Proxy,
 		// if Use not empty, drop health check options
 		if len(groupOption.Use) != 0 {
 			hc := provider.NewHealthCheck(ps, "", 0, groupOption.Type)
-			pd, err := provider.NewCompatibleProvier(groupName, ps, hc)
+			pd, err := provider.NewCompatibleProvider(groupName, ps, hc)
 			if err != nil {
 				return nil, err
 			}
@@ -64,9 +64,9 @@ func ParseProxyGroup(config map[string]interface{}, proxyMap map[string]C.Proxy,
 			providers = append(providers, pd)
 		} else {
 			// select don't need health check
-			if groupOption.Type == "select" {
+			if groupOption.Type == "select" || groupOption.Type == "relay" {
 				hc := provider.NewHealthCheck(ps, "", 0, groupOption.Type)
-				pd, err := provider.NewCompatibleProvier(groupName, ps, hc)
+				pd, err := provider.NewCompatibleProvider(groupName, ps, hc)
 				if err != nil {
 					return nil, err
 				}
@@ -79,7 +79,7 @@ func ParseProxyGroup(config map[string]interface{}, proxyMap map[string]C.Proxy,
 				}
 
 				hc := provider.NewHealthCheck(ps, groupOption.URL, uint(groupOption.Interval), groupOption.Type)
-				pd, err := provider.NewCompatibleProvier(groupName, ps, hc)
+				pd, err := provider.NewCompatibleProvider(groupName, ps, hc)
 				if err != nil {
 					return nil, err
 				}
@@ -108,6 +108,8 @@ func ParseProxyGroup(config map[string]interface{}, proxyMap map[string]C.Proxy,
 		group = NewFallback(groupName, providers)
 	case "load-balance":
 		group = NewLoadBalance(groupName, providers)
+	case "relay":
+		group = NewRelay(groupName, providers)
 	default:
 		return nil, fmt.Errorf("%w: %s", errType, groupOption.Type)
 	}

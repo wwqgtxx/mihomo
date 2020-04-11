@@ -3,12 +3,11 @@ package outboundgroup
 import (
 	"context"
 	"encoding/json"
-	"net"
 
-	"github.com/whojave/clash/adapters/outbound"
-	"github.com/whojave/clash/adapters/provider"
-	"github.com/whojave/clash/common/singledo"
-	C "github.com/whojave/clash/constant"
+	"github.com/brobird/clash/adapters/outbound"
+	"github.com/brobird/clash/adapters/provider"
+	"github.com/brobird/clash/common/singledo"
+	C "github.com/brobird/clash/constant"
 )
 
 type Fallback struct {
@@ -31,13 +30,13 @@ func (f *Fallback) DialContext(ctx context.Context, metadata *C.Metadata) (C.Con
 	return c, err
 }
 
-func (f *Fallback) DialUDP(metadata *C.Metadata) (C.PacketConn, net.Addr, error) {
+func (f *Fallback) DialUDP(metadata *C.Metadata) (C.PacketConn, error) {
 	proxy := f.findAliveProxy()
-	pc, addr, err := proxy.DialUDP(metadata)
+	pc, err := proxy.DialUDP(metadata)
 	if err == nil {
 		pc.AppendToChains(f)
 	}
-	return pc, addr, err
+	return pc, err
 }
 
 func (f *Fallback) SupportUDP() bool {
@@ -78,7 +77,7 @@ func (f *Fallback) findAliveProxy() C.Proxy {
 
 func NewFallback(name string, providers []provider.ProxyProvider) *Fallback {
 	return &Fallback{
-		Base:      outbound.NewBase(name, C.Fallback, false),
+		Base:      outbound.NewBase(name, "", C.Fallback, false),
 		single:    singledo.NewSingle(defaultGetProxiesDuration),
 		providers: providers,
 	}

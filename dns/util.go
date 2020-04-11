@@ -4,11 +4,11 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"errors"
+	"net"
 	"time"
 
-	"github.com/whojave/clash/common/cache"
-	"github.com/whojave/clash/log"
-	yaml "gopkg.in/yaml.v2"
+	"github.com/brobird/clash/common/cache"
+	"github.com/brobird/clash/log"
 
 	D "github.com/miekg/dns"
 )
@@ -45,8 +45,8 @@ func (e *EnhancedMode) UnmarshalYAML(unmarshal func(interface{}) error) error {
 }
 
 // MarshalYAML serialize EnhancedMode with yaml
-func (e EnhancedMode) MarshalYAML() ([]byte, error) {
-	return yaml.Marshal(e.String())
+func (e EnhancedMode) MarshalYAML() (interface{}, error) {
+	return e.String(), nil
 }
 
 // UnmarshalJSON unserialize EnhancedMode with json
@@ -117,14 +117,15 @@ func isIPRequest(q D.Question) bool {
 	return false
 }
 
-func transform(servers []NameServer) []resolver {
-	ret := []resolver{}
+func transform(servers []NameServer, resolver *Resolver) []dnsClient {
+	ret := []dnsClient{}
 	for _, s := range servers {
 		if s.Net == "https" {
-			ret = append(ret, &dohClient{url: s.Addr})
+			ret = append(ret, newDoHClient(s.Addr, resolver))
 			continue
 		}
 
+		host, port, _ := net.SplitHostPort(s.Addr)
 		ret = append(ret, &client{
 			Client: &D.Client{
 				Net: s.Net,
@@ -134,8 +135,11 @@ func transform(servers []NameServer) []resolver {
 					NextProtos: []string{"dns"},
 				},
 				UDPSize: 4096,
+				Timeout: 5 * time.Second,
 			},
-			Address: s.Addr,
+			port: port,
+			host: host,
+			r:    resolver,
 		})
 	}
 	return ret

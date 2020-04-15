@@ -18,6 +18,7 @@ const (
 	HTTP Type = iota
 	HTTPCONNECT
 	SOCKS
+	SHADOWSOCKS
 	REDIR
 )
 
@@ -44,6 +45,8 @@ func (t Type) String() string {
 		return "HTTP Connect"
 	case SOCKS:
 		return "Socks5"
+	case SHADOWSOCKS:
+		return "ShadowSocks"
 	case REDIR:
 		return "Redir"
 	default:

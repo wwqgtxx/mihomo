@@ -23,13 +23,14 @@ func configRouter() http.Handler {
 }
 
 type configSchema struct {
-	Port        *int               `json:"port"`
-	SocksPort   *int               `json:"socks-port"`
-	RedirPort   *int               `json:"redir-port"`
-	AllowLan    *bool              `json:"allow-lan"`
-	BindAddress *string            `json:"bind-address"`
-	Mode        *tunnel.TunnelMode `json:"mode"`
-	LogLevel    *log.LogLevel      `json:"log-level"`
+	Port              *int               `json:"port"`
+	SocksPort         *int               `json:"socks-port"`
+	RedirPort         *int               `json:"redir-port"`
+	ShadowSocksConfig *string            `json:"ss-config"`
+	AllowLan          *bool              `json:"allow-lan"`
+	BindAddress       *string            `json:"bind-address"`
+	Mode              *tunnel.TunnelMode `json:"mode"`
+	LogLevel          *log.LogLevel      `json:"log-level"`
 }
 
 func getConfigs(w http.ResponseWriter, r *http.Request) {
@@ -61,9 +62,14 @@ func patchConfigs(w http.ResponseWriter, r *http.Request) {
 		P.SetBindAddress(*general.BindAddress)
 	}
 
+	if general.ShadowSocksConfig != nil {
+		P.SetShadowSocksConfig(*general.ShadowSocksConfig)
+	}
+
 	ports := P.GetPorts()
 	_ = P.ReCreateHTTP(pointerOrDefault(general.Port, ports.Port))
 	_ = P.ReCreateSocks(pointerOrDefault(general.SocksPort, ports.SocksPort))
+	_ = P.ReCreateShadowSocks()
 	_ = P.ReCreateRedir(pointerOrDefault(general.RedirPort, ports.RedirPort))
 
 	if general.Mode != nil {

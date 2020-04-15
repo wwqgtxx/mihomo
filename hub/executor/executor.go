@@ -182,12 +182,20 @@ func updateGeneral(general *config.General) {
 	bindAddress := general.BindAddress
 	P.SetBindAddress(bindAddress)
 
+	ssConfig := general.ShadowSocksConfig
+	P.SetShadowSocksConfig(ssConfig)
+	log.Infoln(ssConfig)
+
 	if err := P.ReCreateHTTP(general.Port); err != nil {
 		log.Errorln("Start HTTP server error: %s", err.Error())
 	}
 
 	if err := P.ReCreateSocks(general.SocksPort); err != nil {
 		log.Errorln("Start SOCKS5 server error: %s", err.Error())
+	}
+
+	if err := P.ReCreateShadowSocks(); err != nil {
+		log.Errorln("Start ShadowSocks server error: %s", err.Error())
 	}
 
 	if err := P.ReCreateRedir(general.RedirPort); err != nil {

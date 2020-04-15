@@ -3,23 +3,28 @@ package proxy
 import (
 	"fmt"
 	"net"
+	"net/url"
 	"strconv"
 
 	"github.com/brobird/clash/log"
 	"github.com/brobird/clash/proxy/http"
 	"github.com/brobird/clash/proxy/redir"
+	"github.com/brobird/clash/proxy/shadowsocks"
 	"github.com/brobird/clash/proxy/socks"
 )
 
 var (
-	allowLan    = false
-	bindAddress = "*"
+	allowLan          = false
+	bindAddress       = "*"
+	shadowSocksConfig = ""
 
-	socksListener    *socks.SockListener
-	socksUDPListener *socks.SockUDPListener
-	httpListener     *http.HttpListener
-	redirListener    *redir.RedirListener
-	redirUDPListener *redir.RedirUDPListener
+	socksListener          *socks.SockListener
+	socksUDPListener       *socks.SockUDPListener
+	shadowSocksListener    *shadowsocks.ShadowSocksListener
+	shadowSocksUDPListener *shadowsocks.ShadowSocksUDPListener
+	httpListener           *http.HttpListener
+	redirListener          *redir.RedirListener
+	redirUDPListener       *redir.RedirUDPListener
 )
 
 type listener interface {
@@ -47,6 +52,10 @@ func SetAllowLan(al bool) {
 
 func SetBindAddress(host string) {
 	bindAddress = host
+}
+
+func SetShadowSocksConfig(config string) {
+	shadowSocksConfig = config
 }
 
 func ReCreateHTTP(port int) error {
@@ -118,6 +127,62 @@ func ReCreateSocks(port int) error {
 
 	socksListener = tcpListener
 	socksUDPListener = udpListener
+
+	return nil
+}
+
+func ReCreateShadowSocks() error {
+	if len(shadowSocksConfig) == 0 {
+		return nil
+	}
+
+	addr, cipher, password, err := parseSSURL(shadowSocksConfig)
+	if err != nil {
+		return err
+	}
+
+	shouldTCPIgnore := false
+	shouldUDPIgnore := false
+
+	if shadowSocksListener != nil {
+		if shadowSocksListener.Address() != addr {
+			shadowSocksListener.Close()
+			shadowSocksListener = nil
+		} else {
+			shouldTCPIgnore = true
+		}
+	}
+
+	if shadowSocksUDPListener != nil {
+		if shadowSocksUDPListener.Address() != addr {
+			shadowSocksUDPListener.Close()
+			shadowSocksUDPListener = nil
+		} else {
+			shouldUDPIgnore = true
+		}
+	}
+
+	if shouldTCPIgnore && shouldUDPIgnore {
+		return nil
+	}
+
+	if portIsZero(addr) {
+		return nil
+	}
+
+	tcpListener, err := shadowsocks.NewShadowSocksProxy(addr, cipher, password)
+	if err != nil {
+		return err
+	}
+
+	udpListener, err := shadowsocks.NewShadowSocksUDPProxy(addr, cipher, password)
+	if err != nil {
+		tcpListener.Close()
+		return err
+	}
+
+	shadowSocksListener = tcpListener
+	shadowSocksUDPListener = udpListener
 
 	return nil
 }
@@ -202,4 +267,18 @@ func genAddr(host string, port int, allowLan bool) string {
 	}
 
 	return fmt.Sprintf("127.0.0.1:%d", port)
+}
+
+func parseSSURL(s string) (addr, cipher, password string, err error) {
+	u, err := url.Parse(s)
+	if err != nil {
+		return
+	}
+
+	addr = u.Host
+	if u.User != nil {
+		cipher = u.User.Username()
+		password, _ = u.User.Password()
+	}
+	return
 }

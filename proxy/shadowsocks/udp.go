@@ -58,12 +58,15 @@ func (l *ShadowSocksUDPListener) Address() string {
 }
 
 func handleSocksUDP(pc net.PacketConn, buf []byte, addr net.Addr) {
-	target, payload, err := socks5.DecodeUDPPacket(buf)
-	if err != nil {
+	tgtAddr := socks5.SplitAddr(buf)
+	if tgtAddr == nil {
 		// Unresolved UDP packet, return buffer to the pool
 		pool.BufPool.Put(buf[:cap(buf)])
 		return
 	}
+	target := socks5.ParseAddr(tgtAddr.String())
+	payload := buf[len(tgtAddr):]
+
 	packet := &fakeConn{
 		PacketConn: pc,
 		rAddr:      addr,

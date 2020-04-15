@@ -1,6 +1,8 @@
 package shadowsocks
 
 import (
+	"bytes"
+	"errors"
 	"net"
 
 	"github.com/brobird/clash/common/pool"
@@ -20,10 +22,11 @@ func (c *fakeConn) Data() []byte {
 
 // WriteBack wirtes UDP packet with source(ip, port) = `addr`
 func (c *fakeConn) WriteBack(b []byte, addr net.Addr) (n int, err error) {
-	packet, err := socks5.EncodeUDPPacket(socks5.ParseAddrToSocksAddr(addr), b)
-	if err != nil {
+	if addr == nil {
+		err = errors.New("address is invalid")
 		return
 	}
+	packet := bytes.Join([][]byte{socks5.ParseAddrToSocksAddr(addr), b}, []byte{})
 	return c.PacketConn.WriteTo(packet, c.rAddr)
 }
 

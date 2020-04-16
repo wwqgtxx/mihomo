@@ -3,7 +3,6 @@ package proxy
 import (
 	"fmt"
 	"net"
-	"net/url"
 	"strconv"
 
 	"github.com/wwqgtxx/clashr/log"
@@ -11,12 +10,12 @@ import (
 	"github.com/wwqgtxx/clashr/proxy/redir"
 	"github.com/wwqgtxx/clashr/proxy/shadowsocks"
 	"github.com/wwqgtxx/clashr/proxy/socks"
+	"github.com/wwqgtxx/clashr/proxy/tuns"
 )
 
 var (
-	allowLan          = false
-	bindAddress       = "*"
-	shadowSocksConfig = ""
+	allowLan    = false
+	bindAddress = "*"
 
 	socksListener          *socks.SockListener
 	socksUDPListener       *socks.SockUDPListener
@@ -25,6 +24,8 @@ var (
 	httpListener           *http.HttpListener
 	redirListener          *redir.RedirListener
 	redirUDPListener       *redir.RedirUDPListener
+	tcpTunListener         *tuns.TcpTunListener
+	udpTunListener         *tuns.UdpTunListener
 )
 
 type listener interface {
@@ -33,9 +34,12 @@ type listener interface {
 }
 
 type Ports struct {
-	Port      int `json:"port"`
-	SocksPort int `json:"socks-port"`
-	RedirPort int `json:"redir-port"`
+	Port              int    `json:"port"`
+	SocksPort         int    `json:"socks-port"`
+	RedirPort         int    `json:"redir-port"`
+	ShadowSocksConfig string `json:"ss-config"`
+	TcpTunConfig      string `json:"tcptun-config"`
+	UdpTunConfig      string `json:"udptun-config"`
 }
 
 func AllowLan() bool {
@@ -52,10 +56,6 @@ func SetAllowLan(al bool) {
 
 func SetBindAddress(host string) {
 	bindAddress = host
-}
-
-func SetShadowSocksConfig(config string) {
-	shadowSocksConfig = config
 }
 
 func ReCreateHTTP(port int) error {
@@ -131,42 +131,25 @@ func ReCreateSocks(port int) error {
 	return nil
 }
 
-func ReCreateShadowSocks() error {
-	if len(shadowSocksConfig) == 0 {
-		return nil
-	}
-
-	addr, cipher, password, err := parseSSURL(shadowSocksConfig)
-	if err != nil {
-		return err
-	}
-
+func ReCreateShadowSocks(shadowSocksConfig string) error {
 	shouldTCPIgnore := false
 	shouldUDPIgnore := false
 
 	if shadowSocksListener != nil {
-		if shadowSocksListener.Address() != addr {
+		if shadowSocksListener.Config() != shadowSocksConfig {
 			shadowSocksListener.Close()
 			shadowSocksListener = nil
 		} else {
 			shouldTCPIgnore = true
-			err = shadowSocksListener.SetCipher(cipher, password)
-			if err != nil {
-				return err
-			}
 		}
 	}
 
 	if shadowSocksUDPListener != nil {
-		if shadowSocksUDPListener.Address() != addr {
+		if shadowSocksUDPListener.Config() != shadowSocksConfig {
 			shadowSocksUDPListener.Close()
 			shadowSocksUDPListener = nil
 		} else {
 			shouldUDPIgnore = true
-			err = shadowSocksUDPListener.SetCipher(cipher, password)
-			if err != nil {
-				return err
-			}
 		}
 	}
 
@@ -174,18 +157,17 @@ func ReCreateShadowSocks() error {
 		return nil
 	}
 
-	if portIsZero(addr) {
+	if len(shadowSocksConfig) == 0 {
 		return nil
 	}
 
-	tcpListener, err := shadowsocks.NewShadowSocksProxy(addr, cipher, password)
+	tcpListener, err := shadowsocks.NewShadowSocksProxy(shadowSocksConfig)
 	if err != nil {
 		return err
 	}
 
-	udpListener, err := shadowsocks.NewShadowSocksUDPProxy(addr, cipher, password)
+	udpListener, err := shadowsocks.NewShadowSocksUDPProxy(shadowSocksConfig)
 	if err != nil {
-		tcpListener.Close()
 		return err
 	}
 
@@ -232,6 +214,58 @@ func ReCreateRedir(port int) error {
 	return nil
 }
 
+func ReCreateTcpTun(config string) error {
+	shouldIgnore := false
+
+	if tcpTunListener != nil {
+		if tcpTunListener.Config() != config {
+			shadowSocksListener.Close()
+			shadowSocksListener = nil
+		} else {
+			shouldIgnore = true
+		}
+	}
+
+	if shouldIgnore {
+		return nil
+	}
+
+	tcpListener, err := tuns.NewTcpTunProxy(config)
+	if err != nil {
+		return err
+	}
+
+	tcpTunListener = tcpListener
+
+	return nil
+}
+
+func ReCreateUdpTun(config string) error {
+	shouldIgnore := false
+
+	if udpTunListener != nil {
+		if udpTunListener.Config() != config {
+			shadowSocksListener.Close()
+			shadowSocksListener = nil
+		} else {
+			shouldIgnore = true
+		}
+	}
+
+	if shouldIgnore {
+		return nil
+	}
+
+	udpListener, err := tuns.NewUdpTunProxy(config)
+	if err != nil {
+		return err
+	}
+
+	udpTunListener = udpListener
+
+	return nil
+}
+
 // GetPorts return the ports of proxy servers
 func GetPorts() *Ports {
 	ports := &Ports{}
@@ -252,6 +286,10 @@ func GetPorts() *Ports {
 		_, portStr, _ := net.SplitHostPort(redirListener.Address())
 		port, _ := strconv.Atoi(portStr)
 		ports.RedirPort = port
+	}
+
+	if tcpTunListener != nil {
+		ports.TcpTunConfig = tcpTunListener.Config()
 	}
 
 	return ports
@@ -275,18 +313,4 @@ func genAddr(host string, port int, allowLan bool) string {
 	}
 
 	return fmt.Sprintf("127.0.0.1:%d", port)
-}
-
-func parseSSURL(s string) (addr, cipher, password string, err error) {
-	u, err := url.Parse(s)
-	if err != nil {
-		return
-	}
-
-	addr = u.Host
-	if u.User != nil {
-		cipher = u.User.Username()
-		password, _ = u.User.Password()
-	}
-	return
 }

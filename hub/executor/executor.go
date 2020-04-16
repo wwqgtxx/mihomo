@@ -96,14 +96,17 @@ func GetGeneral() *config.General {
 	}
 
 	general := &config.General{
-		Port:           ports.Port,
-		SocksPort:      ports.SocksPort,
-		RedirPort:      ports.RedirPort,
-		Authentication: authenticator,
-		AllowLan:       P.AllowLan(),
-		BindAddress:    P.BindAddress(),
-		Mode:           tunnel.Mode(),
-		LogLevel:       log.Level(),
+		Port:              ports.Port,
+		SocksPort:         ports.SocksPort,
+		RedirPort:         ports.RedirPort,
+		ShadowSocksConfig: ports.ShadowSocksConfig,
+		TcpTunConfig:      ports.TcpTunConfig,
+		UdpTunConfig:      ports.UdpTunConfig,
+		Authentication:    authenticator,
+		AllowLan:          P.AllowLan(),
+		BindAddress:       P.BindAddress(),
+		Mode:              tunnel.Mode(),
+		LogLevel:          log.Level(),
 	}
 
 	return general
@@ -182,10 +185,6 @@ func updateGeneral(general *config.General) {
 	bindAddress := general.BindAddress
 	P.SetBindAddress(bindAddress)
 
-	ssConfig := general.ShadowSocksConfig
-	P.SetShadowSocksConfig(ssConfig)
-	log.Infoln(ssConfig)
-
 	if err := P.ReCreateHTTP(general.Port); err != nil {
 		log.Errorln("Start HTTP server error: %s", err.Error())
 	}
@@ -194,12 +193,20 @@ func updateGeneral(general *config.General) {
 		log.Errorln("Start SOCKS5 server error: %s", err.Error())
 	}
 
-	if err := P.ReCreateShadowSocks(); err != nil {
+	if err := P.ReCreateRedir(general.RedirPort); err != nil {
+		log.Errorln("Start Redir server error: %s", err.Error())
+	}
+
+	if err := P.ReCreateShadowSocks(general.ShadowSocksConfig); err != nil {
 		log.Errorln("Start ShadowSocks server error: %s", err.Error())
 	}
 
-	if err := P.ReCreateRedir(general.RedirPort); err != nil {
-		log.Errorln("Start Redir server error: %s", err.Error())
+	if err := P.ReCreateTcpTun(general.TcpTunConfig); err != nil {
+		log.Errorln("Start TcpTun server error: %s", err.Error())
+	}
+
+	if err := P.ReCreateUdpTun(general.UdpTunConfig); err != nil {
+		log.Errorln("Start UdpTun server error: %s", err.Error())
 	}
 }
 

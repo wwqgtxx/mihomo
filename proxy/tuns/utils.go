@@ -1,14 +1,32 @@
-package shadowsocks
+package tuns
 
 import (
-	"bytes"
 	"errors"
 	"net"
-	"net/url"
+	"strings"
 
 	"github.com/wwqgtxx/clashr/common/pool"
-	"github.com/wwqgtxx/clashr/component/socks5"
 )
+
+type PairList [][2]string // key1=val1,key2=val2,...
+
+func (l PairList) String() string {
+	s := make([]string, len(l))
+	for i, pair := range l {
+		s[i] = pair[0] + "=" + pair[1]
+	}
+	return strings.Join(s, ",")
+}
+func (l *PairList) Set(s string) error {
+	for _, item := range strings.Split(s, ",") {
+		pair := strings.Split(item, "=")
+		if len(pair) != 2 {
+			return nil
+		}
+		*l = append(*l, [2]string{pair[0], pair[1]})
+	}
+	return nil
+}
 
 type fakeConn struct {
 	net.PacketConn
@@ -27,7 +45,7 @@ func (c *fakeConn) WriteBack(b []byte, addr net.Addr) (n int, err error) {
 		err = errors.New("address is invalid")
 		return
 	}
-	packet := bytes.Join([][]byte{socks5.ParseAddrToSocksAddr(addr), b}, []byte{})
+	packet := b
 	return c.PacketConn.WriteTo(packet, c.rAddr)
 }
 
@@ -40,18 +58,4 @@ func (c *fakeConn) Close() error {
 	err := c.PacketConn.Close()
 	pool.BufPool.Put(c.bufRef[:cap(c.bufRef)])
 	return err
-}
-
-func parseSSURL(s string) (addr, cipher, password string, err error) {
-	u, err := url.Parse(s)
-	if err != nil {
-		return
-	}
-
-	addr = u.Host
-	if u.User != nil {
-		cipher = u.User.Username()
-		password, _ = u.User.Password()
-	}
-	return
 }

@@ -29,6 +29,8 @@ type General struct {
 	SocksPort          int          `json:"socks-port"`
 	RedirPort          int          `json:"redir-port"`
 	ShadowSocksConfig  string       `json:"ss-config"`
+	TcpTunConfig       string       `json:"tcptun-config"`
+	UdpTunConfig       string       `json:"udptun-config"`
 	Authentication     []string     `json:"authentication"`
 	AllowLan           bool         `json:"allow-lan"`
 	BindAddress        string       `json:"bind-address"`
@@ -99,6 +101,8 @@ type RawConfig struct {
 	SocksPort          int          `yaml:"socks-port"`
 	RedirPort          int          `yaml:"redir-port"`
 	ShadowSocksConfig  string       `yaml:"ss-config"`
+	TcpTunConfig       string       `yaml:"tcptun-config"`
+	UdpTunConfig       string       `yaml:"udptun-config"`
 	Authentication     []string     `yaml:"authentication"`
 	AllowLan           bool         `yaml:"allow-lan"`
 	BindAddress        string       `yaml:"bind-address"`
@@ -220,6 +224,8 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 	socksPort := cfg.SocksPort
 	redirPort := cfg.RedirPort
 	ssConfig := cfg.ShadowSocksConfig
+	tcpTunConfig := cfg.TcpTunConfig
+	udpTunConfig := cfg.UdpTunConfig
 	allowLan := cfg.AllowLan
 	bindAddress := cfg.BindAddress
 	externalController := cfg.ExternalController
@@ -241,6 +247,8 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 		SocksPort:          socksPort,
 		RedirPort:          redirPort,
 		ShadowSocksConfig:  ssConfig,
+		TcpTunConfig:       tcpTunConfig,
+		UdpTunConfig:       udpTunConfig,
 		AllowLan:           allowLan,
 		BindAddress:        bindAddress,
 		Mode:               mode,

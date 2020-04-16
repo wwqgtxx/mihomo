@@ -4,8 +4,8 @@ import (
 	"net"
 	"time"
 
-	C "github.com/brobird/clash/constant"
 	"github.com/gofrs/uuid"
+	C "github.com/wwqgtxx/clashr/constant"
 )
 
 type tracker interface {

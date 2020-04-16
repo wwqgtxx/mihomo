@@ -4,11 +4,11 @@ import (
 	"net/http"
 	"path/filepath"
 
-	"github.com/brobird/clash/config"
-	"github.com/brobird/clash/hub/executor"
-	"github.com/brobird/clash/log"
-	P "github.com/brobird/clash/proxy"
-	"github.com/brobird/clash/tunnel"
+	"github.com/wwqgtxx/clashr/config"
+	"github.com/wwqgtxx/clashr/hub/executor"
+	"github.com/wwqgtxx/clashr/log"
+	P "github.com/wwqgtxx/clashr/proxy"
+	"github.com/wwqgtxx/clashr/tunnel"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"

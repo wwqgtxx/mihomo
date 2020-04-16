@@ -9,10 +9,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/brobird/clash/component/dialer"
-	"github.com/brobird/clash/component/resolver"
-	"github.com/brobird/clash/component/vmess"
-	C "github.com/brobird/clash/constant"
+	"github.com/wwqgtxx/clashr/component/dialer"
+	"github.com/wwqgtxx/clashr/component/resolver"
+	"github.com/wwqgtxx/clashr/component/vmess"
+	C "github.com/wwqgtxx/clashr/constant"
 )
 
 type Vmess struct {

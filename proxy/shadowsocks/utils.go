@@ -5,8 +5,8 @@ import (
 	"errors"
 	"net"
 
-	"github.com/brobird/clash/common/pool"
-	"github.com/brobird/clash/component/socks5"
+	"github.com/wwqgtxx/clashr/common/pool"
+	"github.com/wwqgtxx/clashr/component/socks5"
 )
 
 type fakeConn struct {

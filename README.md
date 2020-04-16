@@ -1,20 +1,20 @@
 <h1 align="center">
-  <img src="https://github.com/whojave/clash/raw/master/docs/logo.png" alt="Clash" width="200">
+  <img src="https://github.com/wwqgtxx/clashr/raw/master/docs/logo.png" alt="Clash" width="200">
   <br>Clash<br>
 </h1>
 
 <h4 align="center">A rule-based tunnel in Go.</h4>
 
 <p align="center">
-  <a href="https://travis-ci.org/whojave/clash">
-    <img src="https://img.shields.io/travis/whojave/clash.svg?style=flat-square"
+  <a href="https://travis-ci.org/wwqgtxx/clashr">
+    <img src="https://img.shields.io/travis/wwqgtxx/clashr.svg?style=flat-square"
          alt="Travis-CI">
   </a>
-  <a href="https://goreportcard.com/report/github.com/whojave/clash">
-    <img src="https://goreportcard.com/badge/github.com/whojave/clash?style=flat-square">
+  <a href="https://goreportcard.com/report/github.com/wwqgtxx/clashr">
+    <img src="https://goreportcard.com/badge/github.com/wwqgtxx/clashr?style=flat-square">
   </a>
-  <a href="https://github.com/whojave/clash/releases">
-    <img src="https://img.shields.io/github/release/whojave/clash/all.svg?style=flat-square">
+  <a href="https://github.com/wwqgtxx/clashr/releases">
+    <img src="https://img.shields.io/github/release/wwqgtxx/clashr/all.svg?style=flat-square">
   </a>
 </p>
 
@@ -34,7 +34,7 @@
 Clash requires Go >= 1.13. You can build it from source:
 
 ```sh
-$ go get -u -v github.com/whojave/clash
+$ go get -u -v github.com/wwqgtxx/clashr
 ```
 
 Pre-built binaries are available here: [release](https://github.com/Dreamacro/clash/releases)  

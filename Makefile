@@ -1,9 +1,9 @@
-NAME=clash
+NAME=clashr
 BINDIR=bin
 VERSION=$(shell git describe --tags || echo "unknown version")
 BUILDTIME=$(shell date -u)
-GOBUILD=CGO_ENABLED=0 go build -ldflags '-X "github.com/whojave/clash/constant.Version=$(VERSION)" \
-		-X "github.com/whojave/clash/constant.BuildTime=$(BUILDTIME)" \
+GOBUILD=CGO_ENABLED=0 go build -ldflags '-X "github.com/wwqgtxx/clashr/constant.Version=$(VERSION)" \
+		-X "github.com/wwqgtxx/clash/rconstant.BuildTime=$(BUILDTIME)" \
 		-w -s'
 
 PLATFORM_LIST = \

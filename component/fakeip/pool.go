@@ -5,8 +5,8 @@ import (
 	"net"
 	"sync"
 
-	"github.com/brobird/clash/common/cache"
-	trie "github.com/brobird/clash/component/domain-trie"
+	"github.com/wwqgtxx/clashr/common/cache"
+	trie "github.com/wwqgtxx/clashr/component/domain-trie"
 )
 
 // Pool is a implementation about fake ip generator without storage

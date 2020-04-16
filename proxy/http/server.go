@@ -8,12 +8,12 @@ import (
 	"strings"
 	"time"
 
-	adapters "github.com/brobird/clash/adapters/inbound"
-	"github.com/brobird/clash/common/cache"
-	"github.com/brobird/clash/component/auth"
-	"github.com/brobird/clash/log"
-	authStore "github.com/brobird/clash/proxy/auth"
-	"github.com/brobird/clash/tunnel"
+	adapters "github.com/wwqgtxx/clashr/adapters/inbound"
+	"github.com/wwqgtxx/clashr/common/cache"
+	"github.com/wwqgtxx/clashr/component/auth"
+	"github.com/wwqgtxx/clashr/log"
+	authStore "github.com/wwqgtxx/clashr/proxy/auth"
+	"github.com/wwqgtxx/clashr/tunnel"
 )
 
 type HttpListener struct {

@@ -3,8 +3,8 @@ package outboundgroup
 import (
 	"time"
 
-	"github.com/brobird/clash/adapters/provider"
-	C "github.com/brobird/clash/constant"
+	"github.com/wwqgtxx/clashr/adapters/provider"
+	C "github.com/wwqgtxx/clashr/constant"
 )
 
 const (

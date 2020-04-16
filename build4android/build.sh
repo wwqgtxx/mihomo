@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Build:
-#   - git clone -b dev https://github.com/whojave/clash
+#   - git clone -b dev https://github.com/wwqgtxx/clashr
 #   - cd clash
 #   - ANDROID_NDK_HOME=/path/to/android/ndk /path/to/this/script
 #
@@ -24,7 +24,7 @@ export CXX=$ANDROID_CXX
 export CC=$ANDROID_CC 
 export LD=$ANDROID_LD 
 export CGO_ENABLED=1
-go build -ldflags "-X \"github.com/whojave/clash/constant.Version=$VERSION\" -X \"github.com/whojave/clash/constant.BuildTime=$BUILDTIME\" -w -s" \
+go build -ldflags "-X \"github.com/wwqgtxx/clashr/constant.Version=$VERSION\" -X \"github.com/wwqgtxx/clashr/constant.BuildTime=$BUILDTIME\" -w -s" \
             -o "build4android/clash_arm64"
 
 
@@ -37,7 +37,7 @@ export CXX=$ANDROID_CXX
 export CC=$ANDROID_CC 
 export LD=$ANDROID_LD 
 export CGO_ENABLED=1
-go build -ldflags "-X \"github.com/whojave/clash/constant.Version=$VERSION\" -X \"github.com/whojave/clash/constant.BuildTime=$BUILDTIME\" -w -s" \
+go build -ldflags "-X \"github.com/wwqgtxx/clashr/constant.Version=$VERSION\" -X \"github.com/wwqgtxx/clashr/constant.BuildTime=$BUILDTIME\" -w -s" \
             -o "build4android/clash_armv7a"
 
 
@@ -50,7 +50,7 @@ export CC=$ANDROID_CC
 export LD=$ANDROID_LD 
 export CGO_ENABLED=1
 export GOARCH=386
-go build -ldflags "-X \"github.com/whojave/clash/constant.Version=$VERSION\" -X \"github.com/whojave/clash/constant.BuildTime=$BUILDTIME\" -w -s" \
+go build -ldflags "-X \"github.com/wwqgtxx/clashr/constant.Version=$VERSION\" -X \"github.com/wwqgtxx/clashr/constant.BuildTime=$BUILDTIME\" -w -s" \
             -o "build4android/clash_x86"
 
 
@@ -63,7 +63,7 @@ export CC=$ANDROID_CC
 export LD=$ANDROID_LD 
 export CGO_ENABLED=1
 export GOARCH=amd64
-go build -ldflags "-X \"github.com/whojave/clash/constant.Version=$VERSION\" -X \"github.com/whojave/clash/constant.BuildTime=$BUILDTIME\" -w -s" \
+go build -ldflags "-X \"github.com/wwqgtxx/clashr/constant.Version=$VERSION\" -X \"github.com/wwqgtxx/clashr/constant.BuildTime=$BUILDTIME\" -w -s" \
             -o "build4android/clash_amd64"
 
 

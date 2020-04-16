@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/brobird/clash/component/resolver"
-	"github.com/brobird/clash/component/socks5"
-	C "github.com/brobird/clash/constant"
+	"github.com/wwqgtxx/clashr/component/resolver"
+	"github.com/wwqgtxx/clashr/component/socks5"
+	C "github.com/wwqgtxx/clashr/constant"
 )
 
 const (

@@ -1,9 +1,9 @@
 package route
 
 import (
-	"github.com/brobird/clash/hub/executor"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
+	"github.com/wwqgtxx/clashr/hub/executor"
 	"net/http"
 	"os/exec"
 	"strconv"

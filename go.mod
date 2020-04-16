@@ -1,4 +1,4 @@
-module github.com/brobird/clash
+module github.com/wwqgtxx/clashr
 
 go 1.14
 

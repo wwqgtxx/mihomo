@@ -5,12 +5,12 @@ import (
 	"io/ioutil"
 	"net"
 
-	adapters "github.com/brobird/clash/adapters/inbound"
-	"github.com/brobird/clash/component/socks5"
-	C "github.com/brobird/clash/constant"
-	"github.com/brobird/clash/log"
-	authStore "github.com/brobird/clash/proxy/auth"
-	"github.com/brobird/clash/tunnel"
+	adapters "github.com/wwqgtxx/clashr/adapters/inbound"
+	"github.com/wwqgtxx/clashr/component/socks5"
+	C "github.com/wwqgtxx/clashr/constant"
+	"github.com/wwqgtxx/clashr/log"
+	authStore "github.com/wwqgtxx/clashr/proxy/auth"
+	"github.com/wwqgtxx/clashr/tunnel"
 )
 
 type SockListener struct {

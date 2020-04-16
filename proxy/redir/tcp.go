@@ -3,10 +3,10 @@ package redir
 import (
 	"net"
 
-	"github.com/brobird/clash/adapters/inbound"
-	C "github.com/brobird/clash/constant"
-	"github.com/brobird/clash/log"
-	"github.com/brobird/clash/tunnel"
+	"github.com/wwqgtxx/clashr/adapters/inbound"
+	C "github.com/wwqgtxx/clashr/constant"
+	"github.com/wwqgtxx/clashr/log"
+	"github.com/wwqgtxx/clashr/tunnel"
 )
 
 type RedirListener struct {

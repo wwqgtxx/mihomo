@@ -20,6 +20,6 @@
 #   file: bin/*
 #   file_glob: true
 #   on:
-#     repo: BROBIRD/clash
+#     repo: wwqgtxx/clashr
 #     branch: clashr
 #     tags: true

@@ -7,10 +7,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/brobird/clash/adapters/outbound"
-	"github.com/brobird/clash/adapters/outboundgroup"
-	C "github.com/brobird/clash/constant"
-	"github.com/brobird/clash/tunnel"
+	"github.com/wwqgtxx/clashr/adapters/outbound"
+	"github.com/wwqgtxx/clashr/adapters/outboundgroup"
+	C "github.com/wwqgtxx/clashr/constant"
+	"github.com/wwqgtxx/clashr/tunnel"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"

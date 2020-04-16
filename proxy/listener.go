@@ -6,11 +6,11 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/brobird/clash/log"
-	"github.com/brobird/clash/proxy/http"
-	"github.com/brobird/clash/proxy/redir"
-	"github.com/brobird/clash/proxy/shadowsocks"
-	"github.com/brobird/clash/proxy/socks"
+	"github.com/wwqgtxx/clashr/log"
+	"github.com/wwqgtxx/clashr/proxy/http"
+	"github.com/wwqgtxx/clashr/proxy/redir"
+	"github.com/wwqgtxx/clashr/proxy/shadowsocks"
+	"github.com/wwqgtxx/clashr/proxy/socks"
 )
 
 var (

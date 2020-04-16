@@ -5,7 +5,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/brobird/clash/common/singledo"
+	"github.com/wwqgtxx/clashr/common/singledo"
 )
 
 type DialerHookFunc = func(dialer *net.Dialer)

@@ -8,10 +8,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/brobird/clash/component/dialer"
-	C "github.com/brobird/clash/constant"
 	"github.com/brobird/gossr/obfs"
 	"github.com/brobird/gossr/protocol"
+	"github.com/wwqgtxx/clashr/component/dialer"
+	C "github.com/wwqgtxx/clashr/constant"
 
 	shadowsocksr "github.com/brobird/gossr"
 	"github.com/brobird/gossr/ssr"

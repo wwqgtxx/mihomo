@@ -2,11 +2,11 @@ package shadowsocks
 
 import (
 	"github.com/Dreamacro/go-shadowsocks2/core"
-	adapters "github.com/brobird/clash/adapters/inbound"
-	"github.com/brobird/clash/component/socks5"
-	C "github.com/brobird/clash/constant"
-	"github.com/brobird/clash/log"
-	"github.com/brobird/clash/tunnel"
+	adapters "github.com/wwqgtxx/clashr/adapters/inbound"
+	"github.com/wwqgtxx/clashr/component/socks5"
+	C "github.com/wwqgtxx/clashr/constant"
+	"github.com/wwqgtxx/clashr/log"
+	"github.com/wwqgtxx/clashr/tunnel"
 	"net"
 )
 

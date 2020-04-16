@@ -7,7 +7,7 @@ import (
 	"net"
 	"time"
 
-	C "github.com/brobird/clash/constant"
+	C "github.com/wwqgtxx/clashr/constant"
 )
 
 type Reject struct {

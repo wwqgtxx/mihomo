@@ -14,20 +14,20 @@ type ShadowSocksListener struct {
 	net.Listener
 	address string
 	closed  bool
+	cipher  core.Cipher
 }
 
 func NewShadowSocksProxy(addr, cipher, password string) (*ShadowSocksListener, error) {
-	ciph, err := core.PickCipher(cipher, nil, password)
-	if err != nil {
-		return nil, err
-	}
-
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
 		return nil, err
 	}
 
-	sl := &ShadowSocksListener{l, addr, false}
+	sl := &ShadowSocksListener{l, addr, false, nil}
+	err = sl.SetCipher(cipher, password)
+	if err != nil {
+		return nil, err
+	}
 	go func() {
 		log.Infoln("ShadowSocks proxy listening at: %s", addr)
 		for {
@@ -39,12 +39,17 @@ func NewShadowSocksProxy(addr, cipher, password string) (*ShadowSocksListener, e
 				continue
 			}
 			_ = c.(*net.TCPConn).SetKeepAlive(true)
-			c = ciph.StreamConn(c)
+			c = sl.cipher.StreamConn(c)
 			go handleSocks(c)
 		}
 	}()
 
 	return sl, nil
+}
+
+func (l *ShadowSocksListener) SetCipher(cipher, password string) (err error) {
+	l.cipher, err = core.PickCipher(cipher, nil, password)
+	return
 }
 
 func (l *ShadowSocksListener) Close() {

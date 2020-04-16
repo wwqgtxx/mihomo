@@ -15,25 +15,31 @@ type ShadowSocksUDPListener struct {
 	net.PacketConn
 	address string
 	closed  bool
+	cipher  core.Cipher
 }
 
 func NewShadowSocksUDPProxy(addr, cipher, password string) (*ShadowSocksUDPListener, error) {
-	ciph, err := core.PickCipher(cipher, nil, password)
-	if err != nil {
-		return nil, err
-	}
-
 	l, err := net.ListenPacket("udp", addr)
-	l = ciph.PacketConn(l)
 	if err != nil {
 		return nil, err
 	}
 
-	sl := &ShadowSocksUDPListener{l, addr, false}
+	sl := &ShadowSocksUDPListener{l, addr, false, nil}
+	err = sl.SetCipher(cipher, password)
+	if err != nil {
+		return nil, err
+	}
 	go func() {
+		cipher := sl.cipher
+		conn := cipher.PacketConn(l)
 		for {
 			buf := pool.BufPool.Get().([]byte)
-			n, remoteAddr, err := l.ReadFrom(buf)
+			if cipher != sl.cipher { //After a SetCipher() call
+				cipher = sl.cipher
+				conn = cipher.PacketConn(l)
+			}
+
+			n, remoteAddr, err := conn.ReadFrom(buf)
 			if err != nil {
 				pool.BufPool.Put(buf[:cap(buf)])
 				if sl.closed {
@@ -41,11 +47,16 @@ func NewShadowSocksUDPProxy(addr, cipher, password string) (*ShadowSocksUDPListe
 				}
 				continue
 			}
-			handleSocksUDP(l, buf[:n], remoteAddr)
+			handleSocksUDP(conn, buf[:n], remoteAddr)
 		}
 	}()
 
 	return sl, nil
+}
+
+func (l *ShadowSocksUDPListener) SetCipher(cipher, password string) (err error) {
+	l.cipher, err = core.PickCipher(cipher, nil, password)
+	return
 }
 
 func (l *ShadowSocksUDPListener) Close() error {

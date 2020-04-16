@@ -150,6 +150,10 @@ func ReCreateShadowSocks() error {
 			shadowSocksListener = nil
 		} else {
 			shouldTCPIgnore = true
+			err = shadowSocksListener.SetCipher(cipher, password)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -159,6 +163,10 @@ func ReCreateShadowSocks() error {
 			shadowSocksUDPListener = nil
 		} else {
 			shouldUDPIgnore = true
+			err = shadowSocksUDPListener.SetCipher(cipher, password)
+			if err != nil {
+				return err
+			}
 		}
 	}
 

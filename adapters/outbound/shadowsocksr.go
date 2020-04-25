@@ -41,14 +41,8 @@ type ShadowsocksROption struct {
 	Udp           bool   `proxy:"udp,omitempty"`
 }
 
-func (ssrins *ShadowsocksR) DialContext(ctx context.Context, metadata *C.Metadata) (C.Conn, error) {
+func (ssrins *ShadowsocksR) StreamConn(conn net.Conn, metadata *C.Metadata) (c net.Conn, err error) {
 	ssrop := ssrins.ssrop
-
-	conn, err := dialer.DialContext(ctx, "tcp", ssrins.server)
-	if err != nil {
-		return nil, err
-	}
-
 	dstcon := gossr.NewSSTCPConn(conn, ssrins.cipher.Copy())
 	if dstcon.Conn == nil || dstcon.RemoteAddr() == nil {
 		return nil, errors.New("nil connection")
@@ -101,8 +95,16 @@ func (ssrins *ShadowsocksR) DialContext(ctx context.Context, metadata *C.Metadat
 		_ = dstcon.Close()
 		return nil, err
 	}
-	return NewConn(dstcon, ssrins), err
+	return dstcon, err
+}
 
+func (ssrins *ShadowsocksR) DialContext(ctx context.Context, metadata *C.Metadata) (C.Conn, error) {
+	conn, err := dialer.DialContext(ctx, "tcp", ssrins.server)
+	if err != nil {
+		return nil, err
+	}
+	dstcon, err := ssrins.StreamConn(conn, metadata)
+	return NewConn(dstcon, ssrins), err
 }
 
 func NewShadowsocksR(ssrop ShadowsocksROption) (*ShadowsocksR, error) {

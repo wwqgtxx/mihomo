@@ -91,7 +91,7 @@ func NewTunProxy(deviceURL string) (TunAdapter, error) {
 
 		conn := gonet.NewConn(&wq, ep)
 		target := getAddr(ep.Info().(*tcp.EndpointInfo).ID)
-		tunnel.Add(adapters.NewSocket(target, conn, C.TUN, C.TCP))
+		tunnel.Add(adapters.NewSocket(target, conn, C.TUN))
 
 	})
 	ipstack.SetTransportProtocolHandler(tcp.ProtocolNumber, tcpFwd.HandlePacket)

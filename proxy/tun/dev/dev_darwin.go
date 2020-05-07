@@ -295,8 +295,8 @@ func (t *tunDarwin) Read(buff []byte) (int, error) {
 
 func (t *tunDarwin) Write(buff []byte) (int, error) {
 	// reserve space for header
-	buf := pool.BufPool.Get().([]byte)
-	defer pool.BufPool.Put(buf[:cap(buf)])
+	buf := pool.Get(pool.RelayBufferSize)
+	defer pool.Put(buf[:cap(buf)])
 
 	buf[0] = 0x00
 	buf[1] = 0x00

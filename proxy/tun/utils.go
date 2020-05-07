@@ -50,6 +50,10 @@ func (c *fakeConn) Close() error {
 	return nil
 }
 
+func (c *fakeConn) Drop() {
+
+}
+
 func (c *fakeConn) FakeIP() bool {
 	if c.fakeip != nil {
 		return *c.fakeip

@@ -38,6 +38,7 @@ var (
 	redirMux  sync.Mutex
 	tproxyMux sync.Mutex
 	mixedMux  sync.Mutex
+	tunMux    sync.Mutex
 )
 
 type Ports struct {

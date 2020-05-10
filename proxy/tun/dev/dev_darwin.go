@@ -17,11 +17,11 @@ import (
 
 	"github.com/Dreamacro/clash/common/pool"
 	"github.com/Dreamacro/clash/log"
-	"github.com/google/netstack/tcpip"
-	"github.com/google/netstack/tcpip/buffer"
-	"github.com/google/netstack/tcpip/header"
-	"github.com/google/netstack/tcpip/link/channel"
-	"github.com/google/netstack/tcpip/stack"
+	"gvisor.dev/gvisor/pkg/tcpip"
+	"gvisor.dev/gvisor/pkg/tcpip/buffer"
+	"gvisor.dev/gvisor/pkg/tcpip/header"
+	"gvisor.dev/gvisor/pkg/tcpip/link/channel"
+	"gvisor.dev/gvisor/pkg/tcpip/stack"
 )
 
 const utunControlName = "com.apple.net.utun_control"
@@ -51,13 +51,14 @@ type tunDarwin struct {
 	url       string
 	name      string
 	tunFile   *os.File
-	linkCache stack.LinkEndpoint
+	linkCache *channel.Endpoint
 	errors    chan error
 
 	closed   bool
-	stopW    chan struct{}
 	stopOnce sync.Once
 	wg       sync.WaitGroup // wait for goroutines to stop
+
+	writeHandle *channel.NotificationHandle
 }
 
 // sockaddr_ctl specifeid in /usr/include/sys/kern_control.h
@@ -156,7 +157,6 @@ func CreateTUNFromFile(file *os.File, mtu int) (TunDevice, error) {
 	tun := &tunDarwin{
 		tunFile: file,
 		errors:  make(chan error, 5),
-		stopW:   make(chan struct{}),
 	}
 
 	name, err := tun.getName()
@@ -238,7 +238,7 @@ func (t *tunDarwin) AsLinkEndpoint() (result stack.LinkEndpoint, err error) {
 				p = header.IPv6ProtocolNumber
 			}
 			if linkEP.IsAttached() {
-				linkEP.InjectInbound(p, tcpip.PacketBuffer{
+				linkEP.InjectInbound(p, stack.PacketBuffer{
 					Data: buffer.View(packet[:n]).ToVectorisedView(),
 				})
 			} else {
@@ -250,29 +250,8 @@ func (t *tunDarwin) AsLinkEndpoint() (result stack.LinkEndpoint, err error) {
 		log.Debugln("%v stop read loop", t.Name())
 	}()
 
-	// start write loop. read ip packet from ipstack and write it to tun
-	go func() {
-		t.wg.Add(1)
-	packetLoop:
-		for {
-			var packet channel.PacketInfo
-			select {
-			case packet = <-linkEP.C:
-			case <-t.stopW:
-				break packetLoop
-			}
-			header := packet.Pkt.Header.View()
-			data := packet.Pkt.Data.ToView()
-			_, err := t.Write(buffer.NewVectorisedView(len(header)+len(data), []buffer.View{header, data}).ToView())
-			if err != nil {
-				log.Errorln("Can not read from tun: %v", err)
-				break
-			}
-		}
-		t.wg.Done()
-		t.Close()
-		log.Debugln("%v stop write loop", t.Name())
-	}()
+	// start write notification
+	t.writeHandle = linkEP.AddNotify(t)
 
 	t.linkCache = linkEP
 	return t.linkCache, nil
@@ -313,10 +292,22 @@ func (t *tunDarwin) Write(buff []byte) (int, error) {
 	return t.tunFile.Write(buf[:4+len(buff)])
 }
 
+func (t *tunDarwin) WriteNotify() {
+	packet, ok := t.linkCache.Read()
+	if ok {
+		header := packet.Pkt.Header.View()
+		data := packet.Pkt.Data.ToView()
+		buf := buffer.NewVectorisedView(len(header)+len(data), []buffer.View{header, data})
+		_, err := t.Write(buf.ToView())
+		if err != nil {
+			log.Errorln("Can not read from tun: %v", err)
+		}
+	}
+}
+
 func (t *tunDarwin) Close() {
 	t.stopOnce.Do(func() {
 		t.closed = true
-		close(t.stopW)
 		t.tunFile.Close()
 	})
 }

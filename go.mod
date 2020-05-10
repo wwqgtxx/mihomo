@@ -19,4 +19,7 @@ require (
 	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9
 	golang.org/x/sys v0.0.0-20201119102817-f84b799fce68
 	gopkg.in/yaml.v2 v2.3.0
+	gvisor.dev/gvisor v0.0.0-00010101000000-000000000000
 )
+
+replace gvisor.dev/gvisor => github.com/comzyh/gvisor v0.0.0-20200814151311-224de3a00460

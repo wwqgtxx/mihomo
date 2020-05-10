@@ -15,15 +15,15 @@ import (
 
 	"encoding/binary"
 
-	"github.com/google/netstack/tcpip"
-	"github.com/google/netstack/tcpip/adapters/gonet"
-	"github.com/google/netstack/tcpip/header"
-	"github.com/google/netstack/tcpip/network/ipv4"
-	"github.com/google/netstack/tcpip/network/ipv6"
-	"github.com/google/netstack/tcpip/stack"
-	"github.com/google/netstack/tcpip/transport/tcp"
-	"github.com/google/netstack/tcpip/transport/udp"
-	"github.com/google/netstack/waiter"
+	"gvisor.dev/gvisor/pkg/tcpip"
+	"gvisor.dev/gvisor/pkg/tcpip/adapters/gonet"
+	"gvisor.dev/gvisor/pkg/tcpip/header"
+	"gvisor.dev/gvisor/pkg/tcpip/network/ipv4"
+	"gvisor.dev/gvisor/pkg/tcpip/network/ipv6"
+	"gvisor.dev/gvisor/pkg/tcpip/stack"
+	"gvisor.dev/gvisor/pkg/tcpip/transport/tcp"
+	"gvisor.dev/gvisor/pkg/tcpip/transport/udp"
+	"gvisor.dev/gvisor/pkg/waiter"
 )
 
 // tunAdapter is the wraper of tun
@@ -89,7 +89,7 @@ func NewTunProxy(deviceURL string) (TunAdapter, error) {
 		}
 		r.Complete(false)
 
-		conn := gonet.NewConn(&wq, ep)
+		conn := gonet.NewTCPConn(&wq, ep)
 		target := getAddr(ep.Info().(*tcp.EndpointInfo).ID)
 		tunnel.Add(adapters.NewSocket(target, conn, C.TUN))
 
@@ -118,10 +118,9 @@ func (t *tunAdapter) DeviceURL() string {
 	return t.device.URL()
 }
 
-func (t *tunAdapter) udpHandlePacket(r *stack.Route, id stack.TransportEndpointID, pkt tcpip.PacketBuffer) bool {
-
-	hdr := header.UDP(pkt.Data.First())
-	if int(hdr.Length()) > pkt.Data.Size() {
+func (t *tunAdapter) udpHandlePacket(r *stack.Route, id stack.TransportEndpointID, pkt stack.PacketBuffer) bool {
+	hdr, ok := pkt.Data.PullUp(header.UDPMinimumSize)
+	if !ok || int(header.UDP(hdr).Length()) > pkt.Data.Size() {
 		// Malformed packet.
 		t.ipstack.Stats().UDP.MalformedPacketsReceived.Increment()
 		return true

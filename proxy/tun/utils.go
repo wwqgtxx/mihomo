@@ -6,11 +6,11 @@ import (
 
 	"github.com/Dreamacro/clash/component/resolver"
 	"github.com/Dreamacro/clash/dns"
-	"github.com/google/netstack/tcpip"
-	"github.com/google/netstack/tcpip/buffer"
-	"github.com/google/netstack/tcpip/header"
-	"github.com/google/netstack/tcpip/stack"
-	"github.com/google/netstack/tcpip/transport/udp"
+	"gvisor.dev/gvisor/pkg/tcpip"
+	"gvisor.dev/gvisor/pkg/tcpip/buffer"
+	"gvisor.dev/gvisor/pkg/tcpip/header"
+	"gvisor.dev/gvisor/pkg/tcpip/stack"
+	"gvisor.dev/gvisor/pkg/tcpip/transport/udp"
 )
 
 type fakeConn struct {
@@ -90,7 +90,7 @@ func writeUDP(r *stack.Route, data buffer.VectorisedView, localPort, remotePort 
 
 	ttl := r.DefaultTTL()
 
-	if err := r.WritePacket(nil /* gso */, stack.NetworkHeaderParams{Protocol: protocol, TTL: ttl, TOS: 0 /* default */}, tcpip.PacketBuffer{
+	if err := r.WritePacket(nil /* gso */, stack.NetworkHeaderParams{Protocol: protocol, TTL: ttl, TOS: 0 /* default */}, stack.PacketBuffer{
 		Header: hdr,
 		Data:   data,
 	}); err != nil {

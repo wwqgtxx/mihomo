@@ -28,34 +28,33 @@ func (l *PairList) Set(s string) error {
 	return nil
 }
 
-type fakeConn struct {
-	net.PacketConn
+type packet struct {
+	pc      net.PacketConn
 	rAddr   net.Addr
 	payload []byte
 	bufRef  []byte
 }
 
-func (c *fakeConn) Data() []byte {
+func (c *packet) Data() []byte {
 	return c.payload
 }
 
 // WriteBack wirtes UDP packet with source(ip, port) = `addr`
-func (c *fakeConn) WriteBack(b []byte, addr net.Addr) (n int, err error) {
+func (c *packet) WriteBack(b []byte, addr net.Addr) (n int, err error) {
 	if addr == nil {
 		err = errors.New("address is invalid")
 		return
 	}
 	packet := b
-	return c.PacketConn.WriteTo(packet, c.rAddr)
+	return c.pc.WriteTo(packet, c.rAddr)
 }
 
 // LocalAddr returns the source IP/Port of UDP Packet
-func (c *fakeConn) LocalAddr() net.Addr {
+func (c *packet) LocalAddr() net.Addr {
 	return c.rAddr
 }
 
-func (c *fakeConn) Close() error {
-	err := c.PacketConn.Close()
-	pool.BufPool.Put(c.bufRef[:cap(c.bufRef)])
-	return err
+func (c *packet) Drop() {
+	pool.Put(c.bufRef)
+	return
 }

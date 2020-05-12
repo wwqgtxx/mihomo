@@ -47,7 +47,7 @@ func NewTcpTunProxy(config string) (*TcpTunListener, error) {
 					continue
 				}
 				_ = c.(*net.TCPConn).SetKeepAlive(true)
-				tunnel.Add(adapters.NewSocket(tgt, c, C.TCPTUN, C.TCP))
+				tunnel.Add(adapters.NewSocket(tgt, c, C.TCPTUN))
 			}
 		}()
 	}

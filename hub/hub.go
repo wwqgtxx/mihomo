@@ -1,15 +1,40 @@
 package hub
 
 import (
+	"github.com/wwqgtxx/clashr/config"
 	"github.com/wwqgtxx/clashr/hub/executor"
 	"github.com/wwqgtxx/clashr/hub/route"
 )
 
+type Option func(*config.Config)
+
+func WithExternalUI(externalUI string) Option {
+	return func(cfg *config.Config) {
+		cfg.General.ExternalUI = externalUI
+	}
+}
+
+func WithExternalController(externalController string) Option {
+	return func(cfg *config.Config) {
+		cfg.General.ExternalController = externalController
+	}
+}
+
+func WithSecret(secret string) Option {
+	return func(cfg *config.Config) {
+		cfg.General.Secret = secret
+	}
+}
+
 // Parse call at the beginning of clash
-func Parse() error {
+func Parse(options ...Option) error {
 	cfg, err := executor.Parse()
 	if err != nil {
 		return err
+	}
+
+	for _, option := range options {
+		option(cfg)
 	}
 
 	if cfg.General.ExternalUI != "" {

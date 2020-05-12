@@ -35,10 +35,10 @@ func NewShadowSocksUDPProxy(config string) (*ShadowSocksUDPListener, error) {
 	conn := pickCipher.PacketConn(l)
 	go func() {
 		for {
-			buf := pool.BufPool.Get().([]byte)
+			buf := pool.Get(pool.RelayBufferSize)
 			n, remoteAddr, err := conn.ReadFrom(buf)
 			if err != nil {
-				pool.BufPool.Put(buf[:cap(buf)])
+				pool.Put(buf)
 				if sl.closed {
 					break
 				}
@@ -64,17 +64,17 @@ func handleSocksUDP(pc net.PacketConn, buf []byte, addr net.Addr) {
 	tgtAddr := socks5.SplitAddr(buf)
 	if tgtAddr == nil {
 		// Unresolved UDP packet, return buffer to the pool
-		pool.BufPool.Put(buf[:cap(buf)])
+		pool.Put(buf)
 		return
 	}
 	target := socks5.ParseAddr(tgtAddr.String())
 	payload := buf[len(tgtAddr):]
 
-	packet := &fakeConn{
-		PacketConn: pc,
-		rAddr:      addr,
-		payload:    payload,
-		bufRef:     buf,
+	packet := &packet{
+		pc:      pc,
+		rAddr:   addr,
+		payload: payload,
+		bufRef:  buf,
 	}
 	tunnel.AddPacket(adapters.NewPacket(target, packet, C.SHADOWSOCKS))
 }

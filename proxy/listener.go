@@ -7,6 +7,7 @@ import (
 
 	"github.com/wwqgtxx/clashr/log"
 	"github.com/wwqgtxx/clashr/proxy/http"
+	"github.com/wwqgtxx/clashr/proxy/mixed"
 	"github.com/wwqgtxx/clashr/proxy/redir"
 	"github.com/wwqgtxx/clashr/proxy/shadowsocks"
 	"github.com/wwqgtxx/clashr/proxy/socks"
@@ -24,6 +25,8 @@ var (
 	httpListener           *http.HttpListener
 	redirListener          *redir.RedirListener
 	redirUDPListener       *redir.RedirUDPListener
+	mixedListener          *mixed.MixedListener
+	mixedUDPLister         *socks.SockUDPListener
 	tcpTunListener         *tuns.TcpTunListener
 	udpTunListener         *tuns.UdpTunListener
 )
@@ -37,6 +40,7 @@ type Ports struct {
 	Port              int    `json:"port"`
 	SocksPort         int    `json:"socks-port"`
 	RedirPort         int    `json:"redir-port"`
+	MixedPort         int    `json:"mixed-port"`
 	ShadowSocksConfig string `json:"ss-config"`
 	TcpTunConfig      string `json:"tcptun-config"`
 	UdpTunConfig      string `json:"udptun-config"`
@@ -257,11 +261,54 @@ func ReCreateUdpTun(config string) error {
 	}
 
 	udpListener, err := tuns.NewUdpTunProxy(config)
+
 	if err != nil {
 		return err
 	}
 
 	udpTunListener = udpListener
+
+	return nil
+}
+
+func ReCreateMixed(port int) error {
+	addr := genAddr(bindAddress, port, allowLan)
+
+	shouldTCPIgnore := false
+	shouldUDPIgnore := false
+
+	if mixedListener != nil {
+		if mixedListener.Address() != addr {
+			mixedListener.Close()
+			mixedListener = nil
+		} else {
+			shouldTCPIgnore = true
+		}
+	}
+	if mixedUDPLister != nil {
+		if mixedUDPLister.Address() != addr {
+			mixedUDPLister.Close()
+			mixedUDPLister = nil
+		} else {
+			shouldUDPIgnore = true
+		}
+	}
+
+	if shouldTCPIgnore && shouldUDPIgnore {
+		return nil
+	}
+
+	if portIsZero(addr) {
+		return nil
+	}
+
+	var err error
+	mixedListener, err = mixed.NewMixedProxy(addr)
+	mixedUDPLister, err = socks.NewSocksUDPProxy(addr)
+	if err != nil {
+		mixedListener.Close()
+		return err
+	}
 
 	return nil
 }
@@ -290,6 +337,12 @@ func GetPorts() *Ports {
 
 	if tcpTunListener != nil {
 		ports.TcpTunConfig = tcpTunListener.Config()
+	}
+
+	if mixedListener != nil {
+		_, portStr, _ := net.SplitHostPort(mixedListener.Address())
+		port, _ := strconv.Atoi(portStr)
+		ports.MixedPort = port
 	}
 
 	return ports

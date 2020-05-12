@@ -31,6 +31,7 @@ type General struct {
 	ShadowSocksConfig  string       `json:"ss-config"`
 	TcpTunConfig       string       `json:"tcptun-config"`
 	UdpTunConfig       string       `json:"udptun-config"`
+	MixedPort          int          `json:"mixed-port"`
 	Authentication     []string     `json:"authentication"`
 	AllowLan           bool         `json:"allow-lan"`
 	BindAddress        string       `json:"bind-address"`
@@ -103,6 +104,7 @@ type RawConfig struct {
 	ShadowSocksConfig  string       `yaml:"ss-config"`
 	TcpTunConfig       string       `yaml:"tcptun-config"`
 	UdpTunConfig       string       `yaml:"udptun-config"`
+	MixedPort          int          `yaml:"mixed-port"`
 	Authentication     []string     `yaml:"authentication"`
 	AllowLan           bool         `yaml:"allow-lan"`
 	BindAddress        string       `yaml:"bind-address"`
@@ -226,6 +228,7 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 	ssConfig := cfg.ShadowSocksConfig
 	tcpTunConfig := cfg.TcpTunConfig
 	udpTunConfig := cfg.UdpTunConfig
+	mixedPort := cfg.MixedPort
 	allowLan := cfg.AllowLan
 	bindAddress := cfg.BindAddress
 	externalController := cfg.ExternalController
@@ -249,6 +252,7 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 		ShadowSocksConfig:  ssConfig,
 		TcpTunConfig:       tcpTunConfig,
 		UdpTunConfig:       udpTunConfig,
+		MixedPort:          mixedPort,
 		AllowLan:           allowLan,
 		BindAddress:        bindAddress,
 		Mode:               mode,
@@ -279,15 +283,6 @@ func parseProxies(cfg *RawConfig) (proxies map[string]C.Proxy, providersMap map[
 	if len(providersConfig) == 0 {
 		providersConfig = cfg.ProxyProviderOld
 	}
-
-	defer func() {
-		// Destroy already created provider when err != nil
-		if err != nil {
-			for _, provider := range providersMap {
-				provider.Destroy()
-			}
-		}
-	}()
 
 	proxies["DIRECT"] = outbound.NewProxy(outbound.NewDirect())
 	proxies["REJECT"] = outbound.NewProxy(outbound.NewReject())

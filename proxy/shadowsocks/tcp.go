@@ -66,5 +66,5 @@ func handleSocks(conn net.Conn) {
 		_ = conn.Close()
 		return
 	}
-	tunnel.Add(adapters.NewSocket(target, conn, C.SHADOWSOCKS, C.TCP))
+	tunnel.Add(adapters.NewSocket(target, conn, C.SHADOWSOCKS))
 }

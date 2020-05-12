@@ -99,6 +99,7 @@ func GetGeneral() *config.General {
 		Port:              ports.Port,
 		SocksPort:         ports.SocksPort,
 		RedirPort:         ports.RedirPort,
+		MixedPort:         ports.MixedPort,
 		ShadowSocksConfig: ports.ShadowSocksConfig,
 		TcpTunConfig:      ports.TcpTunConfig,
 		UdpTunConfig:      ports.UdpTunConfig,
@@ -161,13 +162,6 @@ func updateHosts(tree *trie.Trie) {
 }
 
 func updateProxies(proxies map[string]C.Proxy, providers map[string]provider.ProxyProvider) {
-	oldProviders := tunnel.Providers()
-
-	// close providers goroutine
-	for _, provider := range oldProviders {
-		provider.Destroy()
-	}
-
 	tunnel.UpdateProxies(proxies, providers)
 }
 
@@ -195,6 +189,10 @@ func updateGeneral(general *config.General) {
 
 	if err := P.ReCreateRedir(general.RedirPort); err != nil {
 		log.Errorln("Start Redir server error: %s", err.Error())
+	}
+
+	if err := P.ReCreateMixed(general.MixedPort); err != nil {
+		log.Errorln("Start Mixed(http and socks5) server error: %s", err.Error())
 	}
 
 	if err := P.ReCreateShadowSocks(general.ShadowSocksConfig); err != nil {

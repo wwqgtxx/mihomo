@@ -40,20 +40,20 @@ func NewUdpTunProxy(config string) (*UdpTunListener, error) {
 			ul.listeners = append(ul.listeners, l)
 			log.Infoln("Udp tunnel %s <-> %s", addr, target)
 			for {
-				buf := pool.BufPool.Get().([]byte)
+				buf := pool.Get(pool.RelayBufferSize)
 				n, remoteAddr, err := l.ReadFrom(buf)
 				if err != nil {
-					pool.BufPool.Put(buf[:cap(buf)])
+					pool.Put(buf)
 					if ul.closed {
 						break
 					}
 					continue
 				}
-				packet := &fakeConn{
-					PacketConn: l,
-					rAddr:      remoteAddr,
-					payload:    buf[:n],
-					bufRef:     buf,
+				packet := &packet{
+					pc:      l,
+					rAddr:   remoteAddr,
+					payload: buf[:n],
+					bufRef:  buf,
 				}
 				tunnel.AddPacket(adapters.NewPacket(tgt, packet, C.UDPTUN))
 

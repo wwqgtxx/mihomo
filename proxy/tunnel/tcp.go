@@ -1,4 +1,4 @@
-package tuns
+package tunnel
 
 import (
 	adapters "github.com/wwqgtxx/clashr/adapters/inbound"

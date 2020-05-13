@@ -11,7 +11,7 @@ import (
 	"github.com/wwqgtxx/clashr/proxy/redir"
 	"github.com/wwqgtxx/clashr/proxy/shadowsocks"
 	"github.com/wwqgtxx/clashr/proxy/socks"
-	"github.com/wwqgtxx/clashr/proxy/tuns"
+	"github.com/wwqgtxx/clashr/proxy/tunnel"
 )
 
 var (
@@ -27,8 +27,8 @@ var (
 	redirUDPListener       *redir.RedirUDPListener
 	mixedListener          *mixed.MixedListener
 	mixedUDPLister         *socks.SockUDPListener
-	tcpTunListener         *tuns.TcpTunListener
-	udpTunListener         *tuns.UdpTunListener
+	tcpTunListener         *tunnel.TcpTunListener
+	udpTunListener         *tunnel.UdpTunListener
 )
 
 type listener interface {
@@ -234,7 +234,7 @@ func ReCreateTcpTun(config string) error {
 		return nil
 	}
 
-	tcpListener, err := tuns.NewTcpTunProxy(config)
+	tcpListener, err := tunnel.NewTcpTunProxy(config)
 	if err != nil {
 		return err
 	}
@@ -260,7 +260,7 @@ func ReCreateUdpTun(config string) error {
 		return nil
 	}
 
-	udpListener, err := tuns.NewUdpTunProxy(config)
+	udpListener, err := tunnel.NewUdpTunProxy(config)
 
 	if err != nil {
 		return err

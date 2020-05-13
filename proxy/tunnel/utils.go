@@ -1,4 +1,4 @@
-package tuns
+package tunnel
 
 import (
 	"errors"

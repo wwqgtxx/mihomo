@@ -25,6 +25,7 @@ const (
 	Fallback
 	URLTest
 	LoadBalance
+	LoadBalanceR
 )
 
 type ServerAdapter interface {
@@ -123,6 +124,8 @@ func (at AdapterType) String() string {
 		return "URLTest"
 	case LoadBalance:
 		return "LoadBalance"
+	case LoadBalanceR:
+		return "LoadBalanceR"
 
 	default:
 		return "Unknown"

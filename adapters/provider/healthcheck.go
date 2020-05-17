@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gofrs/uuid"
 	C "github.com/wwqgtxx/clashr/constant"
 	"github.com/wwqgtxx/clashr/log"
 )
@@ -65,12 +66,20 @@ func (hc *HealthCheck) auto() bool {
 
 func (hc *HealthCheck) check() {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultURLTestTimeout)
-	for _, proxy := range hc.proxies {
-		go proxy.URLTest(ctx, hc.url)
+	id := ""
+	if uid, err := uuid.NewV4(); err == nil {
+		id = uid.String()
 	}
-
+	log.Infoln("Start New Health Checking {%s}", id)
+	for _, proxy := range hc.proxies {
+		go func(proxy C.Proxy) {
+			proxy.URLTest(ctx, hc.url)
+			log.Infoln("Health Checked %s : %t %d ms {%s}", proxy.Name(), proxy.Alive(), proxy.LastDelay(), id)
+		}(proxy)
+	}
 	<-ctx.Done()
 	cancel()
+	log.Infoln("Finish A Health Checking {%s}", id)
 }
 
 func (hc *HealthCheck) fallbackCheck() {
@@ -87,21 +96,25 @@ func (hc *HealthCheck) fallbackCheck() {
 		hc.checking = false
 		hc.mutex.Unlock()
 	}()
-	log.Infoln("Start New Health Checking")
+	id := ""
+	if uid, err := uuid.NewV4(); err == nil {
+		id = uid.String()
+	}
+	log.Infoln("Start New Health Checking {%s}", id)
 	for _, proxy := range hc.proxies {
 		ctx, cancel := context.WithTimeout(context.Background(), defaultURLTestTimeout)
-		log.Infoln("Health Checking %s", proxy.Name())
+		log.Infoln("Health Checking %s {%s}", proxy.Name(), id)
 		proxy.URLTest(ctx, hc.url)
 		//<-ctx.Done()
 		cancel()
-		log.Infoln("Health Checked %s : %t %d ms", proxy.Name(), proxy.Alive(), proxy.LastDelay())
+		log.Infoln("Health Checked %s : %t %d ms {%s}", proxy.Name(), proxy.Alive(), proxy.LastDelay(), id)
 		if proxy.Alive() {
 			break
 		}
 		<-time.After(waitAfterAURLTest)
 	}
 
-	log.Infoln("Finish A Health Checking")
+	log.Infoln("Finish A Health Checking {%s}", id)
 }
 
 func (hc *HealthCheck) close() {

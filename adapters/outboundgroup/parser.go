@@ -26,6 +26,7 @@ type GroupCommonOption struct {
 	Use      []string `group:"use,omitempty"`
 	URL      string   `group:"url,omitempty"`
 	Interval int      `group:"interval,omitempty"`
+	Version  int      `group:"version,omitempty"`
 }
 
 func ParseProxyGroup(config map[string]interface{}, proxyMap map[string]C.Proxy, providersMap map[string]provider.ProxyProvider) (C.ProxyAdapter, error) {
@@ -111,9 +112,7 @@ func ParseProxyGroup(config map[string]interface{}, proxyMap map[string]C.Proxy,
 	case "fallback":
 		group = NewFallback(groupName, providers)
 	case "load-balance":
-		group = NewLoadBalance(groupName, providers)
-	case "load-balance-r":
-		group = NewLoadBalanceR(groupName, providers)
+		group = NewLoadBalance(groupName, groupOption.Version, providers)
 	case "relay":
 		group = NewRelay(groupName, providers)
 	default:

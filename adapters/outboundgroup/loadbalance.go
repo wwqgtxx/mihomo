@@ -2,7 +2,9 @@ package outboundgroup
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
+	"math/big"
 	"net"
 
 	"github.com/wwqgtxx/clashr/adapters/outbound"
@@ -18,6 +20,7 @@ type LoadBalance struct {
 	*outbound.Base
 	single    *singledo.Single
 	maxRetry  int
+	version   int
 	providers []provider.ProxyProvider
 }
 
@@ -86,18 +89,38 @@ func (lb *LoadBalance) SupportUDP() bool {
 }
 
 func (lb *LoadBalance) Unwrap(metadata *C.Metadata) C.Proxy {
-	key := uint64(murmur3.Sum32([]byte(getKey(metadata))))
 	proxies := lb.proxies()
-	buckets := int32(len(proxies))
-	for i := 0; i < lb.maxRetry; i, key = i+1, key+1 {
-		idx := jumpHash(key, buckets)
-		proxy := proxies[idx]
-		if proxy.Alive() {
-			return proxy
+	switch lb.version {
+	case 0:
+		aliveProxies := make([]C.Proxy, 0, len(proxies))
+		for _, proxy := range proxies {
+			if proxy.Alive() {
+				aliveProxies = append(aliveProxies, proxy)
+			}
 		}
-	}
+		aliveNum := int64(len(aliveProxies))
+		if aliveNum == 0 {
+			return proxies[0]
+		}
+		idx, err := rand.Int(rand.Reader, big.NewInt(aliveNum))
+		if err != nil {
+			return aliveProxies[0]
+		}
 
-	return proxies[0]
+		return aliveProxies[idx.Int64()]
+	default:
+		key := uint64(murmur3.Sum32([]byte(getKey(metadata))))
+		buckets := int32(len(proxies))
+		for i := 0; i < lb.maxRetry; i, key = i+1, key+1 {
+			idx := jumpHash(key, buckets)
+			proxy := proxies[idx]
+			if proxy.Alive() {
+				return proxy
+			}
+		}
+
+		return proxies[0]
+	}
 }
 
 func (lb *LoadBalance) proxies() []C.Proxy {
@@ -119,11 +142,12 @@ func (lb *LoadBalance) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func NewLoadBalance(name string, providers []provider.ProxyProvider) *LoadBalance {
+func NewLoadBalance(name string, version int, providers []provider.ProxyProvider) *LoadBalance {
 	return &LoadBalance{
 		Base:      outbound.NewBase(name, "", C.LoadBalance, false),
 		single:    singledo.NewSingle(defaultGetProxiesDuration),
 		maxRetry:  3,
+		version:   version,
 		providers: providers,
 	}
 }

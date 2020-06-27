@@ -38,7 +38,7 @@ $ go get -u -v github.com/whojave/clash
 ```
 
 Pre-built binaries are available here: [release](https://github.com/Dreamacro/clash/releases)  
-Pre-built Premium binaries are available here: [Premium release](https://github.com/Dreamacro/clash/releases/tag/premium). Source is not currently available.
+Pre-built Premium binaries are available here: [premium release](https://github.com/Dreamacro/clash/releases/tag/premium). Source is not currently available.
 
 Check Clash version with:
 
@@ -48,7 +48,7 @@ $ clash -v
 
 ## Daemonize Clash
 
-Unfortunately, there is no native or elegant way to implement daemons on Golang. We recommend using third-party daemon management tools like PM2, Supervisor or the like to keep Clash running as a service.
+We recommend using third-party daemon management tools like PM2, Supervisor or the like to keep Clash running as a service. ([Wiki](https://github.com/Dreamacro/clash/wiki/Clash-as-a-daemon))
 
 In the case of [pm2](https://github.com/Unitech/pm2), start the daemon this way:
 
@@ -82,6 +82,9 @@ port: 7890
 # port of SOCKS5
 socks-port: 7891
 
+# (HTTP and SOCKS5 in one port)
+# mixed-port: 7890
+
 # redir port for Linux and macOS
 # redir-port: 7892
 
@@ -93,8 +96,10 @@ allow-lan: false
 # "[aaaa::a8aa:ff:fe09:57d8]": bind a single IPv6 address
 # bind-address: "*"
 
-# Rule / Global / Direct (default is Rule)
-mode: Rule
+# ipv6: false # when ipv6 is false, each clash dial with ipv6, but it's not affect the response of the dns server, default is false
+
+# rule / global / direct (default is rule)
+mode: rule
 
 # set log level to stdout (default is info)
 # info / warning / error / debug / silent
@@ -110,26 +115,25 @@ external-controller: 127.0.0.1:9090
 # Secret for RESTful API (Optional)
 # secret: ""
 
-# experimental feature
-experimental:
-  ignore-resolve-fail: true # ignore dns resolve fail, default value is true
-  # interface-name: en0 # outbound interface name
+# interface-name: en0 # outbound interface name
 
 # authentication of local SOCKS5/HTTP(S) server
 # authentication:
 #  - "user1:pass1"
 #  - "user2:pass2"
 
-# # experimental hosts, support wildcard (e.g. *.clash.dev Even *.foo.*.example.com)
+# # hosts, support wildcard (e.g. *.clash.dev Even *.foo.*.example.com)
 # # static domain has a higher priority than wildcard domain (foo.example.com > *.example.com > .example.com)
+# # +.foo.com equal .foo.com and foo.com
 # hosts:
 #   '*.clash.dev': 127.0.0.1
 #   '.dev': 127.0.0.1
 #   'alpha.clash.dev': '::1'
+#   '+.foo.dev': 127.0.0.1
 
 # dns:
   # enable: true # set true to enable dns (default is false)
-  # ipv6: false # default is false
+  # ipv6: false # it only affect the dns server response, default is false
   # listen: 0.0.0.0:53
   # # default-nameserver: # resolve dns nameserver host, should fill pure IP
   # #   - 114.114.114.114
@@ -166,7 +170,6 @@ proxies:
     password: "password"
     # udp: true
 
-  # old obfs configuration format remove after prerelease
   - name: "ss2"
     type: ss
     server: server
@@ -207,6 +210,7 @@ proxies:
     # udp: true
     # tls: true
     # skip-cert-verify: true
+    # servername: example.com # priority over wss host
     # network: ws
     # ws-path: /path
     # ws-headers:
@@ -292,6 +296,7 @@ proxy-groups:
       - ss1
       - ss2
       - vmess1
+    # tolerance: 150
     url: 'http://www.gstatic.com/generate_204'
     interval: 300
 
@@ -363,8 +368,6 @@ rules:
   - GEOIP,CN,DIRECT
   - DST-PORT,80,DIRECT
   - SRC-PORT,7777,DIRECT
-  # FINAL would remove after prerelease
-  # you also can use `FINAL,Proxy` or `FINAL,,Proxy` now
   - MATCH,auto
 ```
 </details>
@@ -391,4 +394,4 @@ https://clash.gitbook.io/
 - [x] Redir proxy
 - [x] UDP support
 - [x] Connection manager
-- [ ] Event API
+- ~~[ ] Event API~~

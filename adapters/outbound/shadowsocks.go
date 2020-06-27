@@ -37,10 +37,6 @@ type ShadowSocksOption struct {
 	UDP        bool                   `proxy:"udp,omitempty"`
 	Plugin     string                 `proxy:"plugin,omitempty"`
 	PluginOpts map[string]interface{} `proxy:"plugin-opts,omitempty"`
-
-	// deprecated when bump to 1.0
-	Obfs     string `proxy:"obfs,omitempty"`
-	ObfsHost string `proxy:"obfs-host,omitempty"`
 }
 
 type simpleObfsOption struct {
@@ -122,17 +118,6 @@ func NewShadowSocks(option ShadowSocksOption) (*ShadowSocks, error) {
 	var obfsOption *simpleObfsOption
 	obfsMode := ""
 
-	// forward compatibility before 1.0
-	if option.Obfs != "" {
-		obfsMode = option.Obfs
-		obfsOption = &simpleObfsOption{
-			Host: "bing.com",
-		}
-		if option.ObfsHost != "" {
-			obfsOption.Host = option.ObfsHost
-		}
-	}
-
 	decoder := structure.NewDecoder(structure.Option{TagName: "obfs", WeaklyTypedInput: true})
 	if option.Plugin == "obfs" {
 		opts := simpleObfsOption{Host: "bing.com"}
@@ -191,14 +176,6 @@ type ssPacketConn struct {
 
 func (spc *ssPacketConn) WriteTo(b []byte, addr net.Addr) (n int, err error) {
 	packet, err := socks5.EncodeUDPPacket(socks5.ParseAddrToSocksAddr(addr), b)
-	if err != nil {
-		return
-	}
-	return spc.PacketConn.WriteTo(packet[3:], spc.rAddr)
-}
-
-func (spc *ssPacketConn) WriteWithMetadata(p []byte, metadata *C.Metadata) (n int, err error) {
-	packet, err := socks5.EncodeUDPPacket(socks5.ParseAddr(metadata.RemoteAddress()), p)
 	if err != nil {
 		return
 	}

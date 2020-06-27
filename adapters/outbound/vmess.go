@@ -35,6 +35,7 @@ type VmessOption struct {
 	WSPath         string            `proxy:"ws-path,omitempty"`
 	WSHeaders      map[string]string `proxy:"ws-headers,omitempty"`
 	SkipCertVerify bool              `proxy:"skip-cert-verify,omitempty"`
+	ServerName     string            `proxy:"servername,omitempty"`
 }
 
 type HTTPOptions struct {
@@ -66,6 +67,7 @@ func (v *Vmess) StreamConn(c net.Conn, metadata *C.Metadata) (net.Conn, error) {
 			wsOpts.TLS = true
 			wsOpts.SessionCache = getClientSessionCache()
 			wsOpts.SkipCertVerify = v.option.SkipCertVerify
+			wsOpts.ServerName = v.option.ServerName
 		}
 		c, err = vmess.StreamWebsocketConn(c, wsOpts)
 	case "http":
@@ -87,6 +89,11 @@ func (v *Vmess) StreamConn(c net.Conn, metadata *C.Metadata) (net.Conn, error) {
 				SkipCertVerify: v.option.SkipCertVerify,
 				SessionCache:   getClientSessionCache(),
 			}
+
+			if v.option.ServerName != "" {
+				tlsOpts.Host = v.option.ServerName
+			}
+
 			c, err = vmess.StreamTLSConn(c, tlsOpts)
 		}
 	}
@@ -101,7 +108,7 @@ func (v *Vmess) StreamConn(c net.Conn, metadata *C.Metadata) (net.Conn, error) {
 func (v *Vmess) DialContext(ctx context.Context, metadata *C.Metadata) (C.Conn, error) {
 	c, err := dialer.DialContext(ctx, "tcp", v.addr)
 	if err != nil {
-		return nil, fmt.Errorf("%s connect error", v.addr)
+		return nil, fmt.Errorf("%s connect error: %s", v.addr, err.Error())
 	}
 	tcpKeepAlive(c)
 
@@ -123,7 +130,7 @@ func (v *Vmess) DialUDP(metadata *C.Metadata) (C.PacketConn, error) {
 	defer cancel()
 	c, err := dialer.DialContext(ctx, "tcp", v.addr)
 	if err != nil {
-		return nil, fmt.Errorf("%s connect error", v.addr)
+		return nil, fmt.Errorf("%s connect error: %s", v.addr, err.Error())
 	}
 	tcpKeepAlive(c)
 	c, err = v.StreamConn(c, metadata)
@@ -193,10 +200,6 @@ type vmessPacketConn struct {
 
 func (uc *vmessPacketConn) WriteTo(b []byte, addr net.Addr) (int, error) {
 	return uc.Conn.Write(b)
-}
-
-func (uc *vmessPacketConn) WriteWithMetadata(p []byte, metadata *C.Metadata) (n int, err error) {
-	return uc.Conn.Write(p)
 }
 
 func (uc *vmessPacketConn) ReadFrom(b []byte) (int, net.Addr, error) {

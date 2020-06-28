@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"sync"
 
 	"github.com/wwqgtxx/clashr/log"
 	"github.com/wwqgtxx/clashr/proxy/http"
@@ -20,15 +21,23 @@ var (
 
 	socksListener          *socks.SockListener
 	socksUDPListener       *socks.SockUDPListener
-	shadowSocksListener    *shadowsocks.ShadowSocksListener
-	shadowSocksUDPListener *shadowsocks.ShadowSocksUDPListener
 	httpListener           *http.HttpListener
 	redirListener          *redir.RedirListener
 	redirUDPListener       *redir.RedirUDPListener
 	mixedListener          *mixed.MixedListener
 	mixedUDPLister         *socks.SockUDPListener
+	shadowSocksListener    *shadowsocks.ShadowSocksListener
+	shadowSocksUDPListener *shadowsocks.ShadowSocksUDPListener
 	tcpTunListener         *tunnel.TcpTunListener
 	udpTunListener         *tunnel.UdpTunListener
+
+	// lock for recreate function
+	socksMux sync.Mutex
+	httpMux  sync.Mutex
+	redirMux sync.Mutex
+	mixedMux sync.Mutex
+	ssMux    sync.Mutex
+	tunMux   sync.Mutex
 )
 
 type listener interface {
@@ -63,6 +72,9 @@ func SetBindAddress(host string) {
 }
 
 func ReCreateHTTP(port int) error {
+	httpMux.Lock()
+	defer httpMux.Unlock()
+
 	addr := genAddr(bindAddress, port, allowLan)
 
 	if httpListener != nil {
@@ -87,6 +99,9 @@ func ReCreateHTTP(port int) error {
 }
 
 func ReCreateSocks(port int) error {
+	socksMux.Lock()
+	defer socksMux.Unlock()
+
 	addr := genAddr(bindAddress, port, allowLan)
 
 	shouldTCPIgnore := false
@@ -136,6 +151,9 @@ func ReCreateSocks(port int) error {
 }
 
 func ReCreateShadowSocks(shadowSocksConfig string) error {
+	ssMux.Lock()
+	defer ssMux.Unlock()
+
 	shouldTCPIgnore := false
 	shouldUDPIgnore := false
 
@@ -182,6 +200,9 @@ func ReCreateShadowSocks(shadowSocksConfig string) error {
 }
 
 func ReCreateRedir(port int) error {
+	redirMux.Lock()
+	defer redirMux.Unlock()
+
 	addr := genAddr(bindAddress, port, allowLan)
 
 	if redirListener != nil {
@@ -219,6 +240,8 @@ func ReCreateRedir(port int) error {
 }
 
 func ReCreateTcpTun(config string) error {
+	tunMux.Lock()
+	defer tunMux.Unlock()
 	shouldIgnore := false
 
 	if tcpTunListener != nil {
@@ -245,6 +268,8 @@ func ReCreateTcpTun(config string) error {
 }
 
 func ReCreateUdpTun(config string) error {
+	tunMux.Lock()
+	defer tunMux.Unlock()
 	shouldIgnore := false
 
 	if udpTunListener != nil {
@@ -272,6 +297,9 @@ func ReCreateUdpTun(config string) error {
 }
 
 func ReCreateMixed(port int) error {
+	mixedMux.Lock()
+	defer mixedMux.Unlock()
+
 	addr := genAddr(bindAddress, port, allowLan)
 
 	shouldTCPIgnore := false

@@ -2,7 +2,7 @@ NAME=clashr
 BINDIR=bin
 VERSION=$(shell git describe --tags || echo "unknown version")
 BUILDTIME=$(shell date -u)
-GOBUILD=CGO_ENABLED=0 go build -ldflags '-X "github.com/wwqgtxx/clashr/constant.Version=$(VERSION)" \
+GOBUILD=CGO_ENABLED=0 go build -trimpath -ldflags '-X "github.com/wwqgtxx/clashr/constant.Version=$(VERSION)" \
 		-X "github.com/wwqgtxx/clashr/constant.BuildTime=$(BUILDTIME)" \
 		-w -s'
 
@@ -28,6 +28,9 @@ WINDOWS_ARCH_LIST = \
 	windows-amd64
 
 all: linux-amd64 darwin-amd64 windows-amd64 # Most used
+
+docker:
+	$(GOBUILD) -o $(BINDIR)/$(NAME)-$@
 
 darwin-amd64:
 	GOARCH=amd64 GOOS=darwin $(GOBUILD) -o $(BINDIR)/$(NAME)-$@

@@ -4,6 +4,7 @@ import (
 	"net"
 
 	"github.com/wwqgtxx/clashr/common/sockopt"
+	"github.com/wwqgtxx/clashr/log"
 
 	D "github.com/miekg/dns"
 )
@@ -42,6 +43,7 @@ func ReCreateServer(addr string, resolver *Resolver) error {
 
 	if server.Server != nil {
 		server.Shutdown()
+		server = &Server{}
 		address = ""
 	}
 
@@ -62,7 +64,7 @@ func ReCreateServer(addr string, resolver *Resolver) error {
 
 	err = sockopt.UDPReuseaddr(p)
 	if err != nil {
-		return err
+		log.Warnln("Failed to Reuse UDP Address: %s", err)
 	}
 
 	address = addr

@@ -12,8 +12,8 @@ import (
 	"github.com/wwqgtxx/clashr/adapters/outboundgroup"
 	"github.com/wwqgtxx/clashr/adapters/provider"
 	"github.com/wwqgtxx/clashr/component/auth"
-	trie "github.com/wwqgtxx/clashr/component/domain-trie"
 	"github.com/wwqgtxx/clashr/component/fakeip"
+	"github.com/wwqgtxx/clashr/component/trie"
 	C "github.com/wwqgtxx/clashr/constant"
 	"github.com/wwqgtxx/clashr/dns"
 	"github.com/wwqgtxx/clashr/log"
@@ -25,21 +25,33 @@ import (
 
 // General config
 type General struct {
-	Port               int          `json:"port"`
-	SocksPort          int          `json:"socks-port"`
-	RedirPort          int          `json:"redir-port"`
-	ShadowSocksConfig  string       `json:"ss-config"`
-	TcpTunConfig       string       `json:"tcptun-config"`
-	UdpTunConfig       string       `json:"udptun-config"`
-	MixedPort          int          `json:"mixed-port"`
-	Authentication     []string     `json:"authentication"`
-	AllowLan           bool         `json:"allow-lan"`
-	BindAddress        string       `json:"bind-address"`
-	Mode               T.TunnelMode `json:"mode"`
-	LogLevel           log.LogLevel `json:"log-level"`
-	ExternalController string       `json:"-"`
-	ExternalUI         string       `json:"-"`
-	Secret             string       `json:"-"`
+	Inbound
+	Controller
+	Mode      T.TunnelMode `json:"mode"`
+	LogLevel  log.LogLevel `json:"log-level"`
+	IPv6      bool         `json:"ipv6"`
+	Interface string       `json:"interface-name"`
+}
+
+// Inbound
+type Inbound struct {
+	Port              int      `json:"port"`
+	SocksPort         int      `json:"socks-port"`
+	RedirPort         int      `json:"redir-port"`
+	MixedPort         int      `json:"mixed-port"`
+	ShadowSocksConfig string   `json:"ss-config"`
+	TcpTunConfig      string   `json:"tcptun-config"`
+	UdpTunConfig      string   `json:"udptun-config"`
+	Authentication    []string `json:"authentication"`
+	AllowLan          bool     `json:"allow-lan"`
+	BindAddress       string   `json:"bind-address"`
+}
+
+// Controller
+type Controller struct {
+	ExternalController string `json:"-"`
+	ExternalUI         string `json:"-"`
+	Secret             string `json:"-"`
 }
 
 // DNS config
@@ -62,17 +74,14 @@ type FallbackFilter struct {
 }
 
 // Experimental config
-type Experimental struct {
-	IgnoreResolveFail bool   `yaml:"ignore-resolve-fail"`
-	Interface         string `yaml:"interface-name"`
-}
+type Experimental struct{}
 
 // Config is clash config manager
 type Config struct {
 	General      *General
 	DNS          *DNS
 	Experimental *Experimental
-	Hosts        *trie.Trie
+	Hosts        *trie.DomainTrie
 	Rules        []C.Rule
 	Users        []auth.AuthUser
 	Proxies      map[string]C.Proxy
@@ -101,18 +110,20 @@ type RawConfig struct {
 	Port               int          `yaml:"port"`
 	SocksPort          int          `yaml:"socks-port"`
 	RedirPort          int          `yaml:"redir-port"`
+	MixedPort          int          `yaml:"mixed-port"`
 	ShadowSocksConfig  string       `yaml:"ss-config"`
 	TcpTunConfig       string       `yaml:"tcptun-config"`
 	UdpTunConfig       string       `yaml:"udptun-config"`
-	MixedPort          int          `yaml:"mixed-port"`
 	Authentication     []string     `yaml:"authentication"`
 	AllowLan           bool         `yaml:"allow-lan"`
 	BindAddress        string       `yaml:"bind-address"`
 	Mode               T.TunnelMode `yaml:"mode"`
 	LogLevel           log.LogLevel `yaml:"log-level"`
+	IPv6               bool         `yaml:"ipv6"`
 	ExternalController string       `yaml:"external-controller"`
 	ExternalUI         string       `yaml:"external-ui"`
 	Secret             string       `yaml:"secret"`
+	Interface          string       `yaml:"interface-name"`
 
 	ProxyProvider map[string]map[string]interface{} `yaml:"proxy-providers"`
 	Hosts         map[string]string                 `yaml:"hosts"`
@@ -121,12 +132,6 @@ type RawConfig struct {
 	Proxy         []map[string]interface{}          `yaml:"proxies"`
 	ProxyGroup    []map[string]interface{}          `yaml:"proxy-groups"`
 	Rule          []string                          `yaml:"rules"`
-
-	// remove after 1.0
-	ProxyProviderOld map[string]map[string]interface{} `yaml:"proxy-provider"`
-	ProxyOld         []map[string]interface{}          `yaml:"Proxy"`
-	ProxyGroupOld    []map[string]interface{}          `yaml:"Proxy Group"`
-	RuleOld          []string                          `yaml:"Rule"`
 }
 
 // Parse config
@@ -151,9 +156,6 @@ func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 		Rule:           []string{},
 		Proxy:          []map[string]interface{}{},
 		ProxyGroup:     []map[string]interface{}{},
-		Experimental: Experimental{
-			IgnoreResolveFail: true,
-		},
 		DNS: RawDNS{
 			Enable:      false,
 			FakeIPRange: "198.18.0.1/16",
@@ -166,11 +168,6 @@ func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 				"8.8.8.8",
 			},
 		},
-
-		// remove after 1.0
-		RuleOld:       []string{},
-		ProxyOld:      []map[string]interface{}{},
-		ProxyGroupOld: []map[string]interface{}{},
 	}
 
 	if err := yaml.Unmarshal(buf, &rawCfg); err != nil {
@@ -222,21 +219,9 @@ func ParseRawConfig(rawCfg *RawConfig) (*Config, error) {
 }
 
 func parseGeneral(cfg *RawConfig) (*General, error) {
-	port := cfg.Port
-	socksPort := cfg.SocksPort
-	redirPort := cfg.RedirPort
-	ssConfig := cfg.ShadowSocksConfig
-	tcpTunConfig := cfg.TcpTunConfig
-	udpTunConfig := cfg.UdpTunConfig
-	mixedPort := cfg.MixedPort
-	allowLan := cfg.AllowLan
-	bindAddress := cfg.BindAddress
-	externalController := cfg.ExternalController
 	externalUI := cfg.ExternalUI
-	secret := cfg.Secret
-	mode := cfg.Mode
-	logLevel := cfg.LogLevel
 
+	// checkout externalUI exist
 	if externalUI != "" {
 		externalUI = C.Path.Resolve(externalUI)
 
@@ -245,23 +230,28 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 		}
 	}
 
-	general := &General{
-		Port:               port,
-		SocksPort:          socksPort,
-		RedirPort:          redirPort,
-		ShadowSocksConfig:  ssConfig,
-		TcpTunConfig:       tcpTunConfig,
-		UdpTunConfig:       udpTunConfig,
-		MixedPort:          mixedPort,
-		AllowLan:           allowLan,
-		BindAddress:        bindAddress,
-		Mode:               mode,
-		LogLevel:           logLevel,
-		ExternalController: externalController,
-		ExternalUI:         externalUI,
-		Secret:             secret,
-	}
-	return general, nil
+	return &General{
+		Inbound: Inbound{
+			Port:              cfg.Port,
+			SocksPort:         cfg.SocksPort,
+			RedirPort:         cfg.RedirPort,
+			MixedPort:         cfg.MixedPort,
+			ShadowSocksConfig: cfg.ShadowSocksConfig,
+			TcpTunConfig:      cfg.TcpTunConfig,
+			UdpTunConfig:      cfg.UdpTunConfig,
+			AllowLan:          cfg.AllowLan,
+			BindAddress:       cfg.BindAddress,
+		},
+		Controller: Controller{
+			ExternalController: cfg.ExternalController,
+			ExternalUI:         cfg.ExternalUI,
+			Secret:             cfg.Secret,
+		},
+		Mode:      cfg.Mode,
+		LogLevel:  cfg.LogLevel,
+		IPv6:      cfg.IPv6,
+		Interface: cfg.Interface,
+	}, nil
 }
 
 func parseProxies(cfg *RawConfig) (proxies map[string]C.Proxy, providersMap map[string]provider.ProxyProvider, err error) {
@@ -271,18 +261,6 @@ func parseProxies(cfg *RawConfig) (proxies map[string]C.Proxy, providersMap map[
 	proxiesConfig := cfg.Proxy
 	groupsConfig := cfg.ProxyGroup
 	providersConfig := cfg.ProxyProvider
-
-	if len(proxiesConfig) == 0 {
-		proxiesConfig = cfg.ProxyOld
-	}
-
-	if len(groupsConfig) == 0 {
-		groupsConfig = cfg.ProxyGroupOld
-	}
-
-	if len(providersConfig) == 0 {
-		providersConfig = cfg.ProxyProviderOld
-	}
 
 	proxies["DIRECT"] = outbound.NewProxy(outbound.NewDirect())
 	proxies["REJECT"] = outbound.NewProxy(outbound.NewReject())
@@ -324,7 +302,7 @@ func parseProxies(cfg *RawConfig) (proxies map[string]C.Proxy, providersMap map[
 
 		pd, err := provider.ParseProxyProvider(name, mapping)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, fmt.Errorf("parse proxy provider %s error: %w", name, err)
 		}
 
 		providersMap[name] = pd
@@ -333,7 +311,7 @@ func parseProxies(cfg *RawConfig) (proxies map[string]C.Proxy, providersMap map[
 	for _, provider := range providersMap {
 		log.Infoln("Start initial provider %s", provider.Name())
 		if err := provider.Initial(); err != nil {
-			return nil, nil, err
+			return nil, nil, fmt.Errorf("initial proxy provider %s error: %w", provider.Name(), err)
 		}
 	}
 
@@ -372,13 +350,7 @@ func parseProxies(cfg *RawConfig) (proxies map[string]C.Proxy, providersMap map[
 
 func parseRules(cfg *RawConfig, proxies map[string]C.Proxy) ([]C.Rule, error) {
 	rules := []C.Rule{}
-
 	rulesConfig := cfg.Rule
-
-	// remove after 1.0
-	if len(rulesConfig) == 0 {
-		rulesConfig = cfg.RuleOld
-	}
 
 	// parse rules
 	for idx, line := range rulesConfig {
@@ -409,42 +381,8 @@ func parseRules(cfg *RawConfig, proxies map[string]C.Proxy) ([]C.Rule, error) {
 
 		rule = trimArr(rule)
 		params = trimArr(params)
-		var (
-			parseErr error
-			parsed   C.Rule
-		)
 
-		switch rule[0] {
-		case "DOMAIN":
-			parsed = R.NewDomain(payload, target)
-		case "DOMAIN-SUFFIX":
-			parsed = R.NewDomainSuffix(payload, target)
-		case "DOMAIN-KEYWORD":
-			parsed = R.NewDomainKeyword(payload, target)
-		case "GEOIP":
-			noResolve := R.HasNoResolve(params)
-			parsed = R.NewGEOIP(payload, target, noResolve)
-		case "IP-CIDR", "IP-CIDR6":
-			noResolve := R.HasNoResolve(params)
-			parsed, parseErr = R.NewIPCIDR(payload, target, R.WithIPCIDRNoResolve(noResolve))
-		// deprecated when bump to 1.0
-		case "SOURCE-IP-CIDR":
-			fallthrough
-		case "SRC-IP-CIDR":
-			parsed, parseErr = R.NewIPCIDR(payload, target, R.WithIPCIDRSourceIP(true), R.WithIPCIDRNoResolve(true))
-		case "SRC-PORT":
-			parsed, parseErr = R.NewPort(payload, target, true)
-		case "DST-PORT":
-			parsed, parseErr = R.NewPort(payload, target, false)
-		case "MATCH":
-			fallthrough
-		// deprecated when bump to 1.0
-		case "FINAL":
-			parsed = R.NewMatch(target)
-		default:
-			parseErr = fmt.Errorf("unsupported rule type %s", rule[0])
-		}
-
+		parsed, parseErr := R.ParseRule(rule[0], payload, target, params)
 		if parseErr != nil {
 			return nil, fmt.Errorf("Rules[%d] [%s] error: %s", idx, line, parseErr.Error())
 		}
@@ -455,8 +393,14 @@ func parseRules(cfg *RawConfig, proxies map[string]C.Proxy) ([]C.Rule, error) {
 	return rules, nil
 }
 
-func parseHosts(cfg *RawConfig) (*trie.Trie, error) {
+func parseHosts(cfg *RawConfig) (*trie.DomainTrie, error) {
 	tree := trie.New()
+
+	// add default hosts
+	if err := tree.Insert("localhost", net.IP{127, 0, 0, 1}); err != nil {
+		println(err.Error())
+	}
+
 	if len(cfg.Hosts) != 0 {
 		for domain, ipStr := range cfg.Hosts {
 			ip := net.ParseIP(ipStr)
@@ -591,7 +535,7 @@ func parseDNS(cfg RawDNS) (*DNS, error) {
 			return nil, err
 		}
 
-		var host *trie.Trie
+		var host *trie.DomainTrie
 		// fake ip skip host filter
 		if len(cfg.FakeIPFilter) != 0 {
 			host = trie.New()

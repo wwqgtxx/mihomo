@@ -8,6 +8,7 @@ import (
 	"github.com/wwqgtxx/clashr/common/sockopt"
 	"github.com/wwqgtxx/clashr/component/socks5"
 	C "github.com/wwqgtxx/clashr/constant"
+	"github.com/wwqgtxx/clashr/log"
 	"github.com/wwqgtxx/clashr/tunnel"
 )
 
@@ -25,7 +26,7 @@ func NewSocksUDPProxy(addr string) (*SockUDPListener, error) {
 
 	err = sockopt.UDPReuseaddr(l.(*net.UDPConn))
 	if err != nil {
-		return nil, err
+		log.Warnln("Failed to Reuse UDP Address: %s", err)
 	}
 
 	sl := &SockUDPListener{l, addr, false}

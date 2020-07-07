@@ -6,12 +6,16 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/wwqgtxx/clashr/component/resolver"
+	"github.com/wwqgtxx/clashr/config"
+	"github.com/wwqgtxx/clashr/dns"
 	"github.com/wwqgtxx/clashr/log"
 	"github.com/wwqgtxx/clashr/proxy/http"
 	"github.com/wwqgtxx/clashr/proxy/mixed"
 	"github.com/wwqgtxx/clashr/proxy/redir"
 	"github.com/wwqgtxx/clashr/proxy/shadowsocks"
 	"github.com/wwqgtxx/clashr/proxy/socks"
+	"github.com/wwqgtxx/clashr/proxy/tun"
 	"github.com/wwqgtxx/clashr/proxy/tunnel"
 )
 
@@ -30,6 +34,7 @@ var (
 	shadowSocksUDPListener *shadowsocks.ShadowSocksUDPListener
 	tcpTunListener         *tunnel.TcpTunListener
 	udpTunListener         *tunnel.UdpTunListener
+	tunAdapter             tun.TunAdapter
 
 	// lock for recreate function
 	socksMux sync.Mutex
@@ -65,6 +70,17 @@ func BindAddress() string {
 
 func SetAllowLan(al bool) {
 	allowLan = al
+}
+
+func Tun() config.Tun {
+	if tunAdapter == nil {
+		return config.Tun{}
+	}
+	return config.Tun{
+		Enable:    true,
+		DeviceURL: tunAdapter.DeviceURL(),
+		DNSListen: tunAdapter.DNSListen(),
+	}
 }
 
 func SetBindAddress(host string) {
@@ -337,7 +353,33 @@ func ReCreateMixed(port int) error {
 		mixedListener.Close()
 		return err
 	}
+	return nil
+}
 
+func ReCreateTun(conf config.Tun) error {
+	tunMux.Lock()
+	defer tunMux.Unlock()
+	enable := conf.Enable
+	url := conf.DeviceURL
+	if tunAdapter != nil {
+		if enable && (url == "" || url == tunAdapter.DeviceURL()) {
+			// Though we don't need to recreate tun device, we should update tun DNSServer
+			return tunAdapter.ReCreateDNSServer(resolver.DefaultResolver.(*dns.Resolver), conf.DNSListen)
+		}
+		tunAdapter.Close()
+		tunAdapter = nil
+	}
+	if !enable {
+		return nil
+	}
+	var err error
+	tunAdapter, err = tun.NewTunProxy(url)
+	if err != nil {
+		return err
+	}
+	if resolver.DefaultResolver != nil {
+		return tunAdapter.ReCreateDNSServer(resolver.DefaultResolver.(*dns.Resolver), conf.DNSListen)
+	}
 	return nil
 }
 

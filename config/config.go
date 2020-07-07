@@ -42,6 +42,7 @@ type Inbound struct {
 	ShadowSocksConfig string   `json:"ss-config"`
 	TcpTunConfig      string   `json:"tcptun-config"`
 	UdpTunConfig      string   `json:"udptun-config"`
+	Tun               Tun      `json:"tun"`
 	Authentication    []string `json:"authentication"`
 	AllowLan          bool     `json:"allow-lan"`
 	BindAddress       string   `json:"bind-address"`
@@ -73,12 +74,20 @@ type FallbackFilter struct {
 	IPCIDR []*net.IPNet `yaml:"ipcidr"`
 }
 
+// Tun config
+type Tun struct {
+	Enable    bool   `yaml:"enable" json:"enable"`
+	DeviceURL string `yaml:"device-url" json:"device-url"`
+	DNSListen string `yaml:"dns-listen" json:"dns-listen"`
+}
+
 // Experimental config
 type Experimental struct{}
 
 // Config is clash config manager
 type Config struct {
 	General      *General
+	Tun          *Tun
 	DNS          *DNS
 	Experimental *Experimental
 	Hosts        *trie.DomainTrie
@@ -128,6 +137,7 @@ type RawConfig struct {
 	ProxyProvider map[string]map[string]interface{} `yaml:"proxy-providers"`
 	Hosts         map[string]string                 `yaml:"hosts"`
 	DNS           RawDNS                            `yaml:"dns"`
+	Tun           Tun                               `yaml:"tun"`
 	Experimental  Experimental                      `yaml:"experimental"`
 	Proxy         []map[string]interface{}          `yaml:"proxies"`
 	ProxyGroup    []map[string]interface{}          `yaml:"proxy-groups"`
@@ -156,6 +166,11 @@ func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 		Rule:           []string{},
 		Proxy:          []map[string]interface{}{},
 		ProxyGroup:     []map[string]interface{}{},
+		Tun: Tun{
+			Enable:    false,
+			DeviceURL: "dev://clash0",
+			DNSListen: "",
+		},
 		DNS: RawDNS{
 			Enable:      false,
 			FakeIPRange: "198.18.0.1/16",
@@ -239,6 +254,7 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 			ShadowSocksConfig: cfg.ShadowSocksConfig,
 			TcpTunConfig:      cfg.TcpTunConfig,
 			UdpTunConfig:      cfg.UdpTunConfig,
+			Tun:               cfg.Tun,
 			AllowLan:          cfg.AllowLan,
 			BindAddress:       cfg.BindAddress,
 		},

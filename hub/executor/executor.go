@@ -67,9 +67,9 @@ func ApplyConfig(cfg *config.Config, force bool) {
 
 	updateUsers(cfg.Users)
 	updateGeneral(cfg.General, force)
+	updateDNS(cfg.DNS)
 	updateProxies(cfg.Proxies, cfg.Providers)
 	updateRules(cfg.Rules)
-	updateDNS(cfg.DNS)
 	updateHosts(cfg.Hosts)
 	updateExperimental(cfg)
 }
@@ -90,6 +90,7 @@ func GetGeneral() *config.General {
 			ShadowSocksConfig: ports.ShadowSocksConfig,
 			TcpTunConfig:      ports.TcpTunConfig,
 			UdpTunConfig:      ports.UdpTunConfig,
+			Tun:               P.Tun(),
 			Authentication:    authenticator,
 			AllowLan:          P.AllowLan(),
 			BindAddress:       P.BindAddress(),
@@ -195,6 +196,10 @@ func updateGeneral(general *config.General, force bool) {
 
 	if err := P.ReCreateUdpTun(general.UdpTunConfig); err != nil {
 		log.Errorln("Start UdpTun server error: %s", err.Error())
+	}
+
+	if err := P.ReCreateTun(general.Tun); err != nil {
+		log.Errorln("Start Tun interface error: %s", err.Error())
 	}
 }
 

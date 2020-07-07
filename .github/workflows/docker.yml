@@ -35,7 +35,7 @@ jobs:
       - name: Docker buildx image and push on dev branch
         if: github.ref == 'refs/heads/dev'
         run: |
-          docker buildx build --output "type=image,push=true" --platform=linux/amd64,linux/arm/v7,linux/arm64 --tag dreamacro/clash:dev .
+          docker buildx build --output "type=image,push=true" --platform=linux/amd64,linux/arm/v7,linux/arm64 --tag wwqgtxx/clashr:dev .
 
       - name: Replace tag without `v`
         if: startsWith(github.ref, 'refs/tags/')
@@ -49,5 +49,5 @@ jobs:
       - name: Docker buildx image and push on release
         if: startsWith(github.ref, 'refs/tags/')
         run: |
-          docker buildx build --output "type=image,push=true" --platform=linux/amd64,linux/arm/v7,linux/arm64 --tag dreamacro/clash:${{steps.version.outputs.result}} .
-          docker buildx build --output "type=image,push=true" --platform=linux/amd64,linux/arm/v7,linux/arm64 --tag dreamacro/clash:latest .
+          docker buildx build --output "type=image,push=true" --platform=linux/amd64,linux/arm/v7,linux/arm64 --tag wwqgtxx/clashr:${{steps.version.outputs.result}} .
+          docker buildx build --output "type=image,push=true" --platform=linux/amd64,linux/arm/v7,linux/arm64 --tag wwqgtxx/clashr:latest .

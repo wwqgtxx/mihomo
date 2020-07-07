@@ -18,6 +18,10 @@ require (
 	golang.org/x/crypto v0.0.0-20200604202706-70a84ac30bf9
 	golang.org/x/net v0.0.0-20200602114024-627f9648deb9
 	golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a
+	golang.org/x/sys v0.0.0-20200323222414-85ca7c5b95cd
 	gopkg.in/eapache/channels.v1 v1.1.0
-	gopkg.in/yaml.v2 v2.3.0
+	gopkg.in/yaml.v2 v2.2.8
+	gvisor.dev/gvisor v0.0.0-00010101000000-000000000000
 )
+
+replace gvisor.dev/gvisor => github.com/comzyh/gvisor v0.0.0-20200510171600-c4d4be34b573

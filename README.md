@@ -37,8 +37,8 @@ Clash requires Go >= 1.13. You can build it from source:
 $ go get -u -v github.com/wwqgtxx/clashr
 ```
 
-Pre-built binaries are available here: [release](https://github.com/Dreamacro/clash/releases)  
-Pre-built Premium binaries are available here: [premium release](https://github.com/Dreamacro/clash/releases/tag/premium). Source is not currently available.
+Pre-built binaries are available here: [release](https://github.com/wwqgtxx/clashr/releases)  
+Pre-built Premium binaries are available here: [premium release](https://github.com/wwqgtxx/clashr/releases/tag/premium). Source is not currently available.
 
 Check Clash version with:
 
@@ -48,7 +48,7 @@ $ clash -v
 
 ## Daemonize Clash
 
-We recommend using third-party daemon management tools like PM2, Supervisor or the like to keep Clash running as a service. ([Wiki](https://github.com/Dreamacro/clash/wiki/Clash-as-a-daemon))
+We recommend using third-party daemon management tools like PM2, Supervisor or the like to keep Clash running as a service. ([Wiki](https://github.com/wwqgtxx/clashr/wiki/Clash-as-a-daemon))
 
 In the case of [pm2](https://github.com/Unitech/pm2), start the daemon this way:
 
@@ -56,7 +56,7 @@ In the case of [pm2](https://github.com/Unitech/pm2), start the daemon this way:
 $ pm2 start clash
 ```
 
-If you have Docker installed, it's recommended to deploy Clash directly using `docker-compose`: [run Clash in Docker](https://github.com/Dreamacro/clash/wiki/Run-clash-in-docker)
+If you have Docker installed, it's recommended to deploy Clash directly using `docker-compose`: [run Clash in Docker](https://github.com/wwqgtxx/clashr/wiki/Run-clash-in-docker)
 
 ## Config
 
@@ -373,7 +373,7 @@ rules:
 </details>
 
 ## Advanced
-[Provider](https://github.com/Dreamacro/clash/wiki/Provider)
+[Provider](https://github.com/wwqgtxx/clashr/wiki/Provider)
 
 ## Documentations
 https://clash.gitbook.io/

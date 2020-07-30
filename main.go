@@ -16,7 +16,6 @@ import (
 	"github.com/wwqgtxx/clashr/hub/executor"
 	"github.com/wwqgtxx/clashr/log"
 
-	"net/http"
 	_ "net/http/pprof"
 )
 
@@ -107,10 +106,6 @@ func main() {
 	if err := hub.Parse(options...); err != nil {
 		log.Fatalln("Parse config error: %s", err.Error())
 	}
-
-	go func() {
-		http.ListenAndServe("0.0.0.0:6060", nil)
-	}()
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)

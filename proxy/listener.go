@@ -262,8 +262,8 @@ func ReCreateTcpTun(config string) error {
 
 	if tcpTunListener != nil {
 		if tcpTunListener.Config() != config {
-			shadowSocksListener.Close()
-			shadowSocksListener = nil
+			tcpTunListener.Close()
+			tcpTunListener = nil
 		} else {
 			shouldIgnore = true
 		}
@@ -290,8 +290,8 @@ func ReCreateUdpTun(config string) error {
 
 	if udpTunListener != nil {
 		if udpTunListener.Config() != config {
-			shadowSocksListener.Close()
-			shadowSocksListener = nil
+			udpTunListener.Close()
+			udpTunListener = nil
 		} else {
 			shouldIgnore = true
 		}

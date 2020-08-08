@@ -1,6 +1,6 @@
 NAME=clashr
 BINDIR=bin
-VERSION=$(shell git describe --tags || echo "unknown version")
+VERSION=$(shell git describe --tags || echo "unknown-version")
 BUILDTIME=$(shell date -u)
 GOBUILD=CGO_ENABLED=0 go build -trimpath -ldflags '-X "github.com/wwqgtxx/clashr/constant.Version=$(VERSION)" \
 		-X "github.com/wwqgtxx/clashr/constant.BuildTime=$(BUILDTIME)" \

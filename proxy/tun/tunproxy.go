@@ -118,14 +118,14 @@ func (t *tunAdapter) DeviceURL() string {
 	return t.device.URL()
 }
 
-func (t *tunAdapter) udpHandlePacket(r *stack.Route, id stack.TransportEndpointID, pkt stack.PacketBuffer) bool {
-	hdr, ok := pkt.Data.PullUp(header.UDPMinimumSize)
-	if !ok || int(header.UDP(hdr).Length()) > pkt.Data.Size() {
+func (t *tunAdapter) udpHandlePacket(r *stack.Route, id stack.TransportEndpointID, pkt *stack.PacketBuffer) bool {
+	// ref: gvisor pkg/tcpip/transport/udp/endpoint.go HandlePacket
+	hdr := header.UDP(pkt.TransportHeader().View())
+	if int(hdr.Length()) > pkt.Data.Size()+header.UDPMinimumSize {
 		// Malformed packet.
 		t.ipstack.Stats().UDP.MalformedPacketsReceived.Increment()
 		return true
 	}
-	pkt.Data.TrimFront(header.UDPMinimumSize)
 
 	target := getAddr(id)
 

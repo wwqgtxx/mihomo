@@ -14,13 +14,13 @@ require (
 	github.com/oschwald/geoip2-golang v1.4.0
 	github.com/sirupsen/logrus v1.6.0
 	github.com/stretchr/testify v1.6.1
-	golang.org/x/crypto v0.0.0-20200604202706-70a84ac30bf9
-	golang.org/x/net v0.0.0-20200602114024-627f9648deb9
-	golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a
+	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
+	golang.org/x/net v0.0.0-20200625001655-4c5254603344
+	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 	golang.org/x/sys v0.0.0-20200323222414-85ca7c5b95cd
 	gopkg.in/eapache/channels.v1 v1.1.0
 	gopkg.in/yaml.v2 v2.3.0
 	gvisor.dev/gvisor v0.0.0-00010101000000-000000000000
 )
 
-replace gvisor.dev/gvisor => github.com/comzyh/gvisor v0.0.0-20200510171600-c4d4be34b573
+replace gvisor.dev/gvisor => github.com/comzyh/gvisor v0.0.0-20200814151311-224de3a00460

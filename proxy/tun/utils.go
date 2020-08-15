@@ -67,12 +67,16 @@ func (c *fakeConn) FakeIP() bool {
 func writeUDP(r *stack.Route, data buffer.VectorisedView, localPort, remotePort uint16) (int, error) {
 	const protocol = udp.ProtocolNumber
 	// Allocate a buffer for the UDP header.
-	hdr := buffer.NewPrependable(header.UDPMinimumSize + int(r.MaxHeaderLength()))
+
+	pkt := stack.NewPacketBuffer(stack.PacketBufferOptions{
+		ReserveHeaderBytes: header.UDPMinimumSize + int(r.MaxHeaderLength()),
+		Data:               data,
+	})
 
 	// Initialize the header.
-	udp := header.UDP(hdr.Prepend(header.UDPMinimumSize))
+	udp := header.UDP(pkt.TransportHeader().Push(header.UDPMinimumSize))
 
-	length := uint16(hdr.UsedLength() + data.Size())
+	length := uint16(pkt.Size())
 	udp.Encode(&header.UDPFields{
 		SrcPort: localPort,
 		DstPort: remotePort,
@@ -90,10 +94,7 @@ func writeUDP(r *stack.Route, data buffer.VectorisedView, localPort, remotePort 
 
 	ttl := r.DefaultTTL()
 
-	if err := r.WritePacket(nil /* gso */, stack.NetworkHeaderParams{Protocol: protocol, TTL: ttl, TOS: 0 /* default */}, stack.PacketBuffer{
-		Header: hdr,
-		Data:   data,
-	}); err != nil {
+	if err := r.WritePacket(nil /* gso */, stack.NetworkHeaderParams{Protocol: protocol, TTL: ttl, TOS: 0 /* default */}, pkt); err != nil {
 		r.Stats().UDP.PacketSendErrors.Increment()
 		return 0, fmt.Errorf("%v", err)
 	}

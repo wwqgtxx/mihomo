@@ -13,6 +13,7 @@ import (
 	"gvisor.dev/gvisor/pkg/tcpip/header"
 	"gvisor.dev/gvisor/pkg/tcpip/network/ipv4"
 	"gvisor.dev/gvisor/pkg/tcpip/network/ipv6"
+	"gvisor.dev/gvisor/pkg/tcpip/ports"
 	"gvisor.dev/gvisor/pkg/tcpip/stack"
 	"gvisor.dev/gvisor/pkg/tcpip/transport/udp"
 )
@@ -57,14 +58,13 @@ func (e *dnsEndpoint) UniqueID() uint64 {
 	return e.uniqueID
 }
 
-func (e *dnsEndpoint) HandlePacket(r *stack.Route, id stack.TransportEndpointID, pkt stack.PacketBuffer) {
-	hdr, ok := pkt.Data.PullUp(header.UDPMinimumSize)
-	if !ok || int(header.UDP(hdr).Length()) > pkt.Data.Size() {
+func (e *dnsEndpoint) HandlePacket(r *stack.Route, id stack.TransportEndpointID, pkt *stack.PacketBuffer) {
+	hdr := header.UDP(pkt.TransportHeader().View())
+	if int(hdr.Length()) > pkt.Data.Size()+header.UDPMinimumSize {
 		// Malformed packet.
 		e.stack.Stats().UDP.MalformedPacketsReceived.Increment()
 		return
 	}
-	pkt.Data.TrimFront(header.UDPMinimumSize)
 
 	// server DNS
 	var msg D.Msg
@@ -73,7 +73,7 @@ func (e *dnsEndpoint) HandlePacket(r *stack.Route, id stack.TransportEndpointID,
 	go e.server.ServeDNS(&writer, &msg)
 }
 
-func (e *dnsEndpoint) HandleControlPacket(id stack.TransportEndpointID, typ stack.ControlType, extra uint32, pkt stack.PacketBuffer) {
+func (e *dnsEndpoint) HandleControlPacket(id stack.TransportEndpointID, typ stack.ControlType, extra uint32, pkt *stack.PacketBuffer) {
 }
 
 func (e *dnsEndpoint) Close() {
@@ -169,7 +169,7 @@ func CreateDNSServer(s *stack.Stack, resolver *dns.Resolver, ip net.IP, port int
 		udp.ProtocolNumber,
 		*id,
 		endpoint,
-		true,
+		ports.Flags{LoadBalanced: true}, // it's actually the SO_REUSEPORT. Not sure it take effect.
 		nicID); err != nil {
 		log.Errorln("Unable to start UDP DNS on tun:  %v", tcpiperr.String())
 	}
@@ -221,6 +221,7 @@ func (s *DNSServer) Stop() {
 		udp.ProtocolNumber,
 		*s.udpEndpointID,
 		s.udpEndpoint,
+		ports.Flags{LoadBalanced: true}, // should match the RegisterTransportEndpoint
 		s.NICID)
 }
 

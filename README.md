@@ -1,3 +1,7 @@
+# My Own Fork of Clash - Support SSR TCP(from @BROBIRD)/UDP, TCP/UDP Tunnel and Tun Inbound(from @comzyh)
+# This is the old branch of clashr which use old gossr code. 
+# Please use clashr-new branch for new version
+
 <h1 align="center">
   <img src="https://github.com/wwqgtxx/clashr/raw/master/docs/logo.png" alt="Clash" width="200">
   <br>Clash<br>

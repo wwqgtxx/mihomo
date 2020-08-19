@@ -1,4 +1,4 @@
-NAME=clash
+NAME=clashr
 BINDIR=bin
 VERSION=$(shell git describe --tags || echo "unknown version")
 BUILDTIME=$(shell date -u)

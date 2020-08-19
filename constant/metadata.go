@@ -18,7 +18,10 @@ const (
 	HTTP Type = iota
 	HTTPCONNECT
 	SOCKS
+	SHADOWSOCKS
 	REDIR
+	TCPTUN
+	UDPTUN
 )
 
 type NetWork int
@@ -44,8 +47,14 @@ func (t Type) String() string {
 		return "HTTP Connect"
 	case SOCKS:
 		return "Socks5"
+	case SHADOWSOCKS:
+		return "ShadowSocks"
 	case REDIR:
 		return "Redir"
+	case TCPTUN:
+		return "TcpTun"
+	case UDPTUN:
+		return "UdpTun"
 	default:
 		return "Unknown"
 	}

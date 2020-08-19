@@ -23,14 +23,17 @@ func configRouter() http.Handler {
 }
 
 type configSchema struct {
-	Port        *int               `json:"port"`
-	SocksPort   *int               `json:"socks-port"`
-	RedirPort   *int               `json:"redir-port"`
-	MixedPort   *int               `json:"mixed-port"`
-	AllowLan    *bool              `json:"allow-lan"`
-	BindAddress *string            `json:"bind-address"`
-	Mode        *tunnel.TunnelMode `json:"mode"`
-	LogLevel    *log.LogLevel      `json:"log-level"`
+	Port              *int               `json:"port"`
+	SocksPort         *int               `json:"socks-port"`
+	RedirPort         *int               `json:"redir-port"`
+	MixedPort         *int               `json:"mixed-port"`
+	ShadowSocksConfig *string            `json:"ss-config"`
+	TcptunConfig      *string            `json:"tcptun-config"`
+	UdptunConfig      *string            `json:"udptun-config"`
+	AllowLan          *bool              `json:"allow-lan"`
+	BindAddress       *string            `json:"bind-address"`
+	Mode              *tunnel.TunnelMode `json:"mode"`
+	LogLevel          *log.LogLevel      `json:"log-level"`
 }
 
 func getConfigs(w http.ResponseWriter, r *http.Request) {
@@ -39,6 +42,14 @@ func getConfigs(w http.ResponseWriter, r *http.Request) {
 }
 
 func pointerOrDefault(p *int, def int) int {
+	if p != nil {
+		return *p
+	}
+
+	return def
+}
+
+func pointerOrDefault_string(p *string, def string) string {
 	if p != nil {
 		return *p
 	}
@@ -63,10 +74,13 @@ func patchConfigs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ports := P.GetPorts()
-	P.ReCreateHTTP(pointerOrDefault(general.Port, ports.Port))
-	P.ReCreateSocks(pointerOrDefault(general.SocksPort, ports.SocksPort))
-	P.ReCreateRedir(pointerOrDefault(general.RedirPort, ports.RedirPort))
-	P.ReCreateMixed(pointerOrDefault(general.MixedPort, ports.MixedPort))
+	_ = P.ReCreateHTTP(pointerOrDefault(general.Port, ports.Port))
+	_ = P.ReCreateSocks(pointerOrDefault(general.SocksPort, ports.SocksPort))
+	_ = P.ReCreateRedir(pointerOrDefault(general.RedirPort, ports.RedirPort))
+	_ = P.ReCreateMixed(pointerOrDefault(general.MixedPort, ports.MixedPort))
+	_ = P.ReCreateShadowSocks(pointerOrDefault_string(general.ShadowSocksConfig, ports.ShadowSocksConfig))
+	_ = P.ReCreateTcpTun(pointerOrDefault_string(general.TcptunConfig, ports.TcpTunConfig))
+	_ = P.ReCreateUdpTun(pointerOrDefault_string(general.UdptunConfig, ports.UdpTunConfig))
 
 	if general.Mode != nil {
 		tunnel.SetMode(*general.Mode)

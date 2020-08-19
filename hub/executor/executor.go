@@ -83,13 +83,16 @@ func GetGeneral() *config.General {
 
 	general := &config.General{
 		Inbound: config.Inbound{
-			Port:           ports.Port,
-			SocksPort:      ports.SocksPort,
-			RedirPort:      ports.RedirPort,
-			MixedPort:      ports.MixedPort,
-			Authentication: authenticator,
-			AllowLan:       P.AllowLan(),
-			BindAddress:    P.BindAddress(),
+			Port:              ports.Port,
+			SocksPort:         ports.SocksPort,
+			RedirPort:         ports.RedirPort,
+			MixedPort:         ports.MixedPort,
+			ShadowSocksConfig: ports.ShadowSocksConfig,
+			TcpTunConfig:      ports.TcpTunConfig,
+			UdpTunConfig:      ports.UdpTunConfig,
+			Authentication:    authenticator,
+			AllowLan:          P.AllowLan(),
+			BindAddress:       P.BindAddress(),
 		},
 		Mode:     tunnel.Mode(),
 		LogLevel: log.Level(),
@@ -181,6 +184,18 @@ func updateGeneral(general *config.General, force bool) {
 
 	if err := P.ReCreateMixed(general.MixedPort); err != nil {
 		log.Errorln("Start Mixed(http and socks5) server error: %s", err.Error())
+	}
+
+	if err := P.ReCreateShadowSocks(general.ShadowSocksConfig); err != nil {
+		log.Errorln("Start ShadowSocks server error: %s", err.Error())
+	}
+
+	if err := P.ReCreateTcpTun(general.TcpTunConfig); err != nil {
+		log.Errorln("Start TcpTun server error: %s", err.Error())
+	}
+
+	if err := P.ReCreateUdpTun(general.UdpTunConfig); err != nil {
+		log.Errorln("Start UdpTun server error: %s", err.Error())
 	}
 }
 

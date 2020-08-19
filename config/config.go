@@ -35,13 +35,16 @@ type General struct {
 
 // Inbound
 type Inbound struct {
-	Port           int      `json:"port"`
-	SocksPort      int      `json:"socks-port"`
-	RedirPort      int      `json:"redir-port"`
-	MixedPort      int      `json:"mixed-port"`
-	Authentication []string `json:"authentication"`
-	AllowLan       bool     `json:"allow-lan"`
-	BindAddress    string   `json:"bind-address"`
+	Port              int      `json:"port"`
+	SocksPort         int      `json:"socks-port"`
+	RedirPort         int      `json:"redir-port"`
+	MixedPort         int      `json:"mixed-port"`
+	ShadowSocksConfig string   `json:"ss-config"`
+	TcpTunConfig      string   `json:"tcptun-config"`
+	UdpTunConfig      string   `json:"udptun-config"`
+	Authentication    []string `json:"authentication"`
+	AllowLan          bool     `json:"allow-lan"`
+	BindAddress       string   `json:"bind-address"`
 }
 
 // Controller
@@ -110,6 +113,9 @@ type RawConfig struct {
 	SocksPort          int          `yaml:"socks-port"`
 	RedirPort          int          `yaml:"redir-port"`
 	MixedPort          int          `yaml:"mixed-port"`
+	ShadowSocksConfig  string       `yaml:"ss-config"`
+	TcpTunConfig       string       `yaml:"tcptun-config"`
+	UdpTunConfig       string       `yaml:"udptun-config"`
 	Authentication     []string     `yaml:"authentication"`
 	AllowLan           bool         `yaml:"allow-lan"`
 	BindAddress        string       `yaml:"bind-address"`
@@ -229,12 +235,15 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 
 	return &General{
 		Inbound: Inbound{
-			Port:        cfg.Port,
-			SocksPort:   cfg.SocksPort,
-			RedirPort:   cfg.RedirPort,
-			MixedPort:   cfg.MixedPort,
-			AllowLan:    cfg.AllowLan,
-			BindAddress: cfg.BindAddress,
+			Port:              cfg.Port,
+			SocksPort:         cfg.SocksPort,
+			RedirPort:         cfg.RedirPort,
+			MixedPort:         cfg.MixedPort,
+			ShadowSocksConfig: cfg.ShadowSocksConfig,
+			TcpTunConfig:      cfg.TcpTunConfig,
+			UdpTunConfig:      cfg.UdpTunConfig,
+			AllowLan:          cfg.AllowLan,
+			BindAddress:       cfg.BindAddress,
 		},
 		Controller: Controller{
 			ExternalController: cfg.ExternalController,

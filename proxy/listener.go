@@ -10,27 +10,36 @@ import (
 	"github.com/Dreamacro/clash/proxy/http"
 	"github.com/Dreamacro/clash/proxy/mixed"
 	"github.com/Dreamacro/clash/proxy/redir"
+	"github.com/Dreamacro/clash/proxy/shadowsocks"
 	"github.com/Dreamacro/clash/proxy/socks"
+	"github.com/Dreamacro/clash/proxy/tunnel"
 )
 
 var (
 	allowLan    = false
 	bindAddress = "*"
 
-	socksListener    *socks.SockListener
-	socksUDPListener *socks.SockUDPListener
-	httpListener     *http.HttpListener
-	redirListener    *redir.RedirListener
-	redirUDPListener *redir.RedirUDPListener
-	mixedListener    *mixed.MixedListener
-	mixedUDPLister   *socks.SockUDPListener
+	socksListener          *socks.SockListener
+	socksUDPListener       *socks.SockUDPListener
+	httpListener           *http.HttpListener
+	redirListener          *redir.RedirListener
+	redirUDPListener       *redir.RedirUDPListener
+	mixedListener          *mixed.MixedListener
+	mixedUDPLister         *socks.SockUDPListener
+	shadowSocksListener    *shadowsocks.ShadowSocksListener
+	shadowSocksUDPListener *shadowsocks.ShadowSocksUDPListener
+	tcpTunListener         *tunnel.TcpTunListener
+	udpTunListener         *tunnel.UdpTunListener
 
 	// lock for recreate function
-	socksMux sync.Mutex
-	httpMux  sync.Mutex
-	redirMux sync.Mutex
-	mixedMux sync.Mutex
-	tunMux   sync.Mutex
+	socksMux  sync.Mutex
+	httpMux   sync.Mutex
+	redirMux  sync.Mutex
+	mixedMux  sync.Mutex
+	ssMux     sync.Mutex
+	tunMux    sync.Mutex
+	tcpTunMux sync.Mutex
+	udpTunMux sync.Mutex
 )
 
 type listener interface {
@@ -39,10 +48,13 @@ type listener interface {
 }
 
 type Ports struct {
-	Port      int `json:"port"`
-	SocksPort int `json:"socks-port"`
-	RedirPort int `json:"redir-port"`
-	MixedPort int `json:"mixed-port"`
+	Port              int    `json:"port"`
+	SocksPort         int    `json:"socks-port"`
+	RedirPort         int    `json:"redir-port"`
+	MixedPort         int    `json:"mixed-port"`
+	ShadowSocksConfig string `json:"ss-config"`
+	TcpTunConfig      string `json:"tcptun-config"`
+	UdpTunConfig      string `json:"udptun-config"`
 }
 
 func AllowLan() bool {
@@ -140,6 +152,55 @@ func ReCreateSocks(port int) error {
 	return nil
 }
 
+func ReCreateShadowSocks(shadowSocksConfig string) error {
+	ssMux.Lock()
+	defer ssMux.Unlock()
+
+	shouldTCPIgnore := false
+	shouldUDPIgnore := false
+
+	if shadowSocksListener != nil {
+		if shadowSocksListener.Config() != shadowSocksConfig {
+			shadowSocksListener.Close()
+			shadowSocksListener = nil
+		} else {
+			shouldTCPIgnore = true
+		}
+	}
+
+	if shadowSocksUDPListener != nil {
+		if shadowSocksUDPListener.Config() != shadowSocksConfig {
+			shadowSocksUDPListener.Close()
+			shadowSocksUDPListener = nil
+		} else {
+			shouldUDPIgnore = true
+		}
+	}
+
+	if shouldTCPIgnore && shouldUDPIgnore {
+		return nil
+	}
+
+	if len(shadowSocksConfig) == 0 {
+		return nil
+	}
+
+	tcpListener, err := shadowsocks.NewShadowSocksProxy(shadowSocksConfig)
+	if err != nil {
+		return err
+	}
+
+	udpListener, err := shadowsocks.NewShadowSocksUDPProxy(shadowSocksConfig)
+	if err != nil {
+		return err
+	}
+
+	shadowSocksListener = tcpListener
+	shadowSocksUDPListener = udpListener
+
+	return nil
+}
+
 func ReCreateRedir(port int) error {
 	redirMux.Lock()
 	defer redirMux.Unlock()
@@ -176,6 +237,63 @@ func ReCreateRedir(port int) error {
 	if err != nil {
 		log.Warnln("Failed to start Redir UDP Listener: %s", err)
 	}
+
+	return nil
+}
+
+func ReCreateTcpTun(config string) error {
+	tcpTunMux.Lock()
+	defer tcpTunMux.Unlock()
+	shouldIgnore := false
+
+	if tcpTunListener != nil {
+		if tcpTunListener.Config() != config {
+			shadowSocksListener.Close()
+			shadowSocksListener = nil
+		} else {
+			shouldIgnore = true
+		}
+	}
+
+	if shouldIgnore {
+		return nil
+	}
+
+	tcpListener, err := tunnel.NewTcpTunProxy(config)
+	if err != nil {
+		return err
+	}
+
+	tcpTunListener = tcpListener
+
+	return nil
+}
+
+func ReCreateUdpTun(config string) error {
+	udpTunMux.Lock()
+	defer udpTunMux.Unlock()
+	shouldIgnore := false
+
+	if udpTunListener != nil {
+		if udpTunListener.Config() != config {
+			shadowSocksListener.Close()
+			shadowSocksListener = nil
+		} else {
+			shouldIgnore = true
+		}
+	}
+
+	if shouldIgnore {
+		return nil
+	}
+
+	udpListener, err := tunnel.NewUdpTunProxy(config)
+
+	if err != nil {
+		return err
+	}
+
+	udpTunListener = udpListener
 
 	return nil
 }
@@ -255,6 +373,18 @@ func GetPorts() *Ports {
 		_, portStr, _ := net.SplitHostPort(mixedListener.Address())
 		port, _ := strconv.Atoi(portStr)
 		ports.MixedPort = port
+	}
+
+	if shadowSocksListener != nil {
+		ports.ShadowSocksConfig = shadowSocksListener.Config()
+	}
+
+	if tcpTunListener != nil {
+		ports.TcpTunConfig = tcpTunListener.Config()
+	}
+
+	if udpTunListener != nil {
+		ports.UdpTunConfig = udpTunListener.Config()
 	}
 
 	return ports

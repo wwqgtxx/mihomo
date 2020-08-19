@@ -23,16 +23,18 @@ type ShadowSocksR struct {
 }
 
 type ShadowSocksROption struct {
-	Name          string `proxy:"name"`
-	Server        string `proxy:"server"`
-	Port          int    `proxy:"port"`
-	Password      string `proxy:"password"`
-	Cipher        string `proxy:"cipher"`
-	Obfs          string `proxy:"obfs"`
-	ObfsParam     string `proxy:"obfs-param,omitempty"`
-	Protocol      string `proxy:"protocol"`
-	ProtocolParam string `proxy:"protocol-param,omitempty"`
-	UDP           bool   `proxy:"udp,omitempty"`
+	Name             string `proxy:"name"`
+	Server           string `proxy:"server"`
+	Port             int    `proxy:"port"`
+	Password         string `proxy:"password"`
+	Cipher           string `proxy:"cipher"`
+	Obfs             string `proxy:"obfs"`
+	ObfsParam        string `proxy:"obfs-param,omitempty"`
+	ObfsParamOld     string `proxy:"obfsparam,omitempty"`
+	Protocol         string `proxy:"protocol"`
+	ProtocolParam    string `proxy:"protocol-param,omitempty"`
+	ProtocolParamOld string `proxy:"protocolparam,omitempty"`
+	UDP              bool   `proxy:"udp,omitempty"`
 }
 
 func (ssr *ShadowSocksR) StreamConn(c net.Conn, metadata *C.Metadata) (net.Conn, error) {
@@ -95,6 +97,13 @@ func NewShadowSocksR(option ShadowSocksROption) (*ShadowSocksR, error) {
 	ciph, ok := coreCiph.(*core.StreamCipher)
 	if !ok {
 		return nil, fmt.Errorf("%s is not a supported stream cipher in ssr", cipher)
+	}
+
+	if len(option.ObfsParam) == 0 {
+		option.ObfsParam = option.ObfsParamOld
+	}
+	if len(option.ProtocolParam) == 0 {
+		option.ProtocolParam = option.ProtocolParamOld
 	}
 
 	obfs, err := obfs.PickObfs(option.Obfs, &obfs.Base{

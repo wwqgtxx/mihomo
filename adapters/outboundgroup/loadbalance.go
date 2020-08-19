@@ -22,6 +22,10 @@ type LoadBalance struct {
 }
 
 func getKey(metadata *C.Metadata) string {
+	if metadata == nil {
+		return ""
+	}
+
 	if metadata.Host != "" {
 		// ip host
 		if ip := net.ParseIP(metadata.Host); ip != nil {

@@ -311,17 +311,17 @@ func parseProxies(cfg *RawConfig) (proxies map[string]C.Proxy, providersMap map[
 
 	// parse proxy group
 	for idx, mapping := range groupsConfig {
-		group, err := outboundgroup.ParseProxyGroup(mapping, proxies, providersMap)
+		_, err := outboundgroup.ParseProxyGroup(mapping, proxies, providersMap)
 		if err != nil {
 			return nil, nil, fmt.Errorf("ProxyGroup[%d]: %w", idx, err)
 		}
 
-		groupName := group.Name()
-		if _, exist := proxies[groupName]; exist {
-			return nil, nil, fmt.Errorf("ProxyGroup %s: the duplicate name", groupName)
-		}
-
-		proxies[groupName] = outbound.NewProxy(group)
+		//groupName := group.Name()
+		//if _, exist := proxies[groupName]; exist {
+		//	return nil, nil, fmt.Errorf("ProxyGroup %s: the duplicate name", groupName)
+		//}
+		//
+		//proxies[groupName] = outbound.NewProxy(group)
 	}
 
 	// initial compatible provider

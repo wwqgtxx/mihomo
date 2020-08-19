@@ -98,11 +98,15 @@ func newPacketConn(pc net.PacketConn, a C.ProxyAdapter) C.PacketConn {
 
 type Proxy struct {
 	C.ProxyAdapter
-	history *queue.Queue
-	alive   uint32
+	history       *queue.Queue
+	alive         uint32
+	ignoreURLTest bool
 }
 
 func (p *Proxy) Alive() bool {
+	if proxy := p.ProxyAdapter.Unwrap(nil); proxy != nil {
+		return proxy.Alive()
+	}
 	return atomic.LoadUint32(&p.alive) > 0
 }
 
@@ -121,6 +125,9 @@ func (p *Proxy) DialContext(ctx context.Context, metadata *C.Metadata) (C.Conn, 
 }
 
 func (p *Proxy) DelayHistory() []C.DelayHistory {
+	if proxy := p.ProxyAdapter.Unwrap(nil); proxy != nil {
+		return proxy.DelayHistory()
+	}
 	queue := p.history.Copy()
 	histories := []C.DelayHistory{}
 	for _, item := range queue {
@@ -131,6 +138,9 @@ func (p *Proxy) DelayHistory() []C.DelayHistory {
 
 // LastDelay return last history record. if proxy is not alive, return the max value of uint16.
 func (p *Proxy) LastDelay() (delay uint16) {
+	if proxy := p.ProxyAdapter.Unwrap(nil); proxy != nil {
+		return proxy.LastDelay()
+	}
 	var max uint16 = 0xffff
 	if atomic.LoadUint32(&p.alive) == 0 {
 		return max
@@ -162,6 +172,12 @@ func (p *Proxy) MarshalJSON() ([]byte, error) {
 
 // URLTest get the delay for the specified URL
 func (p *Proxy) URLTest(ctx context.Context, url string) (t uint16, err error) {
+	if p.ignoreURLTest {
+		return p.LastDelay(), nil
+	}
+	if proxy := p.ProxyAdapter.Unwrap(nil); proxy != nil {
+		return proxy.URLTest(ctx, url)
+	}
 	defer func() {
 		if err == nil {
 			atomic.StoreUint32(&p.alive, 1)
@@ -223,5 +239,9 @@ func (p *Proxy) URLTest(ctx context.Context, url string) (t uint16, err error) {
 }
 
 func NewProxy(adapter C.ProxyAdapter) *Proxy {
-	return &Proxy{adapter, queue.New(10), 1}
+	return &Proxy{adapter, queue.New(10), 1, false}
+}
+
+func NewProxyFromGroup(adapter C.ProxyAdapter, ignoreURLTest bool) *Proxy {
+	return &Proxy{adapter, queue.New(10), 1, ignoreURLTest}
 }

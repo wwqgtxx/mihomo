@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Dreamacro/clash/adapters/outbound"
 	"github.com/Dreamacro/clash/adapters/provider"
 	"github.com/Dreamacro/clash/common/structure"
 	C "github.com/Dreamacro/clash/constant"
@@ -43,6 +44,8 @@ func ParseProxyGroup(config map[string]interface{}, proxyMap map[string]C.Proxy,
 
 	providers := []provider.ProxyProvider{}
 
+	ignoreURLTest := false
+
 	if len(groupOption.Proxies) == 0 && len(groupOption.Use) == 0 {
 		return nil, errMissProxy
 	}
@@ -78,6 +81,7 @@ func ParseProxyGroup(config map[string]interface{}, proxyMap map[string]C.Proxy,
 					return nil, errMissHealthCheck
 				}
 
+				ignoreURLTest = true
 				hc := provider.NewHealthCheck(ps, groupOption.URL, uint(groupOption.Interval))
 				pd, err := provider.NewCompatibleProvider(groupName, ps, hc)
 				if err != nil {
@@ -114,6 +118,12 @@ func ParseProxyGroup(config map[string]interface{}, proxyMap map[string]C.Proxy,
 	default:
 		return nil, fmt.Errorf("%w: %s", errType, groupOption.Type)
 	}
+
+	if _, exist := proxyMap[groupName]; exist {
+		return nil, fmt.Errorf("ProxyGroup %s: the duplicate name", groupName)
+	}
+
+	proxyMap[groupName] = outbound.NewProxyFromGroup(group, ignoreURLTest)
 
 	return group, nil
 }

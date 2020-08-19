@@ -2,7 +2,9 @@ package outboundgroup
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
+	"math/big"
 	"net"
 
 	"github.com/Dreamacro/clash/adapters/outbound"
@@ -14,10 +16,19 @@ import (
 	"golang.org/x/net/publicsuffix"
 )
 
+type loadBalanceOption func(balance *LoadBalance)
+
+func loadBalanceWithVersion(version int) loadBalanceOption {
+	return func(lb *LoadBalance) {
+		lb.version = version
+	}
+}
+
 type LoadBalance struct {
 	*outbound.Base
 	single    *singledo.Single
 	maxRetry  int
+	version   int
 	providers []provider.ProxyProvider
 }
 
@@ -86,18 +97,38 @@ func (lb *LoadBalance) SupportUDP() bool {
 }
 
 func (lb *LoadBalance) Unwrap(metadata *C.Metadata) C.Proxy {
-	key := uint64(murmur3.Sum32([]byte(getKey(metadata))))
 	proxies := lb.proxies()
-	buckets := int32(len(proxies))
-	for i := 0; i < lb.maxRetry; i, key = i+1, key+1 {
-		idx := jumpHash(key, buckets)
-		proxy := proxies[idx]
-		if proxy.Alive() {
-			return proxy
+	switch lb.version {
+	case 0:
+		aliveProxies := make([]C.Proxy, 0, len(proxies))
+		for _, proxy := range proxies {
+			if proxy.Alive() {
+				aliveProxies = append(aliveProxies, proxy)
+			}
 		}
-	}
+		aliveNum := int64(len(aliveProxies))
+		if aliveNum == 0 {
+			return proxies[0]
+		}
+		idx, err := rand.Int(rand.Reader, big.NewInt(aliveNum))
+		if err != nil {
+			return aliveProxies[0]
+		}
 
-	return proxies[0]
+		return aliveProxies[idx.Int64()]
+	default:
+		key := uint64(murmur3.Sum32([]byte(getKey(metadata))))
+		buckets := int32(len(proxies))
+		for i := 0; i < lb.maxRetry; i, key = i+1, key+1 {
+			idx := jumpHash(key, buckets)
+			proxy := proxies[idx]
+			if proxy.Alive() {
+				return proxy
+			}
+		}
+
+		return proxies[0]
+	}
 }
 
 func (lb *LoadBalance) proxies() []C.Proxy {
@@ -119,11 +150,31 @@ func (lb *LoadBalance) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func NewLoadBalance(name string, providers []provider.ProxyProvider) *LoadBalance {
-	return &LoadBalance{
+func parseLoadBalanceOption(config map[string]interface{}) []loadBalanceOption {
+	opts := []loadBalanceOption{}
+
+	// version
+	if elm, ok := config["version"]; ok {
+		if version, ok := elm.(int); ok {
+			opts = append(opts, loadBalanceWithVersion(int(version)))
+		}
+	}
+
+	return opts
+}
+
+func NewLoadBalance(name string, providers []provider.ProxyProvider, options ...loadBalanceOption) *LoadBalance {
+	lb := &LoadBalance{
 		Base:      outbound.NewBase(name, "", C.LoadBalance, false),
 		single:    singledo.NewSingle(defaultGetProxiesDuration),
 		maxRetry:  3,
 		providers: providers,
+		version:   0,
 	}
+
+	for _, option := range options {
+		option(lb)
+	}
+
+	return lb
 }

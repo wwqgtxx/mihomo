@@ -22,6 +22,7 @@ const (
 	REDIR
 	TCPTUN
 	UDPTUN
+	TUN
 )
 
 type NetWork int
@@ -55,6 +56,8 @@ func (t Type) String() string {
 		return "TcpTun"
 	case UDPTUN:
 		return "UdpTun"
+	case TUN:
+		return "Tun"
 	default:
 		return "Unknown"
 	}

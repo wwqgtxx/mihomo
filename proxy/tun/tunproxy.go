@@ -41,12 +41,12 @@ func NewTunProxy(deviceURL string) (TunAdapter, error) {
 
 	url, err := url.Parse(deviceURL)
 	if err != nil {
-		return nil, fmt.Errorf("Invalid tun device url: %v", err)
+		return nil, fmt.Errorf("invalid tun device url: %v", err)
 	}
 
 	tundev, err := dev.OpenTunDevice(*url)
 	if err != nil {
-		return nil, fmt.Errorf("Can't open tun: %v", err)
+		return nil, fmt.Errorf("can't open tun: %v", err)
 	}
 
 	ipstack := stack.New(stack.Options{
@@ -61,11 +61,11 @@ func NewTunProxy(deviceURL string) (TunAdapter, error) {
 
 	linkEP, err := tundev.AsLinkEndpoint()
 	if err != nil {
-		return nil, fmt.Errorf("Unable to create virtual endpoint: %v", err)
+		return nil, fmt.Errorf("unable to create virtual endpoint: %v", err)
 	}
 
 	if err := ipstack.CreateNIC(1, linkEP); err != nil {
-		return nil, fmt.Errorf("Fail to create NIC in ipstack: %v", err)
+		return nil, fmt.Errorf("fail to create NIC in ipstack: %v", err)
 	}
 
 	// IPv4 0.0.0.0/0

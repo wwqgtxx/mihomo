@@ -18,10 +18,6 @@ import (
 	"gvisor.dev/gvisor/pkg/tcpip/transport/udp"
 )
 
-const (
-	defaultTimeout = 5
-)
-
 var (
 	ipv4Zero = tcpip.Address(net.IPv4zero.To4())
 	ipv6Zero = tcpip.Address(net.IPv6zero.To16())
@@ -182,7 +178,7 @@ func CreateDNSServer(s *stack.Stack, resolver *dns.Resolver, ip net.IP, port int
 		tcpListener, err = gonet.ListenTCP(s, address, ipv6.ProtocolNumber)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("Can not listen on tun: %v", err)
+		return nil, fmt.Errorf("can not listen on tun: %v", err)
 	}
 
 	server := &DNSServer{
@@ -247,7 +243,7 @@ func (t *tunAdapter) ReCreateDNSServer(resolver *dns.Resolver, addr string) erro
 	if t.dnsserver != nil {
 		t.dnsserver.Stop()
 		t.dnsserver = nil
-		log.Debugln("Tun DNS server stoped")
+		log.Debugln("tun DNS server stoped")
 	}
 
 	var err error
@@ -257,7 +253,7 @@ func (t *tunAdapter) ReCreateDNSServer(resolver *dns.Resolver, addr string) erro
 	}
 
 	if resolver == nil {
-		return fmt.Errorf("Failed to create DNS server on tun: resolver not provided")
+		return fmt.Errorf("failed to create DNS server on tun: resolver not provided")
 	}
 
 	udpAddr, err := net.ResolveUDPAddr("udp", addr)

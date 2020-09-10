@@ -84,7 +84,7 @@ var sockaddrCtlSize uintptr = 32
 // OpenTunDevice return a TunDevice according a URL
 func OpenTunDevice(deviceURL url.URL) (TunDevice, error) {
 	if deviceURL.Scheme != "dev" {
-		return nil, errors.New("Unsupported device type " + deviceURL.Scheme)
+		return nil, errors.New("unsupported device type " + deviceURL.Scheme)
 
 	}
 	name := deviceURL.Host
@@ -95,7 +95,7 @@ func OpenTunDevice(deviceURL url.URL) (TunDevice, error) {
 	if name != "utun" {
 		_, err := fmt.Sscanf(name, "utun%d", &ifIndex)
 		if err != nil || ifIndex < 0 {
-			return nil, fmt.Errorf("Interface name must be utun[0-9]*")
+			return nil, fmt.Errorf("interface name must be utun[0-9]*")
 		}
 	}
 
@@ -214,19 +214,19 @@ func (t *tunDarwin) AsLinkEndpoint() (result stack.LinkEndpoint, err error) {
 	mtu, err := t.getInterfaceMtu()
 
 	if err != nil {
-		return nil, errors.New("Unable to get device mtu")
+		return nil, errors.New("unable to get device mtu")
 	}
 	linkEP := channel.New(512, uint32(mtu), "")
 
 	// start Read loop. read ip packet from tun and write it to ipstack
+	t.wg.Add(1)
 	go func() {
-		t.wg.Add(1)
 		for {
 			packet := make([]byte, mtu)
 			n, err := t.Read(packet)
 			if err != nil {
 				if !t.closed {
-					log.Errorln("Can not read from tun: %v", err)
+					log.Errorln("can not read from tun: %v", err)
 				}
 				break
 			}
@@ -242,7 +242,7 @@ func (t *tunDarwin) AsLinkEndpoint() (result stack.LinkEndpoint, err error) {
 					Data: buffer.View(packet[:n]).ToVectorisedView(),
 				})
 			} else {
-				log.Debugln("Received packet from tun when %s is not attached to any dispatcher.", t.Name())
+				log.Debugln("received packet from tun when %s is not attached to any dispatcher.", t.Name())
 			}
 		}
 		t.wg.Done()
@@ -301,7 +301,7 @@ func (t *tunDarwin) WriteNotify() {
 		buf := buffer.NewVectorisedView(len(networkHeader)+len(transportHeader)+len(data), []buffer.View{networkHeader, transportHeader, data})
 		_, err := t.Write(buf.ToView())
 		if err != nil {
-			log.Errorln("Can not read from tun: %v", err)
+			log.Errorln("can not read from tun: %v", err)
 		}
 	}
 }
@@ -475,7 +475,7 @@ func (t *tunDarwin) setTunAddress(addr net.IP) error {
 		uintptr(unix.SIOCAIFADDR),
 		uintptr(unsafe.Pointer(&ifra4)),
 	); errno != 0 {
-		return fmt.Errorf("Failed to set ip address on %s: %v", t.name, errno)
+		return fmt.Errorf("failed to set ip address on %s: %v", t.name, errno)
 	}
 
 	return nil
@@ -524,7 +524,7 @@ func (t *tunDarwin) attachLinkLocal() error {
 		uintptr(_SIOCPROTOATTACH_IN6),
 		uintptr(unsafe.Pointer(&ifra6)),
 	); errno != 0 {
-		return fmt.Errorf("Failed to attach link-local address on %s: SIOCPROTOATTACH_IN6 %v", t.name, errno)
+		return fmt.Errorf("failed to attach link-local address on %s: SIOCPROTOATTACH_IN6 %v", t.name, errno)
 	}
 
 	if _, _, errno := unix.Syscall(
@@ -533,7 +533,7 @@ func (t *tunDarwin) attachLinkLocal() error {
 		uintptr(_SIOCLL_START),
 		uintptr(unsafe.Pointer(&ifra6)),
 	); errno != 0 {
-		return fmt.Errorf("Failed to set ipv6 address on %s: SIOCLL_START %v", t.name, errno)
+		return fmt.Errorf("failed to set ipv6 address on %s: SIOCLL_START %v", t.name, errno)
 	}
 
 	return nil

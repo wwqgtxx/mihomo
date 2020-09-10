@@ -59,7 +59,7 @@ func OpenTunDevice(deviceURL url.URL) (TunDevice, error) {
 		}
 		return t.openDeviceByFd(int(fd))
 	}
-	return nil, fmt.Errorf("Unsupported device type `%s`", deviceURL.Scheme)
+	return nil, fmt.Errorf("unsupported device type `%s`", deviceURL.Scheme)
 }
 
 func (t *tunLinux) Name() string {
@@ -78,20 +78,20 @@ func (t *tunLinux) AsLinkEndpoint() (result stack.LinkEndpoint, err error) {
 	mtu, err := t.MTU()
 
 	if err != nil {
-		return nil, errors.New("Unable to get device mtu")
+		return nil, errors.New("unable to get device mtu")
 	}
 
 	linkEP := channel.New(512, uint32(mtu), "")
 
 	// start Read loop. read ip packet from tun and write it to ipstack
+	t.wg.Add(1)
 	go func() {
-		t.wg.Add(1)
 		for {
 			packet := make([]byte, mtu)
 			n, err := t.Read(packet)
 			if err != nil {
 				if !t.closed {
-					log.Errorln("Can not read from tun: %v", err)
+					log.Errorln("can not read from tun: %v", err)
 				}
 				break
 			}
@@ -107,7 +107,7 @@ func (t *tunLinux) AsLinkEndpoint() (result stack.LinkEndpoint, err error) {
 					Data: buffer.View(packet[:n]).ToVectorisedView(),
 				})
 			} else {
-				log.Debugln("Received packet from tun when %s is not attached to any dispatcher.", t.Name())
+				log.Debugln("received packet from tun when %s is not attached to any dispatcher.", t.Name())
 			}
 
 		}
@@ -140,7 +140,7 @@ func (t *tunLinux) WriteNotify() {
 		buf := buffer.NewVectorisedView(len(networkHeader)+len(transportHeader)+len(data), []buffer.View{networkHeader, transportHeader, data})
 		_, err := t.Write(buf.ToView())
 		if err != nil {
-			log.Errorln("Can not read from tun: %v", err)
+			log.Errorln("can not read from tun: %v", err)
 		}
 	}
 }
@@ -192,6 +192,9 @@ func (t *tunLinux) openDeviceByName(name string) (TunDevice, error) {
 		return nil, errno
 	}
 	err = unix.SetNonblock(nfd, true)
+	if err != nil {
+		return nil, err
+	}
 
 	// Note that the above -- open,ioctl,nonblock -- must happen prior to handing it to netpoll as below this line.
 
@@ -223,7 +226,7 @@ func (t *tunLinux) openDeviceByFd(fd int) (TunDevice, error) {
 	}
 
 	if ifr.flags&syscall.IFF_TUN == 0 || ifr.flags&syscall.IFF_NO_PI == 0 {
-		return nil, errors.New("Only tun device and no pi mode supported")
+		return nil, errors.New("only tun device and no pi mode supported")
 	}
 
 	nullStr := ifr.name[:]

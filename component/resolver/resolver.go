@@ -33,7 +33,7 @@ type Resolver interface {
 }
 
 // ResolveIPv4 with a host, return ipv4
-func ResolveIPv4(host string) (net.IP, error) {
+func resolveIPv4(host string, forceSystem bool) (net.IP, error) {
 	if node := DefaultHosts.Search(host); node != nil {
 		if ip := node.Data.(net.IP).To4(); ip != nil {
 			return ip, nil
@@ -48,7 +48,7 @@ func ResolveIPv4(host string) (net.IP, error) {
 		return nil, ErrIPVersion
 	}
 
-	if DefaultResolver != nil {
+	if !forceSystem && DefaultResolver != nil {
 		return DefaultResolver.ResolveIPv4(host)
 	}
 
@@ -66,8 +66,16 @@ func ResolveIPv4(host string) (net.IP, error) {
 	return nil, ErrIPNotFound
 }
 
+func ResolveIPv4(host string) (net.IP, error) {
+	return resolveIPv4(host, false)
+}
+
+func ResolveIPv4ForceSystem(host string) (net.IP, error) {
+	return resolveIPv4(host, true)
+}
+
 // ResolveIPv6 with a host, return ipv6
-func ResolveIPv6(host string) (net.IP, error) {
+func resolveIPv6(host string, forceSystem bool) (net.IP, error) {
 	if DisableIPv6 {
 		return nil, ErrIPv6Disabled
 	}
@@ -86,7 +94,7 @@ func ResolveIPv6(host string) (net.IP, error) {
 		return nil, ErrIPVersion
 	}
 
-	if DefaultResolver != nil {
+	if !forceSystem && DefaultResolver != nil {
 		return DefaultResolver.ResolveIPv6(host)
 	}
 
@@ -104,19 +112,27 @@ func ResolveIPv6(host string) (net.IP, error) {
 	return nil, ErrIPNotFound
 }
 
+func ResolveIPv6(host string) (net.IP, error) {
+	return resolveIPv6(host, false)
+}
+
+func ResolveIPv6ForceSystem(host string) (net.IP, error) {
+	return resolveIPv6(host, true)
+}
+
 // ResolveIP with a host, return ip
-func ResolveIP(host string) (net.IP, error) {
+func resolveIP(host string, forceSystem bool) (net.IP, error) {
 	if node := DefaultHosts.Search(host); node != nil {
 		return node.Data.(net.IP), nil
 	}
 
-	if DefaultResolver != nil {
+	if !forceSystem && DefaultResolver != nil {
 		if DisableIPv6 {
 			return DefaultResolver.ResolveIPv4(host)
 		}
 		return DefaultResolver.ResolveIP(host)
 	} else if DisableIPv6 {
-		return ResolveIPv4(host)
+		return resolveIPv4(host, forceSystem)
 	}
 
 	ip := net.ParseIP(host)
@@ -130,4 +146,12 @@ func ResolveIP(host string) (net.IP, error) {
 	}
 
 	return ipAddr.IP, nil
+}
+
+func ResolveIP(host string) (net.IP, error) {
+	return resolveIP(host, false)
+}
+
+func ResolveIPForceSystem(host string) (net.IP, error) {
+	return resolveIP(host, true)
 }

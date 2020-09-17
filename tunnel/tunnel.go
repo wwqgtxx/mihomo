@@ -37,6 +37,7 @@ var (
 
 func init() {
 	go process()
+	dns.TunnelAdd = Add
 }
 
 // Add request to queue

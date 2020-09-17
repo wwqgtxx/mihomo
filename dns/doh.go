@@ -4,11 +4,16 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
 
-	"github.com/Dreamacro/clash/component/dialer"
+	adapters "github.com/Dreamacro/clash/adapters/inbound"
+	"github.com/Dreamacro/clash/component/socks5"
+	C "github.com/Dreamacro/clash/constant"
+	"github.com/Dreamacro/clash/log"
 
 	D "github.com/miekg/dns"
 )
@@ -16,6 +21,10 @@ import (
 const (
 	// dotMimeType is the DoH mimetype that should be used.
 	dotMimeType = "application/dns-message"
+)
+
+var (
+	TunnelAdd func(req C.ServerAdapter)
 )
 
 type dohClient struct {
@@ -88,7 +97,19 @@ func newDoHClient(url string, r *Resolver) *dohClient {
 					return nil, err
 				}
 
-				return dialer.DialContext(ctx, "tcp4", net.JoinHostPort(ip.String(), port))
+				address := net.JoinHostPort(ip.String(), port)
+				conn1, conn2 := net.Pipe()
+				tgt := socks5.ParseAddr(address)
+				if tgt == nil {
+					err := fmt.Sprintf("invalid target address %q", address)
+					log.Errorln(err)
+					return nil, errors.New(err)
+				}
+				TunnelAdd(adapters.NewSocket(tgt, conn2, C.DNS))
+
+				return conn1, nil
+
+				//return dialer.DialContext(ctx, "tcp4", net.JoinHostPort(ip.String(), port))
 			},
 		},
 	}

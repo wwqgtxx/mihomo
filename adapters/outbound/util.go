@@ -92,7 +92,7 @@ func resolveUDPAddr(network, address string) (*net.UDPAddr, error) {
 		return nil, err
 	}
 
-	ip, err := resolver.ResolveIP(host)
+	ip, err := resolver.ResolveIPForceSystem(host)
 	if err != nil {
 		return nil, err
 	}

@@ -157,7 +157,7 @@ func CreateDNSServer(s *stack.Stack, resolver *dns.Resolver, ip net.IP, port int
 		server:   serverIn,
 	}
 
-	if tcpiperr := s.RegisterTransportEndpoint(1,
+	if tcpiperr := s.RegisterTransportEndpoint(nicID,
 		[]tcpip.NetworkProtocolNumber{
 			ipv4.ProtocolNumber,
 			ipv6.ProtocolNumber,
@@ -261,7 +261,7 @@ func (t *tunAdapter) ReCreateDNSServer(resolver *dns.Resolver, addr string) erro
 		return err
 	}
 
-	server, err := CreateDNSServer(t.ipstack, resolver, udpAddr.IP, udpAddr.Port, 1)
+	server, err := CreateDNSServer(t.ipstack, resolver, udpAddr.IP, udpAddr.Port, nicID)
 	if err != nil {
 		return err
 	}

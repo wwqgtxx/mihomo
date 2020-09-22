@@ -29,6 +29,8 @@ github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDk
 github.com/cncf/udpa/go v0.0.0-20191209042840-269d4d468f6f/go.mod h1:M8M6+tZqaGXZJjfX53e64911xZQV5JYwmTeXPW+k8Sc=
 github.com/comzyh/gvisor v0.0.0-20200814151311-224de3a00460 h1:pT+LVpLHu+AOHO/e+UoTQZWZpbRz2l4JL6aNtfAjl9w=
 github.com/comzyh/gvisor v0.0.0-20200814151311-224de3a00460/go.mod h1:n17AP1iZxpRCzqyHLJdpa2e1SzY1rNZ9tt3/MePxlGs=
+github.com/comzyh/gvisor v0.0.0-20200922152710-c36c6379af83 h1:gVgXCtnTMEOW5T5736bczg0v6O/iNBtElnX0tGldra0=
+github.com/comzyh/gvisor v0.0.0-20200922152710-c36c6379af83/go.mod h1:n17AP1iZxpRCzqyHLJdpa2e1SzY1rNZ9tt3/MePxlGs=
 github.com/containerd/cgroups v0.0.0-20181219155423-39b18af02c41/go.mod h1:X9rLEHIqSf/wfK8NsPqxJmeZgW4pcfzdXITDrUSJ6uI=
 github.com/containerd/console v0.0.0-20191206165004-02ecf6a7291e/go.mod h1:8Pf4gM6VEbTNRIT26AyyU7hxdQU3MvAvxVI0sc00XBE=
 github.com/containerd/containerd v1.3.4/go.mod h1:bC6axHOhabU15QhwfG7w5PipXdVtMXFTttgp+kVtyUA=

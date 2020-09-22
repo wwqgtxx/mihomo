@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net"
 	"net/url"
-	"strings"
 
 	adapters "github.com/Dreamacro/clash/adapters/inbound"
 	"github.com/Dreamacro/clash/component/socks5"
@@ -25,6 +24,8 @@ import (
 	"gvisor.dev/gvisor/pkg/tcpip/transport/udp"
 	"gvisor.dev/gvisor/pkg/waiter"
 )
+
+const nicID tcpip.NICID = 1
 
 // tunAdapter is the wraper of tun
 type tunAdapter struct {
@@ -64,17 +65,11 @@ func NewTunProxy(deviceURL string) (TunAdapter, error) {
 		return nil, fmt.Errorf("unable to create virtual endpoint: %v", err)
 	}
 
-	if err := ipstack.CreateNIC(1, linkEP); err != nil {
+	if err := ipstack.CreateNIC(nicID, linkEP); err != nil {
 		return nil, fmt.Errorf("fail to create NIC in ipstack: %v", err)
 	}
 
-	// IPv4 0.0.0.0/0
-	subnet, _ := tcpip.NewSubnet(tcpip.Address(strings.Repeat("\x00", 4)), tcpip.AddressMask(strings.Repeat("\x00", 4)))
-	ipstack.AddAddressRange(1, ipv4.ProtocolNumber, subnet)
-
-	// IPv6 [::]/0
-	subnet, _ = tcpip.NewSubnet(tcpip.Address(strings.Repeat("\x00", 16)), tcpip.AddressMask(strings.Repeat("\x00", 16)))
-	ipstack.AddAddressRange(1, ipv4.ProtocolNumber, subnet)
+	ipstack.SetPromiscuousMode(nicID, true) // Accept all the traffice from this NIC
 
 	// TCP handler
 	// maximum number of half-open tcp connection set to 1024

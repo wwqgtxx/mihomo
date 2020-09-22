@@ -22,4 +22,4 @@ require (
 	gvisor.dev/gvisor v0.0.0-00010101000000-000000000000
 )
 
-replace gvisor.dev/gvisor => github.com/comzyh/gvisor v0.0.0-20200814151311-224de3a00460
+replace gvisor.dev/gvisor => github.com/comzyh/gvisor v0.0.0-20200922152710-c36c6379af83

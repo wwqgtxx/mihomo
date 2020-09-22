@@ -5,7 +5,6 @@ import (
 	"net"
 
 	"github.com/Dreamacro/clash/component/resolver"
-	"github.com/Dreamacro/clash/dns"
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/buffer"
 	"gvisor.dev/gvisor/pkg/tcpip/header"
@@ -58,7 +57,6 @@ func (c *fakeConn) FakeIP() bool {
 	if c.fakeip != nil {
 		return *c.fakeip
 	}
-	resolver := resolver.DefaultResolver.(*dns.Resolver)
 	fakeip := resolver.IsFakeIP(net.IP(c.id.LocalAddress.To4()))
 	c.fakeip = &fakeip
 	return fakeip

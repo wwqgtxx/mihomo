@@ -118,7 +118,7 @@ func (w *dnsResponseWriter) Close() error {
 }
 
 // CreateDNSServer create a dns server on given netstack
-func CreateDNSServer(s *stack.Stack, resolver *dns.Resolver, ip net.IP, port int, nicID tcpip.NICID) (*DNSServer, error) {
+func CreateDNSServer(s *stack.Stack, resolver *dns.Resolver, mapper *dns.ResolverEnhancer, ip net.IP, port int, nicID tcpip.NICID) (*DNSServer, error) {
 
 	var v4 bool
 	var err error
@@ -138,7 +138,7 @@ func CreateDNSServer(s *stack.Stack, resolver *dns.Resolver, ip net.IP, port int
 		address.Addr = ""
 	}
 
-	handler := dns.NewHandler(resolver)
+	handler := dns.NewHandler(resolver, mapper)
 	serverIn := &dns.Server{}
 	serverIn.SetHandler(handler)
 
@@ -231,7 +231,7 @@ func (t *tunAdapter) DNSListen() string {
 }
 
 // Stop stop the DNS Server on tun
-func (t *tunAdapter) ReCreateDNSServer(resolver *dns.Resolver, addr string) error {
+func (t *tunAdapter) ReCreateDNSServer(resolver *dns.Resolver, mapper *dns.ResolverEnhancer, addr string) error {
 	if addr == "" && t.dnsserver == nil {
 		return nil
 	}
@@ -261,7 +261,7 @@ func (t *tunAdapter) ReCreateDNSServer(resolver *dns.Resolver, addr string) erro
 		return err
 	}
 
-	server, err := CreateDNSServer(t.ipstack, resolver, udpAddr.IP, udpAddr.Port, nicID)
+	server, err := CreateDNSServer(t.ipstack, resolver, mapper, udpAddr.IP, udpAddr.Port, nicID)
 	if err != nil {
 		return err
 	}

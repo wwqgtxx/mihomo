@@ -89,6 +89,11 @@ func (p *Pool) Gateway() net.IP {
 	return uintToIP(p.gateway)
 }
 
+// PatchFrom clone cache from old pool
+func (p *Pool) PatchFrom(o *Pool) {
+	o.cache.CloneTo(p.cache)
+}
+
 func (p *Pool) get(host string) net.IP {
 	current := p.offset
 	for {
@@ -116,7 +121,7 @@ func ipToUint(ip net.IP) uint32 {
 }
 
 func uintToIP(v uint32) net.IP {
-	return net.IPv4(byte(v>>24), byte(v>>16), byte(v>>8), byte(v))
+	return net.IP{byte(v >> 24), byte(v >> 16), byte(v >> 8), byte(v)}
 }
 
 // New return Pool instance

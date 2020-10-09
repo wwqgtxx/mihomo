@@ -2,23 +2,20 @@ package tunnel
 
 import (
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
 var DefaultManager *Manager
 
 func init() {
-	DefaultManager = &Manager{
-		upload:   make(chan int64),
-		download: make(chan int64),
-	}
-	DefaultManager.handle()
+	DefaultManager = &Manager{}
+
+	go DefaultManager.handle()
 }
 
 type Manager struct {
 	connections   sync.Map
-	upload        chan int64
-	download      chan int64
 	uploadTemp    int64
 	downloadTemp  int64
 	uploadBlip    int64
@@ -35,16 +32,18 @@ func (m *Manager) Leave(c tracker) {
 	m.connections.Delete(c.ID())
 }
 
-func (m *Manager) Upload() chan<- int64 {
-	return m.upload
+func (m *Manager) PushUploaded(size int64) {
+	atomic.AddInt64(&m.uploadTemp, size)
+	atomic.AddInt64(&m.uploadTotal, size)
 }
 
-func (m *Manager) Download() chan<- int64 {
-	return m.download
+func (m *Manager) PushDownloaded(size int64) {
+	atomic.AddInt64(&m.downloadTemp, size)
+	atomic.AddInt64(&m.downloadTotal, size)
 }
 
 func (m *Manager) Now() (up int64, down int64) {
-	return m.uploadBlip, m.downloadBlip
+	return atomic.LoadInt64(&m.uploadBlip), atomic.LoadInt64(&m.downloadBlip)
 }
 
 func (m *Manager) Snapshot() *Snapshot {
@@ -55,8 +54,8 @@ func (m *Manager) Snapshot() *Snapshot {
 	})
 
 	return &Snapshot{
-		UploadTotal:   m.uploadTotal,
-		DownloadTotal: m.downloadTotal,
+		UploadTotal:   atomic.LoadInt64(&m.uploadTotal),
+		DownloadTotal: atomic.LoadInt64(&m.downloadTotal),
 		Connections:   connections,
 	}
 }
@@ -71,21 +70,13 @@ func (m *Manager) ResetStatistic() {
 }
 
 func (m *Manager) handle() {
-	go m.handleCh(m.upload, &m.uploadTemp, &m.uploadBlip, &m.uploadTotal)
-	go m.handleCh(m.download, &m.downloadTemp, &m.downloadBlip, &m.downloadTotal)
-}
-
-func (m *Manager) handleCh(ch <-chan int64, temp *int64, blip *int64, total *int64) {
 	ticker := time.NewTicker(time.Second)
-	for {
-		select {
-		case n := <-ch:
-			*temp += n
-			*total += n
-		case <-ticker.C:
-			*blip = *temp
-			*temp = 0
-		}
+
+	for range ticker.C {
+		atomic.StoreInt64(&m.uploadBlip, atomic.LoadInt64(&m.uploadTemp))
+		atomic.StoreInt64(&m.uploadTemp, 0)
+		atomic.StoreInt64(&m.downloadBlip, atomic.LoadInt64(&m.downloadTemp))
+		atomic.StoreInt64(&m.downloadTemp, 0)
 	}
 }
 

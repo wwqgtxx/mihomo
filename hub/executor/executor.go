@@ -34,7 +34,7 @@ func readConfig(path string) ([]byte, error) {
 	}
 
 	if len(data) == 0 {
-		return nil, fmt.Errorf("Configuration file %s is empty", path)
+		return nil, fmt.Errorf("configuration file %s is empty", path)
 	}
 
 	return data, err
@@ -104,13 +104,14 @@ func GetGeneral() *config.General {
 func updateExperimental(c *config.Config) {}
 
 func updateDNS(c *config.DNS) {
-	if c.Enable == false {
+	if !c.Enable {
 		resolver.DefaultResolver = nil
-		tunnel.SetResolver(nil)
-		dns.ReCreateServer("", nil)
+		resolver.DefaultHostMapper = nil
+		dns.ReCreateServer("", nil, nil)
 		return
 	}
-	r := dns.New(dns.Config{
+
+	cfg := dns.Config{
 		Main:         c.NameServer,
 		Fallback:     c.Fallback,
 		IPv6:         c.IPv6,
@@ -120,12 +121,23 @@ func updateDNS(c *config.DNS) {
 		FallbackFilter: dns.FallbackFilter{
 			GeoIP:  c.FallbackFilter.GeoIP,
 			IPCIDR: c.FallbackFilter.IPCIDR,
+			Domain: c.FallbackFilter.Domain,
 		},
 		Default: c.DefaultNameserver,
-	})
+	}
+
+	r := dns.NewResolver(cfg)
+	m := dns.NewEnhancer(cfg)
+
+	// reuse cache of old host mapper
+	if old := resolver.DefaultHostMapper; old != nil {
+		m.PatchFrom(old.(*dns.ResolverEnhancer))
+	}
+
 	resolver.DefaultResolver = r
-	tunnel.SetResolver(r)
-	if err := dns.ReCreateServer(c.Listen, r); err != nil {
+	resolver.DefaultHostMapper = m
+
+	if err := dns.ReCreateServer(c.Listen, r, m); err != nil {
 		log.Errorln("Start DNS server error: %s", err.Error())
 		return
 	}

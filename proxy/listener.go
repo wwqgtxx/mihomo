@@ -42,11 +42,6 @@ var (
 	udpTunMux sync.Mutex
 )
 
-type listener interface {
-	Close()
-	Address() string
-}
-
 type Ports struct {
 	Port              int    `json:"port"`
 	SocksPort         int    `json:"socks-port"`

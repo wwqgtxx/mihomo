@@ -38,7 +38,6 @@ func (c *packet) LocalAddr() net.Addr {
 
 func (c *packet) Drop() {
 	pool.Put(c.bufRef)
-	return
 }
 
 func parseSSURL(s string) (addr, cipher, password string, err error) {

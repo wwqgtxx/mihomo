@@ -37,7 +37,6 @@ var (
 	redirMux  sync.Mutex
 	mixedMux  sync.Mutex
 	ssMux     sync.Mutex
-	tunMux    sync.Mutex
 	tcpTunMux sync.Mutex
 	udpTunMux sync.Mutex
 )

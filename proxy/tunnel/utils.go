@@ -56,5 +56,4 @@ func (c *packet) LocalAddr() net.Addr {
 
 func (c *packet) Drop() {
 	pool.Put(c.bufRef)
-	return
 }

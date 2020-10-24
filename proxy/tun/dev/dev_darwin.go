@@ -47,6 +47,16 @@ const _SIOCLL_START = _IOC_INOUT | ((128 & 0x1fff) << 16) | uint32(byte('i'))<<8
 // https://github.com/apple/darwin-xnu/blob/a449c6a3b8014d9406c2ddbdc81795da24aa7443/bsd/netinet6/nd6.h#L469
 const ND6_INFINITE_LIFETIME = 0xffffffff
 
+// Following the wireguard-go solution:
+// These unix.SYS_* constants were removed from golang.org/x/sys/unix
+// so copy them here for now.
+// See https://github.com/golang/go/issues/41868
+const (
+	sys_IOCTL      = 54
+	sys_CONNECT    = 98
+	sys_GETSOCKOPT = 118
+)
+
 type tunDarwin struct {
 	url       string
 	name      string
@@ -113,7 +123,7 @@ func OpenTunDevice(deviceURL url.URL) (TunDevice, error) {
 	copy(ctlInfo.ctlName[:], []byte(utunControlName))
 
 	_, _, errno := unix.Syscall(
-		unix.SYS_IOCTL,
+		sys_IOCTL,
 		uintptr(fd),
 		uintptr(_CTLIOCGINFO),
 		uintptr(unsafe.Pointer(ctlInfo)),
@@ -134,7 +144,7 @@ func OpenTunDevice(deviceURL url.URL) (TunDevice, error) {
 	scPointer := unsafe.Pointer(&sc)
 
 	_, _, errno = unix.RawSyscall(
-		unix.SYS_CONNECT,
+		sys_CONNECT,
 		uintptr(fd),
 		uintptr(scPointer),
 		uintptr(sockaddrCtlSize),
@@ -339,7 +349,7 @@ func (t *tunDarwin) getInterfaceMtu() (int, error) {
 	var ifr [64]byte
 	copy(ifr[:], t.name)
 	_, _, errno := unix.Syscall(
-		unix.SYS_IOCTL,
+		sys_IOCTL,
 		uintptr(fd),
 		uintptr(unix.SIOCGIFMTU),
 		uintptr(unsafe.Pointer(&ifr[0])),
@@ -360,7 +370,7 @@ func (t *tunDarwin) getName() (string, error) {
 	var errno syscall.Errno
 	t.operateOnFd(func(fd uintptr) {
 		_, _, errno = unix.Syscall6(
-			unix.SYS_GETSOCKOPT,
+			sys_GETSOCKOPT,
 			fd,
 			2, /* #define SYSPROTO_CONTROL 2 */
 			2, /* #define UTUN_OPT_IFNAME 2 */
@@ -396,7 +406,7 @@ func (t *tunDarwin) setMTU(n int) error {
 	copy(ifr[:], t.name)
 	*(*uint32)(unsafe.Pointer(&ifr[unix.IFNAMSIZ])) = uint32(n)
 	_, _, errno := unix.Syscall(
-		unix.SYS_IOCTL,
+		sys_IOCTL,
 		uintptr(fd),
 		uintptr(unix.SIOCSIFMTU),
 		uintptr(unsafe.Pointer(&ifr[0])),
@@ -470,7 +480,7 @@ func (t *tunDarwin) setTunAddress(addr net.IP) error {
 	}
 
 	if _, _, errno := unix.Syscall(
-		unix.SYS_IOCTL,
+		sys_IOCTL,
 		uintptr(fd4),
 		uintptr(unix.SIOCAIFADDR),
 		uintptr(unsafe.Pointer(&ifra4)),
@@ -519,7 +529,7 @@ func (t *tunDarwin) attachLinkLocal() error {
 		ifra_name: ifr,
 	}
 	if _, _, errno := unix.Syscall(
-		unix.SYS_IOCTL,
+		sys_IOCTL,
 		uintptr(fd6),
 		uintptr(_SIOCPROTOATTACH_IN6),
 		uintptr(unsafe.Pointer(&ifra6)),
@@ -528,7 +538,7 @@ func (t *tunDarwin) attachLinkLocal() error {
 	}
 
 	if _, _, errno := unix.Syscall(
-		unix.SYS_IOCTL,
+		sys_IOCTL,
 		uintptr(fd6),
 		uintptr(_SIOCLL_START),
 		uintptr(unsafe.Pointer(&ifra6)),

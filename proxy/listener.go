@@ -323,6 +323,10 @@ func ReCreateTProxy(port int) error {
 
 	var err error
 	tproxyListener, err = redir.NewTProxy(addr)
+	if err != nil {
+		return err
+	}
+
 	tproxyUDPListener, err = redir.NewRedirUDPProxy(addr)
 	if err != nil {
 		log.Warnln("Failed to start TProxy UDP Listener: %s", err)

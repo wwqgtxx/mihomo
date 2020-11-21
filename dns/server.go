@@ -36,14 +36,14 @@ func (s *Server) ServeDNS(w D.ResponseWriter, r *D.Msg) {
 	w.WriteMsg(msg)
 }
 
-func (s *Server) setHandler(handler handler) {
+func (s *Server) SetHandler(handler handler) {
 	s.handler = handler
 }
 
 func ReCreateServer(addr string, resolver *Resolver, mapper *ResolverEnhancer) error {
 	if addr == address && resolver != nil {
-		handler := newHandler(resolver, mapper)
-		server.setHandler(handler)
+		handler := NewHandler(resolver, mapper)
+		server.SetHandler(handler)
 		return nil
 	}
 
@@ -74,7 +74,7 @@ func ReCreateServer(addr string, resolver *Resolver, mapper *ResolverEnhancer) e
 	}
 
 	address = addr
-	handler := newHandler(resolver, mapper)
+	handler := NewHandler(resolver, mapper)
 	server = &Server{handler: handler}
 	server.Server = &D.Server{Addr: addr, PacketConn: p, Handler: server}
 

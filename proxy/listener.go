@@ -6,12 +6,16 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/Dreamacro/clash/component/resolver"
+	"github.com/Dreamacro/clash/config"
+	"github.com/Dreamacro/clash/dns"
 	"github.com/Dreamacro/clash/log"
 	"github.com/Dreamacro/clash/proxy/http"
 	"github.com/Dreamacro/clash/proxy/mixed"
 	"github.com/Dreamacro/clash/proxy/redir"
 	"github.com/Dreamacro/clash/proxy/shadowsocks"
 	"github.com/Dreamacro/clash/proxy/socks"
+	"github.com/Dreamacro/clash/proxy/tun"
 	"github.com/Dreamacro/clash/proxy/tunnel"
 )
 
@@ -32,6 +36,7 @@ var (
 	shadowSocksUDPListener *shadowsocks.ShadowSocksUDPListener
 	tcpTunListener         *tunnel.TcpTunListener
 	udpTunListener         *tunnel.UdpTunListener
+	tunAdapter             tun.TunAdapter
 
 	// lock for recreate function
 	socksMux  sync.Mutex
@@ -42,6 +47,7 @@ var (
 	ssMux     sync.Mutex
 	tcpTunMux sync.Mutex
 	udpTunMux sync.Mutex
+	tunMux    sync.Mutex
 )
 
 type Ports struct {
@@ -65,6 +71,17 @@ func BindAddress() string {
 
 func SetAllowLan(al bool) {
 	allowLan = al
+}
+
+func Tun() config.Tun {
+	if tunAdapter == nil {
+		return config.Tun{}
+	}
+	return config.Tun{
+		Enable:    true,
+		DeviceURL: tunAdapter.DeviceURL(),
+		DNSListen: tunAdapter.DNSListen(),
+	}
 }
 
 func SetBindAddress(host string) {
@@ -381,6 +398,35 @@ func ReCreateMixed(port int) error {
 		return err
 	}
 
+	return nil
+}
+
+func ReCreateTun(conf config.Tun) error {
+	tunMux.Lock()
+	defer tunMux.Unlock()
+
+	enable := conf.Enable
+	url := conf.DeviceURL
+
+	if tunAdapter != nil {
+		if enable && (url == "" || url == tunAdapter.DeviceURL()) {
+			// Though we don't need to recreate tun device, we should update tun DNSServer
+			return tunAdapter.ReCreateDNSServer(resolver.DefaultResolver.(*dns.Resolver), resolver.DefaultHostMapper.(*dns.ResolverEnhancer), conf.DNSListen)
+		}
+		tunAdapter.Close()
+		tunAdapter = nil
+	}
+	if !enable {
+		return nil
+	}
+	var err error
+	tunAdapter, err = tun.NewTunProxy(url)
+	if err != nil {
+		return err
+	}
+	if resolver.DefaultResolver != nil {
+		return tunAdapter.ReCreateDNSServer(resolver.DefaultResolver.(*dns.Resolver), resolver.DefaultHostMapper.(*dns.ResolverEnhancer), conf.DNSListen)
+	}
 	return nil
 }
 

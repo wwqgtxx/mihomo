@@ -66,10 +66,10 @@ func ApplyConfig(cfg *config.Config, force bool) {
 	defer mux.Unlock()
 
 	updateUsers(cfg.Users)
+	updateDNS(cfg.DNS)
 	updateGeneral(cfg.General, force)
 	updateProxies(cfg.Proxies, cfg.Providers)
 	updateRules(cfg.Rules)
-	updateDNS(cfg.DNS)
 	updateHosts(cfg.Hosts)
 	updateExperimental(cfg)
 }
@@ -88,6 +88,7 @@ func GetGeneral() *config.General {
 			RedirPort:         ports.RedirPort,
 			MixedPort:         ports.MixedPort,
 			TProxyPort:        ports.TProxyPort,
+			Tun:               P.Tun(),
 			ShadowSocksConfig: ports.ShadowSocksConfig,
 			TcpTunConfig:      ports.TcpTunConfig,
 			UdpTunConfig:      ports.UdpTunConfig,
@@ -213,6 +214,11 @@ func updateGeneral(general *config.General, force bool) {
 	if err := P.ReCreateUdpTun(general.UdpTunConfig); err != nil {
 		log.Errorln("Start UdpTun server error: %s", err.Error())
 	}
+
+	if err := P.ReCreateTun(general.Tun); err != nil {
+		log.Errorln("Start Tun interface error: %s", err.Error())
+	}
+
 }
 
 func updateUsers(users []auth.AuthUser) {

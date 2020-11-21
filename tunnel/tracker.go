@@ -5,7 +5,9 @@ import (
 	"time"
 
 	C "github.com/Dreamacro/clash/constant"
+
 	"github.com/gofrs/uuid"
+	"go.uber.org/atomic"
 )
 
 type tracker interface {
@@ -14,14 +16,14 @@ type tracker interface {
 }
 
 type trackerInfo struct {
-	UUID          uuid.UUID   `json:"id"`
-	Metadata      *C.Metadata `json:"metadata"`
-	UploadTotal   int64       `json:"upload"`
-	DownloadTotal int64       `json:"download"`
-	Start         time.Time   `json:"start"`
-	Chain         C.Chain     `json:"chains"`
-	Rule          string      `json:"rule"`
-	RulePayload   string      `json:"rulePayload"`
+	UUID          uuid.UUID     `json:"id"`
+	Metadata      *C.Metadata   `json:"metadata"`
+	UploadTotal   *atomic.Int64 `json:"upload"`
+	DownloadTotal *atomic.Int64 `json:"download"`
+	Start         time.Time     `json:"start"`
+	Chain         C.Chain       `json:"chains"`
+	Rule          string        `json:"rule"`
+	RulePayload   string        `json:"rulePayload"`
 }
 
 type tcpTracker struct {
@@ -38,7 +40,7 @@ func (tt *tcpTracker) Read(b []byte) (int, error) {
 	n, err := tt.Conn.Read(b)
 	download := int64(n)
 	tt.manager.PushDownloaded(download)
-	tt.DownloadTotal += download
+	tt.DownloadTotal.Add(download)
 	return n, err
 }
 
@@ -46,7 +48,7 @@ func (tt *tcpTracker) Write(b []byte) (int, error) {
 	n, err := tt.Conn.Write(b)
 	upload := int64(n)
 	tt.manager.PushUploaded(upload)
-	tt.UploadTotal += upload
+	tt.UploadTotal.Add(upload)
 	return n, err
 }
 
@@ -62,11 +64,13 @@ func newTCPTracker(conn C.Conn, manager *Manager, metadata *C.Metadata, rule C.R
 		Conn:    conn,
 		manager: manager,
 		trackerInfo: &trackerInfo{
-			UUID:     uuid,
-			Start:    time.Now(),
-			Metadata: metadata,
-			Chain:    conn.Chains(),
-			Rule:     "",
+			UUID:          uuid,
+			Start:         time.Now(),
+			Metadata:      metadata,
+			Chain:         conn.Chains(),
+			Rule:          "",
+			UploadTotal:   atomic.NewInt64(0),
+			DownloadTotal: atomic.NewInt64(0),
 		},
 	}
 
@@ -93,7 +97,7 @@ func (ut *udpTracker) ReadFrom(b []byte) (int, net.Addr, error) {
 	n, addr, err := ut.PacketConn.ReadFrom(b)
 	download := int64(n)
 	ut.manager.PushDownloaded(download)
-	ut.DownloadTotal += download
+	ut.DownloadTotal.Add(download)
 	return n, addr, err
 }
 
@@ -101,7 +105,7 @@ func (ut *udpTracker) WriteTo(b []byte, addr net.Addr) (int, error) {
 	n, err := ut.PacketConn.WriteTo(b, addr)
 	upload := int64(n)
 	ut.manager.PushUploaded(upload)
-	ut.UploadTotal += upload
+	ut.UploadTotal.Add(upload)
 	return n, err
 }
 
@@ -117,11 +121,13 @@ func newUDPTracker(conn C.PacketConn, manager *Manager, metadata *C.Metadata, ru
 		PacketConn: conn,
 		manager:    manager,
 		trackerInfo: &trackerInfo{
-			UUID:     uuid,
-			Start:    time.Now(),
-			Metadata: metadata,
-			Chain:    conn.Chains(),
-			Rule:     "",
+			UUID:          uuid,
+			Start:         time.Now(),
+			Metadata:      metadata,
+			Chain:         conn.Chains(),
+			Rule:          "",
+			UploadTotal:   atomic.NewInt64(0),
+			DownloadTotal: atomic.NewInt64(0),
 		},
 	}
 

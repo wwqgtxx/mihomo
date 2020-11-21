@@ -24,6 +24,8 @@ var (
 	httpListener           *http.HttpListener
 	redirListener          *redir.RedirListener
 	redirUDPListener       *redir.RedirUDPListener
+	tproxyListener         *redir.TProxyListener
+	tproxyUDPListener      *redir.RedirUDPListener
 	mixedListener          *mixed.MixedListener
 	mixedUDPLister         *socks.SockUDPListener
 	shadowSocksListener    *shadowsocks.ShadowSocksListener
@@ -35,6 +37,7 @@ var (
 	socksMux  sync.Mutex
 	httpMux   sync.Mutex
 	redirMux  sync.Mutex
+	tproxyMux sync.Mutex
 	mixedMux  sync.Mutex
 	ssMux     sync.Mutex
 	tcpTunMux sync.Mutex
@@ -46,6 +49,7 @@ type Ports struct {
 	SocksPort         int    `json:"socks-port"`
 	RedirPort         int    `json:"redir-port"`
 	MixedPort         int    `json:"mixed-port"`
+	TProxyPort        int    `json:"tproxy-port"`
 	ShadowSocksConfig string `json:"ss-config"`
 	TcpTunConfig      string `json:"tcptun-config"`
 	UdpTunConfig      string `json:"udptun-config"`
@@ -282,12 +286,47 @@ func ReCreateUdpTun(config string) error {
 	}
 
 	udpListener, err := tunnel.NewUdpTunProxy(config)
-
 	if err != nil {
 		return err
 	}
 
 	udpTunListener = udpListener
+
+	return nil
+}
+
+func ReCreateTProxy(port int) error {
+	tproxyMux.Lock()
+	defer tproxyMux.Unlock()
+
+	addr := genAddr(bindAddress, port, allowLan)
+
+	if tproxyListener != nil {
+		if tproxyListener.Address() == addr {
+			return nil
+		}
+		tproxyListener.Close()
+		tproxyListener = nil
+	}
+
+	if tproxyUDPListener != nil {
+		if tproxyUDPListener.Address() == addr {
+			return nil
+		}
+		tproxyUDPListener.Close()
+		tproxyUDPListener = nil
+	}
+
+	if portIsZero(addr) {
+		return nil
+	}
+
+	var err error
+	tproxyListener, err = redir.NewTProxy(addr)
+	tproxyUDPListener, err = redir.NewRedirUDPProxy(addr)
+	if err != nil {
+		log.Warnln("Failed to start TProxy UDP Listener: %s", err)
+	}
 
 	return nil
 }
@@ -361,6 +400,12 @@ func GetPorts() *Ports {
 		_, portStr, _ := net.SplitHostPort(redirListener.Address())
 		port, _ := strconv.Atoi(portStr)
 		ports.RedirPort = port
+	}
+
+	if tproxyListener != nil {
+		_, portStr, _ := net.SplitHostPort(tproxyListener.Address())
+		port, _ := strconv.Atoi(portStr)
+		ports.TProxyPort = port
 	}
 
 	if mixedListener != nil {

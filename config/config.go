@@ -38,6 +38,7 @@ type Inbound struct {
 	Port              int      `json:"port"`
 	SocksPort         int      `json:"socks-port"`
 	RedirPort         int      `json:"redir-port"`
+	TProxyPort        int      `json:"tproxy-port"`
 	MixedPort         int      `json:"mixed-port"`
 	ShadowSocksConfig string   `json:"ss-config"`
 	TcpTunConfig      string   `json:"tcptun-config"`
@@ -114,6 +115,7 @@ type RawConfig struct {
 	Port               int          `yaml:"port"`
 	SocksPort          int          `yaml:"socks-port"`
 	RedirPort          int          `yaml:"redir-port"`
+	TProxyPort         int          `yaml:"tproxy-port"`
 	MixedPort          int          `yaml:"mixed-port"`
 	ShadowSocksConfig  string       `yaml:"ss-config"`
 	TcpTunConfig       string       `yaml:"tcptun-config"`
@@ -240,6 +242,7 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 			Port:              cfg.Port,
 			SocksPort:         cfg.SocksPort,
 			RedirPort:         cfg.RedirPort,
+			TProxyPort:        cfg.TProxyPort,
 			MixedPort:         cfg.MixedPort,
 			ShadowSocksConfig: cfg.ShadowSocksConfig,
 			TcpTunConfig:      cfg.TcpTunConfig,
@@ -351,11 +354,16 @@ func parseProxies(cfg *RawConfig) (proxies map[string]C.Proxy, providersMap map[
 	for _, v := range proxyList {
 		ps = append(ps, proxies[v])
 	}
-	hc := provider.NewHealthCheck(ps, "", 0, provider.ReservedName)
+	hc := provider.NewHealthCheck(ps, "", 0, true, provider.ReservedName)
 	pd, _ := provider.NewCompatibleProvider(provider.ReservedName, ps, hc)
 	providersMap[provider.ReservedName] = pd
 
-	global := outboundgroup.NewSelector("GLOBAL", []provider.ProxyProvider{pd})
+	global := outboundgroup.NewSelector(
+		&outboundgroup.GroupCommonOption{
+			Name: "GLOBAL",
+		},
+		[]provider.ProxyProvider{pd},
+	)
 	proxies["GLOBAL"] = outbound.NewProxy(global)
 	return proxies, providersMap, nil
 }

@@ -87,12 +87,12 @@ func GetGeneral() *config.General {
 			SocksPort:         ports.SocksPort,
 			RedirPort:         ports.RedirPort,
 			MixedPort:         ports.MixedPort,
+			TProxyPort:        ports.TProxyPort,
 			ShadowSocksConfig: ports.ShadowSocksConfig,
 			TcpTunConfig:      ports.TcpTunConfig,
 			UdpTunConfig:      ports.UdpTunConfig,
 			Authentication:    authenticator,
 			AllowLan:          P.AllowLan(),
-			BindAddress:       P.BindAddress(),
 		},
 		Mode:     tunnel.Mode(),
 		LogLevel: log.Level(),
@@ -192,6 +192,10 @@ func updateGeneral(general *config.General, force bool) {
 
 	if err := P.ReCreateRedir(general.RedirPort); err != nil {
 		log.Errorln("Start Redir server error: %s", err.Error())
+	}
+
+	if err := P.ReCreateTProxy(general.TProxyPort); err != nil {
+		log.Errorln("Start TProxy server error: %s", err.Error())
 	}
 
 	if err := P.ReCreateMixed(general.MixedPort); err != nil {

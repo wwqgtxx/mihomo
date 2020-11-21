@@ -26,6 +26,7 @@ type configSchema struct {
 	Port              *int               `json:"port"`
 	SocksPort         *int               `json:"socks-port"`
 	RedirPort         *int               `json:"redir-port"`
+	TProxyPort        *int               `json:"tproxy-port"`
 	MixedPort         *int               `json:"mixed-port"`
 	ShadowSocksConfig *string            `json:"ss-config"`
 	TcptunConfig      *string            `json:"tcptun-config"`
@@ -77,6 +78,7 @@ func patchConfigs(w http.ResponseWriter, r *http.Request) {
 	_ = P.ReCreateHTTP(pointerOrDefault(general.Port, ports.Port))
 	_ = P.ReCreateSocks(pointerOrDefault(general.SocksPort, ports.SocksPort))
 	_ = P.ReCreateRedir(pointerOrDefault(general.RedirPort, ports.RedirPort))
+	_ = P.ReCreateTProxy(pointerOrDefault(general.TProxyPort, ports.TProxyPort))
 	_ = P.ReCreateMixed(pointerOrDefault(general.MixedPort, ports.MixedPort))
 	_ = P.ReCreateShadowSocks(pointerOrDefault_string(general.ShadowSocksConfig, ports.ShadowSocksConfig))
 	_ = P.ReCreateTcpTun(pointerOrDefault_string(general.TcptunConfig, ports.TcpTunConfig))
@@ -120,7 +122,7 @@ func updateConfigs(w http.ResponseWriter, r *http.Request) {
 	} else {
 		if !filepath.IsAbs(req.Path) {
 			render.Status(r, http.StatusBadRequest)
-			render.JSON(w, r, newError("path is not a absoluted path"))
+			render.JSON(w, r, newError("path is not a absolute path"))
 			return
 		}
 

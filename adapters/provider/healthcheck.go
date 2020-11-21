@@ -8,6 +8,7 @@ import (
 
 	C "github.com/Dreamacro/clash/constant"
 	"github.com/Dreamacro/clash/log"
+	"go.uber.org/atomic"
 )
 
 const (
@@ -21,13 +22,15 @@ type HealthCheckOption struct {
 }
 
 type HealthCheck struct {
-	url      string
-	proxies  []C.Proxy
-	interval uint
-	done     chan struct{}
-	gtype    string
-	mutex    sync.Mutex
-	checking bool
+	url       string
+	proxies   []C.Proxy
+	interval  uint
+	lazy      bool
+	lastTouch *atomic.Int64
+	done      chan struct{}
+	gtype     string
+	mutex     sync.Mutex
+	checking  bool
 }
 
 func (hc *HealthCheck) process() {
@@ -43,11 +46,14 @@ func (hc *HealthCheck) process() {
 	for {
 		select {
 		case <-ticker.C:
-			switch hc.gtype {
-			case "fallback":
-				go hc.fallbackCheck()
-			default:
-				hc.check()
+			now := time.Now().Unix()
+			if !hc.lazy || now-hc.lastTouch.Load() < int64(hc.interval) {
+				switch hc.gtype {
+				case "fallback":
+					go hc.fallbackCheck()
+				default:
+					hc.check()
+				}
 			}
 		case <-hc.done:
 			ticker.Stop()
@@ -62,6 +68,10 @@ func (hc *HealthCheck) setProxy(proxies []C.Proxy) {
 
 func (hc *HealthCheck) auto() bool {
 	return hc.interval != 0
+}
+
+func (hc *HealthCheck) touch() {
+	hc.lastTouch.Store(time.Now().Unix())
 }
 
 func (hc *HealthCheck) check() {
@@ -122,13 +132,15 @@ func (hc *HealthCheck) close() {
 	hc.done <- struct{}{}
 }
 
-func NewHealthCheck(proxies []C.Proxy, url string, interval uint, gtype string) *HealthCheck {
+func NewHealthCheck(proxies []C.Proxy, url string, interval uint, lazy bool, gtype string) *HealthCheck {
 	return &HealthCheck{
-		proxies:  proxies,
-		url:      url,
-		interval: interval,
-		done:     make(chan struct{}, 1),
-		gtype:    gtype,
-		checking: false,
+		proxies:   proxies,
+		url:       url,
+		interval:  interval,
+		lazy:      lazy,
+		lastTouch: atomic.NewInt64(0),
+		done:      make(chan struct{}, 1),
+		gtype:     gtype,
+		checking:  false,
 	}
 }

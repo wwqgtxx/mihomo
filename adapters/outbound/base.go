@@ -6,11 +6,12 @@ import (
 	"errors"
 	"net"
 	"net/http"
-	"sync/atomic"
 	"time"
 
 	"github.com/Dreamacro/clash/common/queue"
 	C "github.com/Dreamacro/clash/constant"
+
+	"go.uber.org/atomic"
 )
 
 type Base struct {
@@ -95,7 +96,7 @@ func newPacketConn(pc net.PacketConn, a C.ProxyAdapter) C.PacketConn {
 type Proxy struct {
 	C.ProxyAdapter
 	history       *queue.Queue
-	alive         uint32
+	alive         *atomic.Bool
 	ignoreURLTest bool
 }
 
@@ -103,7 +104,7 @@ func (p *Proxy) Alive() bool {
 	if proxy := p.ProxyAdapter.Unwrap(nil); proxy != nil {
 		return proxy.Alive()
 	}
-	return atomic.LoadUint32(&p.alive) > 0
+	return p.alive.Load()
 }
 
 func (p *Proxy) Dial(metadata *C.Metadata) (C.Conn, error) {
@@ -115,7 +116,7 @@ func (p *Proxy) Dial(metadata *C.Metadata) (C.Conn, error) {
 func (p *Proxy) DialContext(ctx context.Context, metadata *C.Metadata) (C.Conn, error) {
 	conn, err := p.ProxyAdapter.DialContext(ctx, metadata)
 	if err != nil {
-		atomic.StoreUint32(&p.alive, 0)
+		p.alive.Store(false)
 	}
 	return conn, err
 }
@@ -138,7 +139,7 @@ func (p *Proxy) LastDelay() (delay uint16) {
 		return proxy.LastDelay()
 	}
 	var max uint16 = 0xffff
-	if atomic.LoadUint32(&p.alive) == 0 {
+	if !p.alive.Load() {
 		return max
 	}
 
@@ -175,11 +176,7 @@ func (p *Proxy) URLTest(ctx context.Context, url string) (t uint16, err error) {
 		return proxy.URLTest(ctx, url)
 	}
 	defer func() {
-		if err == nil {
-			atomic.StoreUint32(&p.alive, 1)
-		} else {
-			atomic.StoreUint32(&p.alive, 0)
-		}
+		p.alive.Store(err == nil)
 		record := C.DelayHistory{Time: time.Now()}
 		if err == nil {
 			record.Delay = t
@@ -235,9 +232,9 @@ func (p *Proxy) URLTest(ctx context.Context, url string) (t uint16, err error) {
 }
 
 func NewProxy(adapter C.ProxyAdapter) *Proxy {
-	return &Proxy{adapter, queue.New(10), 1, false}
+	return &Proxy{adapter, queue.New(10), atomic.NewBool(true), false}
 }
 
 func NewProxyFromGroup(adapter C.ProxyAdapter, ignoreURLTest bool) *Proxy {
-	return &Proxy{adapter, queue.New(10), 1, ignoreURLTest}
+	return &Proxy{adapter, queue.New(10), atomic.NewBool(true), ignoreURLTest}
 }

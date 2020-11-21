@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"math/big"
 	"net"
 
@@ -16,20 +18,25 @@ import (
 	"golang.org/x/net/publicsuffix"
 )
 
-type loadBalanceOption func(balance *LoadBalance)
-
-func loadBalanceWithVersion(version int) loadBalanceOption {
-	return func(lb *LoadBalance) {
-		lb.version = version
-	}
-}
+type strategyFn = func(proxies []C.Proxy, metadata *C.Metadata) C.Proxy
 
 type LoadBalance struct {
 	*outbound.Base
-	single    *singledo.Single
-	maxRetry  int
-	version   int
-	providers []provider.ProxyProvider
+	disableUDP bool
+	single     *singledo.Single
+	providers  []provider.ProxyProvider
+	strategyFn strategyFn
+}
+
+var errStrategy = errors.New("unsupported strategy")
+
+func parseStrategy(config map[string]interface{}) string {
+	if elm, ok := config["strategy"]; ok {
+		if strategy, ok := elm.(string); ok {
+			return strategy
+		}
+	}
+	return "random"
 }
 
 func getKey(metadata *C.Metadata) string {
@@ -93,13 +100,11 @@ func (lb *LoadBalance) DialUDP(metadata *C.Metadata) (pc C.PacketConn, err error
 }
 
 func (lb *LoadBalance) SupportUDP() bool {
-	return true
+	return !lb.disableUDP
 }
 
-func (lb *LoadBalance) Unwrap(metadata *C.Metadata) C.Proxy {
-	proxies := lb.proxies()
-	switch lb.version {
-	case 0:
+func strategyRandom() strategyFn {
+	return func(proxies []C.Proxy, metadata *C.Metadata) C.Proxy {
 		aliveProxies := make([]C.Proxy, 0, len(proxies))
 		for _, proxy := range proxies {
 			if proxy.Alive() {
@@ -116,10 +121,31 @@ func (lb *LoadBalance) Unwrap(metadata *C.Metadata) C.Proxy {
 		}
 
 		return aliveProxies[idx.Int64()]
-	default:
+	}
+}
+
+func strategyRoundRobin() strategyFn {
+	idx := 0
+	return func(proxies []C.Proxy, metadata *C.Metadata) C.Proxy {
+		length := len(proxies)
+		for i := 0; i < length; i++ {
+			idx = (idx + 1) % length
+			proxy := proxies[idx]
+			if proxy.Alive() {
+				return proxy
+			}
+		}
+
+		return proxies[0]
+	}
+}
+
+func strategyConsistentHashing() strategyFn {
+	maxRetry := 5
+	return func(proxies []C.Proxy, metadata *C.Metadata) C.Proxy {
 		key := uint64(murmur3.Sum32([]byte(getKey(metadata))))
 		buckets := int32(len(proxies))
-		for i := 0; i < lb.maxRetry; i, key = i+1, key+1 {
+		for i := 0; i < maxRetry; i, key = i+1, key+1 {
 			idx := jumpHash(key, buckets)
 			proxy := proxies[idx]
 			if proxy.Alive() {
@@ -131,9 +157,14 @@ func (lb *LoadBalance) Unwrap(metadata *C.Metadata) C.Proxy {
 	}
 }
 
-func (lb *LoadBalance) proxies() []C.Proxy {
+func (lb *LoadBalance) Unwrap(metadata *C.Metadata) C.Proxy {
+	proxies := lb.proxies(true)
+	return lb.strategyFn(proxies, metadata)
+}
+
+func (lb *LoadBalance) proxies(touch bool) []C.Proxy {
 	elm, _, _ := lb.single.Do(func() (interface{}, error) {
-		return getProvidersProxies(lb.providers), nil
+		return getProvidersProxies(lb.providers, touch), nil
 	})
 
 	return elm.([]C.Proxy)
@@ -141,7 +172,7 @@ func (lb *LoadBalance) proxies() []C.Proxy {
 
 func (lb *LoadBalance) MarshalJSON() ([]byte, error) {
 	var all []string
-	for _, proxy := range lb.proxies() {
+	for _, proxy := range lb.proxies(false) {
 		all = append(all, proxy.Name())
 	}
 	return json.Marshal(map[string]interface{}{
@@ -150,31 +181,23 @@ func (lb *LoadBalance) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func parseLoadBalanceOption(config map[string]interface{}) []loadBalanceOption {
-	opts := []loadBalanceOption{}
-
-	// version
-	if elm, ok := config["version"]; ok {
-		if version, ok := elm.(int); ok {
-			opts = append(opts, loadBalanceWithVersion(int(version)))
-		}
+func NewLoadBalance(options *GroupCommonOption, providers []provider.ProxyProvider, strategy string) (lb *LoadBalance, err error) {
+	var strategyFn strategyFn
+	switch strategy {
+	case "random":
+		strategyFn = strategyRandom()
+	case "consistent-hashing":
+		strategyFn = strategyConsistentHashing()
+	case "round-robin":
+		strategyFn = strategyRoundRobin()
+	default:
+		return nil, fmt.Errorf("%w: %s", errStrategy, strategy)
 	}
-
-	return opts
-}
-
-func NewLoadBalance(name string, providers []provider.ProxyProvider, options ...loadBalanceOption) *LoadBalance {
-	lb := &LoadBalance{
-		Base:      outbound.NewBase(name, "", C.LoadBalance, false),
-		single:    singledo.NewSingle(defaultGetProxiesDuration),
-		maxRetry:  3,
-		providers: providers,
-		version:   0,
-	}
-
-	for _, option := range options {
-		option(lb)
-	}
-
-	return lb
+	return &LoadBalance{
+		Base:       outbound.NewBase(options.Name, "", C.LoadBalance, false),
+		single:     singledo.NewSingle(defaultGetProxiesDuration),
+		providers:  providers,
+		strategyFn: strategyFn,
+		disableUDP: options.DisableUDP,
+	}, nil
 }

@@ -13,11 +13,13 @@ import (
 	"github.com/Dreamacro/clash/component/resolver"
 	C "github.com/Dreamacro/clash/constant"
 	"github.com/Dreamacro/clash/log"
+
+	channels "gopkg.in/eapache/channels.v1"
 )
 
 var (
-	tcpQueue  = make(chan C.ServerAdapter, 200)
-	udpQueue  = make(chan *inbound.PacketAdapter, 200)
+	tcpQueue  = channels.NewInfiniteChannel()
+	udpQueue  = channels.NewInfiniteChannel()
 	natTable  = nat.New()
 	rules     []C.Rule
 	proxies   = make(map[string]C.Proxy)
@@ -37,13 +39,13 @@ func init() {
 
 // Add request to queue
 func Add(req C.ServerAdapter) {
-	tcpQueue <- req
+	tcpQueue.In() <- req
 }
 
 // AddPacket add udp Packet to queue
 func AddPacket(packet *inbound.PacketAdapter) {
 	select {
-	case udpQueue <- packet:
+	case udpQueue.In() <- packet:
 	default:
 	}
 }
@@ -90,8 +92,9 @@ func SetMode(m TunnelMode) {
 
 // processUDP starts a loop to handle udp packet
 func processUDP() {
-	queue := udpQueue
-	for conn := range queue {
+	queue := udpQueue.Out()
+	for elm := range queue {
+		conn := elm.(*inbound.PacketAdapter)
 		handleUDPConn(conn)
 	}
 }
@@ -105,8 +108,9 @@ func process() {
 		go processUDP()
 	}
 
-	queue := tcpQueue
-	for conn := range queue {
+	queue := tcpQueue.Out()
+	for elm := range queue {
+		conn := elm.(C.ServerAdapter)
 		go handleTCPConn(conn)
 	}
 }

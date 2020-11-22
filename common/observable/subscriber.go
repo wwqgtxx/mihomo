@@ -2,32 +2,34 @@ package observable
 
 import (
 	"sync"
+
+	"gopkg.in/eapache/channels.v1"
 )
 
 type Subscription <-chan interface{}
 
 type Subscriber struct {
-	buffer chan interface{}
+	buffer *channels.InfiniteChannel
 	once   sync.Once
 }
 
 func (s *Subscriber) Emit(item interface{}) {
-	s.buffer <- item
+	s.buffer.In() <- item
 }
 
 func (s *Subscriber) Out() Subscription {
-	return s.buffer
+	return s.buffer.Out()
 }
 
 func (s *Subscriber) Close() {
 	s.once.Do(func() {
-		close(s.buffer)
+		s.buffer.Close()
 	})
 }
 
 func newSubscriber() *Subscriber {
 	sub := &Subscriber{
-		buffer: make(chan interface{}, 200),
+		buffer: channels.NewInfiniteChannel(),
 	}
 	return sub
 }

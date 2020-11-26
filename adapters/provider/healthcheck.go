@@ -76,19 +76,21 @@ func (hc *HealthCheck) touch() {
 
 func (hc *HealthCheck) check() {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultURLTestTimeout)
+	wg := &sync.WaitGroup{}
 	id := ""
 	if uid, err := uuid.NewV4(); err == nil {
 		id = uid.String()
 	}
 	log.Infoln("Start New Health Checking {%s}", id)
 	for _, proxy := range hc.proxies {
-		go func(proxy C.Proxy) {
-			proxy.URLTest(ctx, hc.url)
-			log.Infoln("Health Checked %s : %t %d ms {%s}", proxy.Name(), proxy.Alive(), proxy.LastDelay(), id)
+		go func(p C.Proxy) {
+			p.URLTest(ctx, hc.url)
+			wg.Done()
+			log.Infoln("Health Checked %s : %t %d ms {%s}", p.Name(), p.Alive(), p.LastDelay(), id)
 		}(proxy)
 	}
 
-	<-ctx.Done()
+	wg.Wait()
 	cancel()
 	log.Infoln("Finish A Health Checking {%s}", id)
 }

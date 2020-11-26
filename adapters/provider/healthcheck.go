@@ -17,6 +17,10 @@ const (
 	touchAfterLazyPassNum = 10
 )
 
+var (
+	healthCheckLazyDefault = true
+)
+
 type HealthCheckOption struct {
 	URL      string
 	Interval uint
@@ -153,4 +157,12 @@ func NewHealthCheck(proxies []C.Proxy, url string, interval uint, lazy bool, gty
 		gtype:     gtype,
 		checking:  false,
 	}
+}
+
+func HealthCheckLazyDefault() bool {
+	return healthCheckLazyDefault
+}
+
+func SetHealthCheckLazyDefault(newHealthCheckLazyDefault bool) {
+	healthCheckLazyDefault = newHealthCheckLazyDefault
 }

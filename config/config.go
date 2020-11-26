@@ -27,10 +27,11 @@ import (
 type General struct {
 	Inbound
 	Controller
-	Mode      T.TunnelMode `json:"mode"`
-	LogLevel  log.LogLevel `json:"log-level"`
-	IPv6      bool         `json:"ipv6"`
-	Interface string       `json:"interface-name"`
+	Mode                   T.TunnelMode `json:"mode"`
+	LogLevel               log.LogLevel `json:"log-level"`
+	IPv6                   bool         `json:"ipv6"`
+	Interface              string       `json:"interface-name"`
+	HealthCheckLazyDefault bool         `json:"health-check-lazy-default"`
 }
 
 // Inbound
@@ -112,24 +113,25 @@ type RawFallbackFilter struct {
 }
 
 type RawConfig struct {
-	Port               int          `yaml:"port"`
-	SocksPort          int          `yaml:"socks-port"`
-	RedirPort          int          `yaml:"redir-port"`
-	TProxyPort         int          `yaml:"tproxy-port"`
-	MixedPort          int          `yaml:"mixed-port"`
-	ShadowSocksConfig  string       `yaml:"ss-config"`
-	TcpTunConfig       string       `yaml:"tcptun-config"`
-	UdpTunConfig       string       `yaml:"udptun-config"`
-	Authentication     []string     `yaml:"authentication"`
-	AllowLan           bool         `yaml:"allow-lan"`
-	BindAddress        string       `yaml:"bind-address"`
-	Mode               T.TunnelMode `yaml:"mode"`
-	LogLevel           log.LogLevel `yaml:"log-level"`
-	IPv6               bool         `yaml:"ipv6"`
-	ExternalController string       `yaml:"external-controller"`
-	ExternalUI         string       `yaml:"external-ui"`
-	Secret             string       `yaml:"secret"`
-	Interface          string       `yaml:"interface-name"`
+	Port                   int          `yaml:"port"`
+	SocksPort              int          `yaml:"socks-port"`
+	RedirPort              int          `yaml:"redir-port"`
+	TProxyPort             int          `yaml:"tproxy-port"`
+	MixedPort              int          `yaml:"mixed-port"`
+	ShadowSocksConfig      string       `yaml:"ss-config"`
+	TcpTunConfig           string       `yaml:"tcptun-config"`
+	UdpTunConfig           string       `yaml:"udptun-config"`
+	Authentication         []string     `yaml:"authentication"`
+	AllowLan               bool         `yaml:"allow-lan"`
+	BindAddress            string       `yaml:"bind-address"`
+	Mode                   T.TunnelMode `yaml:"mode"`
+	LogLevel               log.LogLevel `yaml:"log-level"`
+	IPv6                   bool         `yaml:"ipv6"`
+	ExternalController     string       `yaml:"external-controller"`
+	ExternalUI             string       `yaml:"external-ui"`
+	Secret                 string       `yaml:"secret"`
+	Interface              string       `yaml:"interface-name"`
+	HealthCheckLazyDefault bool         `yaml:"health-check-lazy-default"`
 
 	ProxyProvider map[string]map[string]interface{} `yaml:"proxy-providers"`
 	Hosts         map[string]string                 `yaml:"hosts"`
@@ -153,15 +155,16 @@ func Parse(buf []byte) (*Config, error) {
 func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 	// config with some default value
 	rawCfg := &RawConfig{
-		AllowLan:       false,
-		BindAddress:    "*",
-		Mode:           T.Rule,
-		Authentication: []string{},
-		LogLevel:       log.INFO,
-		Hosts:          map[string]string{},
-		Rule:           []string{},
-		Proxy:          []map[string]interface{}{},
-		ProxyGroup:     []map[string]interface{}{},
+		AllowLan:               false,
+		BindAddress:            "*",
+		Mode:                   T.Rule,
+		Authentication:         []string{},
+		LogLevel:               log.INFO,
+		HealthCheckLazyDefault: true,
+		Hosts:                  map[string]string{},
+		Rule:                   []string{},
+		Proxy:                  []map[string]interface{}{},
+		ProxyGroup:             []map[string]interface{}{},
 		DNS: RawDNS{
 			Enable:      false,
 			UseHosts:    true,
@@ -255,10 +258,11 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 			ExternalUI:         cfg.ExternalUI,
 			Secret:             cfg.Secret,
 		},
-		Mode:      cfg.Mode,
-		LogLevel:  cfg.LogLevel,
-		IPv6:      cfg.IPv6,
-		Interface: cfg.Interface,
+		Mode:                   cfg.Mode,
+		LogLevel:               cfg.LogLevel,
+		IPv6:                   cfg.IPv6,
+		Interface:              cfg.Interface,
+		HealthCheckLazyDefault: cfg.HealthCheckLazyDefault,
 	}, nil
 }
 

@@ -10,7 +10,8 @@ import (
 )
 
 var (
-	errVehicleType = errors.New("unsupport vehicle type")
+	errVehicleType         = errors.New("unsupport vehicle type")
+	healthCheckLazyDefault = true
 )
 
 type healthCheckSchema struct {
@@ -33,7 +34,7 @@ func ParseProxyProvider(name string, mapping map[string]interface{}) (ProxyProvi
 
 	schema := &proxyProviderSchema{
 		HealthCheck: healthCheckSchema{
-			Lazy: true,
+			Lazy: HealthCheckLazyDefault(),
 		},
 	}
 	if err := decoder.Decode(mapping, schema); err != nil {
@@ -60,4 +61,12 @@ func ParseProxyProvider(name string, mapping map[string]interface{}) (ProxyProvi
 
 	interval := time.Duration(uint(schema.Interval)) * time.Second
 	return NewProxySetProvider(name, interval, vehicle, hc), nil
+}
+
+func HealthCheckLazyDefault() bool {
+	return healthCheckLazyDefault
+}
+
+func SetHealthCheckLazyDefault(newHealthCheckLazyDefault bool) {
+	healthCheckLazyDefault = newHealthCheckLazyDefault
 }

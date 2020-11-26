@@ -14,6 +14,7 @@ import (
 const (
 	defaultURLTestTimeout = time.Second * 5
 	waitAfterAURLTest     = time.Second * 1
+	touchAfterLazyPassNum = 10
 )
 
 type HealthCheckOption struct {
@@ -35,6 +36,7 @@ type HealthCheck struct {
 
 func (hc *HealthCheck) process() {
 	ticker := time.NewTicker(time.Duration(hc.interval) * time.Second)
+	passNum := 0
 
 	switch hc.gtype {
 	case "fallback":
@@ -48,11 +50,17 @@ func (hc *HealthCheck) process() {
 		case <-ticker.C:
 			now := time.Now().Unix()
 			if !hc.lazy || now-hc.lastTouch.Load() < int64(hc.interval) {
+				passNum = 0
 				switch hc.gtype {
 				case "fallback":
 					go hc.fallbackCheck()
 				default:
 					hc.check()
+				}
+			} else {
+				passNum++
+				if passNum > touchAfterLazyPassNum {
+					hc.touch()
 				}
 			}
 		case <-hc.done:

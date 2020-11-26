@@ -32,6 +32,7 @@ type General struct {
 	IPv6                   bool         `json:"ipv6"`
 	Interface              string       `json:"interface-name"`
 	HealthCheckLazyDefault bool         `json:"health-check-lazy-default"`
+	TouchAfterLazyPassNum  int          `json:"touch-after-lazy-pass-num"`
 }
 
 // Inbound
@@ -132,6 +133,7 @@ type RawConfig struct {
 	Secret                 string       `yaml:"secret"`
 	Interface              string       `yaml:"interface-name"`
 	HealthCheckLazyDefault bool         `yaml:"health-check-lazy-default"`
+	TouchAfterLazyPassNum  int          `yaml:"touch-after-lazy-pass-num"`
 
 	ProxyProvider map[string]map[string]interface{} `yaml:"proxy-providers"`
 	Hosts         map[string]string                 `yaml:"hosts"`
@@ -161,6 +163,7 @@ func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 		Authentication:         []string{},
 		LogLevel:               log.INFO,
 		HealthCheckLazyDefault: true,
+		TouchAfterLazyPassNum:  0,
 		Hosts:                  map[string]string{},
 		Rule:                   []string{},
 		Proxy:                  []map[string]interface{}{},
@@ -263,6 +266,7 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 		IPv6:                   cfg.IPv6,
 		Interface:              cfg.Interface,
 		HealthCheckLazyDefault: cfg.HealthCheckLazyDefault,
+		TouchAfterLazyPassNum:  cfg.TouchAfterLazyPassNum,
 	}, nil
 }
 

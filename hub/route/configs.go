@@ -37,6 +37,7 @@ type configSchema struct {
 	Mode                   *tunnel.TunnelMode `json:"mode"`
 	LogLevel               *log.LogLevel      `json:"log-level"`
 	HealthCheckLazyDefault *bool              `json:"health-check-lazy-default"`
+	TouchAfterLazyPassNum  *int               `json:"touch-after-lazy-pass-num"`
 }
 
 func getConfigs(w http.ResponseWriter, r *http.Request) {
@@ -96,6 +97,10 @@ func patchConfigs(w http.ResponseWriter, r *http.Request) {
 
 	if general.HealthCheckLazyDefault != nil {
 		provider.SetHealthCheckLazyDefault(*general.HealthCheckLazyDefault)
+	}
+
+	if general.TouchAfterLazyPassNum != nil {
+		provider.SetTouchAfterLazyPassNum(*general.TouchAfterLazyPassNum)
 	}
 
 	render.NoContent(w, r)

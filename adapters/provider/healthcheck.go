@@ -14,11 +14,11 @@ import (
 const (
 	defaultURLTestTimeout = time.Second * 5
 	waitAfterAURLTest     = time.Second * 1
-	touchAfterLazyPassNum = 10
 )
 
 var (
 	healthCheckLazyDefault = true
+	touchAfterLazyPassNum  = 0
 )
 
 type HealthCheckOption struct {
@@ -63,7 +63,7 @@ func (hc *HealthCheck) process() {
 				}
 			} else {
 				passNum++
-				if passNum > touchAfterLazyPassNum {
+				if passNum > 0 && passNum > touchAfterLazyPassNum {
 					hc.touch()
 				}
 			}
@@ -165,4 +165,12 @@ func HealthCheckLazyDefault() bool {
 
 func SetHealthCheckLazyDefault(newHealthCheckLazyDefault bool) {
 	healthCheckLazyDefault = newHealthCheckLazyDefault
+}
+
+func TouchAfterLazyPassNum() int {
+	return touchAfterLazyPassNum
+}
+
+func SetTouchAfterLazyPassNum(newTouchAfterLazyPassNum int) {
+	touchAfterLazyPassNum = newTouchAfterLazyPassNum
 }

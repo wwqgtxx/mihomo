@@ -1,6 +1,7 @@
 package mmdb
 
 import (
+	_ "embed"
 	"sync"
 
 	C "github.com/Dreamacro/clash/constant"
@@ -8,6 +9,9 @@ import (
 
 	"github.com/oschwald/geoip2-golang"
 )
+
+//go:embed Country.mmdb
+var EmbedMMDB []byte
 
 var mmdb *geoip2.Reader
 var once sync.Once
@@ -22,8 +26,18 @@ func LoadFromBytes(buffer []byte) {
 	})
 }
 
+func getInstance() (instance *geoip2.Reader, err error) {
+	if path := C.Path.MMDB(); path == "embed" {
+		instance, err = geoip2.FromBytes(EmbedMMDB)
+	} else {
+		instance, err = geoip2.Open(C.Path.MMDB())
+	}
+
+	return
+}
+
 func Verify() bool {
-	instance, err := geoip2.Open(C.Path.MMDB())
+	instance, err := getInstance()
 	if err == nil {
 		instance.Close()
 	}
@@ -33,7 +47,8 @@ func Verify() bool {
 func Instance() *geoip2.Reader {
 	once.Do(func() {
 		var err error
-		mmdb, err = geoip2.Open(C.Path.MMDB())
+		mmdb, err = getInstance()
+
 		if err != nil {
 			log.Fatalln("Can't load mmdb: %s", err.Error())
 		}

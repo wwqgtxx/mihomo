@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"path/filepath"
 
+	"github.com/Dreamacro/clash/adapters/provider"
 	"github.com/Dreamacro/clash/config"
 	"github.com/Dreamacro/clash/hub/executor"
 	"github.com/Dreamacro/clash/log"
@@ -23,19 +24,21 @@ func configRouter() http.Handler {
 }
 
 type configSchema struct {
-	Port              *int               `json:"port"`
-	SocksPort         *int               `json:"socks-port"`
-	RedirPort         *int               `json:"redir-port"`
-	TProxyPort        *int               `json:"tproxy-port"`
-	MixedPort         *int               `json:"mixed-port"`
-	Tun               *config.Tun        `json:"tun"`
-	ShadowSocksConfig *string            `json:"ss-config"`
-	TcptunConfig      *string            `json:"tcptun-config"`
-	UdptunConfig      *string            `json:"udptun-config"`
-	AllowLan          *bool              `json:"allow-lan"`
-	BindAddress       *string            `json:"bind-address"`
-	Mode              *tunnel.TunnelMode `json:"mode"`
-	LogLevel          *log.LogLevel      `json:"log-level"`
+	Port                   *int               `json:"port"`
+	SocksPort              *int               `json:"socks-port"`
+	RedirPort              *int               `json:"redir-port"`
+	TProxyPort             *int               `json:"tproxy-port"`
+	MixedPort              *int               `json:"mixed-port"`
+	Tun                    *config.Tun        `json:"tun"`
+	ShadowSocksConfig      *string            `json:"ss-config"`
+	TcptunConfig           *string            `json:"tcptun-config"`
+	UdptunConfig           *string            `json:"udptun-config"`
+	AllowLan               *bool              `json:"allow-lan"`
+	BindAddress            *string            `json:"bind-address"`
+	Mode                   *tunnel.TunnelMode `json:"mode"`
+	LogLevel               *log.LogLevel      `json:"log-level"`
+	HealthCheckLazyDefault *bool              `json:"health-check-lazy-default"`
+	TouchAfterLazyPassNum  *int               `json:"touch-after-lazy-pass-num"`
 }
 
 func getConfigs(w http.ResponseWriter, r *http.Request) {
@@ -99,6 +102,14 @@ func patchConfigs(w http.ResponseWriter, r *http.Request) {
 
 	if general.LogLevel != nil {
 		log.SetLevel(*general.LogLevel)
+	}
+
+	if general.HealthCheckLazyDefault != nil {
+		provider.SetHealthCheckLazyDefault(*general.HealthCheckLazyDefault)
+	}
+
+	if general.TouchAfterLazyPassNum != nil {
+		provider.SetTouchAfterLazyPassNum(*general.TouchAfterLazyPassNum)
 	}
 
 	render.NoContent(w, r)

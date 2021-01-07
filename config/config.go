@@ -27,10 +27,12 @@ import (
 type General struct {
 	Inbound
 	Controller
-	Mode      T.TunnelMode `json:"mode"`
-	LogLevel  log.LogLevel `json:"log-level"`
-	IPv6      bool         `json:"ipv6"`
-	Interface string       `json:"interface-name"`
+	Mode                   T.TunnelMode `json:"mode"`
+	LogLevel               log.LogLevel `json:"log-level"`
+	IPv6                   bool         `json:"ipv6"`
+	Interface              string       `json:"interface-name"`
+	HealthCheckLazyDefault bool         `json:"health-check-lazy-default"`
+	TouchAfterLazyPassNum  int          `json:"touch-after-lazy-pass-num"`
 }
 
 // Inbound
@@ -121,24 +123,26 @@ type RawFallbackFilter struct {
 }
 
 type RawConfig struct {
-	Port               int          `yaml:"port"`
-	SocksPort          int          `yaml:"socks-port"`
-	RedirPort          int          `yaml:"redir-port"`
-	TProxyPort         int          `yaml:"tproxy-port"`
-	MixedPort          int          `yaml:"mixed-port"`
-	ShadowSocksConfig  string       `yaml:"ss-config"`
-	TcpTunConfig       string       `yaml:"tcptun-config"`
-	UdpTunConfig       string       `yaml:"udptun-config"`
-	Authentication     []string     `yaml:"authentication"`
-	AllowLan           bool         `yaml:"allow-lan"`
-	BindAddress        string       `yaml:"bind-address"`
-	Mode               T.TunnelMode `yaml:"mode"`
-	LogLevel           log.LogLevel `yaml:"log-level"`
-	IPv6               bool         `yaml:"ipv6"`
-	ExternalController string       `yaml:"external-controller"`
-	ExternalUI         string       `yaml:"external-ui"`
-	Secret             string       `yaml:"secret"`
-	Interface          string       `yaml:"interface-name"`
+	Port                   int          `yaml:"port"`
+	SocksPort              int          `yaml:"socks-port"`
+	RedirPort              int          `yaml:"redir-port"`
+	TProxyPort             int          `yaml:"tproxy-port"`
+	MixedPort              int          `yaml:"mixed-port"`
+	ShadowSocksConfig      string       `yaml:"ss-config"`
+	TcpTunConfig           string       `yaml:"tcptun-config"`
+	UdpTunConfig           string       `yaml:"udptun-config"`
+	Authentication         []string     `yaml:"authentication"`
+	AllowLan               bool         `yaml:"allow-lan"`
+	BindAddress            string       `yaml:"bind-address"`
+	Mode                   T.TunnelMode `yaml:"mode"`
+	LogLevel               log.LogLevel `yaml:"log-level"`
+	IPv6                   bool         `yaml:"ipv6"`
+	ExternalController     string       `yaml:"external-controller"`
+	ExternalUI             string       `yaml:"external-ui"`
+	Secret                 string       `yaml:"secret"`
+	Interface              string       `yaml:"interface-name"`
+	HealthCheckLazyDefault bool         `yaml:"health-check-lazy-default"`
+	TouchAfterLazyPassNum  int          `yaml:"touch-after-lazy-pass-num"`
 
 	ProxyProvider map[string]map[string]interface{} `yaml:"proxy-providers"`
 	Hosts         map[string]string                 `yaml:"hosts"`
@@ -163,15 +167,17 @@ func Parse(buf []byte) (*Config, error) {
 func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 	// config with some default value
 	rawCfg := &RawConfig{
-		AllowLan:       false,
-		BindAddress:    "*",
-		Mode:           T.Rule,
-		Authentication: []string{},
-		LogLevel:       log.INFO,
-		Hosts:          map[string]string{},
-		Rule:           []string{},
-		Proxy:          []map[string]interface{}{},
-		ProxyGroup:     []map[string]interface{}{},
+		AllowLan:               false,
+		BindAddress:            "*",
+		Mode:                   T.Rule,
+		Authentication:         []string{},
+		LogLevel:               log.INFO,
+		HealthCheckLazyDefault: true,
+		TouchAfterLazyPassNum:  0,
+		Hosts:                  map[string]string{},
+		Rule:                   []string{},
+		Proxy:                  []map[string]interface{}{},
+		ProxyGroup:             []map[string]interface{}{},
 		Tun: Tun{
 			Enable:    false,
 			DeviceURL: "dev://clash0",
@@ -271,10 +277,12 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 			ExternalUI:         cfg.ExternalUI,
 			Secret:             cfg.Secret,
 		},
-		Mode:      cfg.Mode,
-		LogLevel:  cfg.LogLevel,
-		IPv6:      cfg.IPv6,
-		Interface: cfg.Interface,
+		Mode:                   cfg.Mode,
+		LogLevel:               cfg.LogLevel,
+		IPv6:                   cfg.IPv6,
+		Interface:              cfg.Interface,
+		HealthCheckLazyDefault: cfg.HealthCheckLazyDefault,
+		TouchAfterLazyPassNum:  cfg.TouchAfterLazyPassNum,
 	}, nil
 }
 
@@ -420,10 +428,6 @@ func parseRules(cfg *RawConfig, proxies map[string]C.Proxy) ([]C.Rule, error) {
 
 		parsed, parseErr := R.ParseRule(rule[0], payload, target, params)
 		if parseErr != nil {
-			if parseErr == R.ErrPlatformNotSupport {
-				log.Warnln("Rules[%d] [%s] don't support current OS, skip", idx, line)
-				continue
-			}
 			return nil, fmt.Errorf("rules[%d] [%s] error: %s", idx, line, parseErr.Error())
 		}
 

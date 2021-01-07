@@ -14,6 +14,7 @@ var Path *path
 type path struct {
 	homeDir    string
 	configFile string
+	extraMMDB  bool
 }
 
 func init() {
@@ -36,6 +37,10 @@ func SetConfig(file string) {
 	Path.configFile = file
 }
 
+func SetExtraMMDB(extraMMDB bool) {
+	Path.extraMMDB = extraMMDB
+}
+
 func (p *path) HomeDir() string {
 	return p.homeDir
 }
@@ -54,5 +59,9 @@ func (p *path) Resolve(path string) string {
 }
 
 func (p *path) MMDB() string {
-	return P.Join(p.homeDir, "Country.mmdb")
+	if p.extraMMDB {
+		return P.Join(p.homeDir, "Country.mmdb")
+	} else {
+		return "embed"
+	}
 }

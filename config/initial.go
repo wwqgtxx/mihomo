@@ -29,21 +29,32 @@ func downloadMMDB(path string) (err error) {
 }
 
 func initMMDB() error {
+	C.SetExtraMMDB(true)
 	if _, err := os.Stat(C.Path.MMDB()); os.IsNotExist(err) {
-		log.Infoln("Can't find MMDB, start download")
-		if err := downloadMMDB(C.Path.MMDB()); err != nil {
-			return fmt.Errorf("can't download MMDB: %s", err.Error())
+		if len(mmdb.EmbedMMDB) > 0 {
+			log.Infoln("Can't find MMDB file, use embed MMDB")
+			C.SetExtraMMDB(false)
+		} else {
+			log.Infoln("Can't find MMDB, start download")
+			if err := downloadMMDB(C.Path.MMDB()); err != nil {
+				return fmt.Errorf("can't download MMDB: %s", err.Error())
+			}
 		}
 	}
 
 	if !mmdb.Verify() {
-		log.Warnln("MMDB invalid, remove and download")
-		if err := os.Remove(C.Path.MMDB()); err != nil {
-			return fmt.Errorf("can't remove invalid MMDB: %s", err.Error())
-		}
+		if len(mmdb.EmbedMMDB) > 0 {
+			log.Warnln("MMDB invalid, use embed MMDB")
+			C.SetExtraMMDB(false)
+		} else {
+			log.Warnln("MMDB invalid, remove and download")
+			if err := os.Remove(C.Path.MMDB()); err != nil {
+				return fmt.Errorf("can't remove invalid MMDB: %s", err.Error())
+			}
 
-		if err := downloadMMDB(C.Path.MMDB()); err != nil {
-			return fmt.Errorf("can't download MMDB: %s", err.Error())
+			if err := downloadMMDB(C.Path.MMDB()); err != nil {
+				return fmt.Errorf("can't download MMDB: %s", err.Error())
+			}
 		}
 	}
 

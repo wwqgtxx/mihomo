@@ -33,7 +33,7 @@ func ParseProxyProvider(name string, mapping map[string]interface{}) (ProxyProvi
 
 	schema := &proxyProviderSchema{
 		HealthCheck: healthCheckSchema{
-			Lazy: true,
+			Lazy: HealthCheckLazyDefault(),
 		},
 	}
 	if err := decoder.Decode(mapping, schema); err != nil {

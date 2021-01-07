@@ -33,7 +33,7 @@ func ParseProxyGroup(config map[string]interface{}, proxyMap map[string]C.Proxy,
 	decoder := structure.NewDecoder(structure.Option{TagName: "group", WeaklyTypedInput: true})
 
 	groupOption := &GroupCommonOption{
-		Lazy: true,
+		Lazy: provider.HealthCheckLazyDefault(),
 	}
 	if err := decoder.Decode(config, groupOption); err != nil {
 		return nil, errFormat

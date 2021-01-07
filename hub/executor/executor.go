@@ -95,8 +95,10 @@ func GetGeneral() *config.General {
 			Authentication:    authenticator,
 			AllowLan:          P.AllowLan(),
 		},
-		Mode:     tunnel.Mode(),
-		LogLevel: log.Level(),
+		Mode:                   tunnel.Mode(),
+		LogLevel:               log.Level(),
+		HealthCheckLazyDefault: provider.HealthCheckLazyDefault(),
+		TouchAfterLazyPassNum:  provider.TouchAfterLazyPassNum(),
 	}
 
 	return general
@@ -164,6 +166,8 @@ func updateGeneral(general *config.General, force bool) {
 	log.SetLevel(general.LogLevel)
 	tunnel.SetMode(general.Mode)
 	resolver.DisableIPv6 = !general.IPv6
+	provider.SetHealthCheckLazyDefault(general.HealthCheckLazyDefault)
+	provider.SetTouchAfterLazyPassNum(general.TouchAfterLazyPassNum)
 
 	if general.Interface != "" {
 		dialer.DialHook = dialer.DialerWithInterface(general.Interface)

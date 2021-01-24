@@ -98,9 +98,11 @@ func NewShadowSocksR(option ShadowSocksROption) (*ShadowSocksR, error) {
 	}
 
 	obfs, obfsOverhead, err := obfs.PickObfs(option.Obfs, &obfs.Base{
-		Host:  option.Server,
-		Key:   ciph.Key,
-		Param: option.ObfsParam,
+		Host:   option.Server,
+		Port:   option.Port,
+		Key:    ciph.Key,
+		IVSize: ciph.IVSize(),
+		Param:  option.ObfsParam,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("ssr %s initialize obfs error: %w", addr, err)

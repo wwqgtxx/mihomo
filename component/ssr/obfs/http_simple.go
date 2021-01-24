@@ -65,8 +65,8 @@ func (h *httpObfs) Encode(buf, b []byte) ([]byte, error) {
 		host = params[0]
 		if len(params) > 1 {
 			body = params[1]
-			strings.ReplaceAll(body, "\n", "\r\n")
-			strings.ReplaceAll(body, "\\n", "\r\n")
+			body = strings.ReplaceAll(body, "\n", "\r\n")
+			body = strings.ReplaceAll(body, "\\n", "\r\n")
 		}
 	}
 	hosts := strings.Split(host, ",")

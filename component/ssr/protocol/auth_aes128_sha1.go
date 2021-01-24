@@ -175,7 +175,6 @@ func (a *authAES128) Encode(buf, b []byte) ([]byte, error) {
 
 func (a *authAES128) DecodePacket(b []byte) ([]byte, error) {
 	if !bytes.Equal(a.hmac(a.Key, b[:len(b)-4])[:4], b[len(b)-4:]) {
-		log.Warnln("error: %w", errAuthAES128ChksumError)
 		return nil, errAuthAES128ChksumError
 	}
 	return b[:len(b)-4], nil
@@ -275,7 +274,7 @@ func (a *authAES128) packAuthData(poolBuf, data []byte) []byte {
 	cipherKey := core.Kdf(base64.StdEncoding.EncodeToString(a.userKey)+a.salt, 16)
 	block, err := aes.NewCipher(cipherKey)
 	if err != nil {
-		log.Errorln("New cipher error: %w", err)
+		log.Errorln("New cipher error: %s", err.Error())
 		return nil
 	}
 	iv := bytes.Repeat([]byte{0}, 16)

@@ -13,13 +13,15 @@ import (
 	"github.com/Dreamacro/clash/common/pool"
 	"github.com/Dreamacro/clash/component/resolver"
 	C "github.com/Dreamacro/clash/constant"
+	"github.com/Dreamacro/clash/context"
 )
 
-func handleHTTP(request *inbound.HTTPAdapter, outbound net.Conn) {
-	req := request.R
+func handleHTTP(ctx *context.HTTPContext, outbound net.Conn) {
+	req := ctx.Request()
+	conn := ctx.Conn()
 	host := req.Host
 
-	inboundReader := bufio.NewReader(request)
+	inboundReader := bufio.NewReader(conn)
 	outboundReader := bufio.NewReader(outbound)
 
 	for {
@@ -34,6 +36,8 @@ func handleHTTP(request *inbound.HTTPAdapter, outbound net.Conn) {
 		}
 
 	handleResponse:
+		// resp will be closed after we call resp.Write()
+		// see https://golang.org/pkg/net/http/#Response.Write
 		resp, err := http.ReadResponse(outboundReader, req)
 		if err != nil {
 			break
@@ -41,7 +45,7 @@ func handleHTTP(request *inbound.HTTPAdapter, outbound net.Conn) {
 		inbound.RemoveHopByHopHeaders(resp.Header)
 
 		if resp.StatusCode == http.StatusContinue {
-			err = resp.Write(request)
+			err = resp.Write(conn)
 			if err != nil {
 				break
 			}
@@ -56,14 +60,14 @@ func handleHTTP(request *inbound.HTTPAdapter, outbound net.Conn) {
 		} else {
 			resp.Close = true
 		}
-		err = resp.Write(request)
+		err = resp.Write(conn)
 		if err != nil || resp.Close {
 			break
 		}
 
 		// even if resp.Write write body to the connection, but some http request have to Copy to close it
 		buf := pool.Get(pool.RelayBufferSize)
-		_, err = io.CopyBuffer(request, resp.Body, buf)
+		_, err = io.CopyBuffer(conn, resp.Body, buf)
 		pool.Put(buf)
 		if err != nil && err != io.EOF {
 			break
@@ -127,8 +131,8 @@ func handleUDPToLocal(packet C.UDPPacket, pc net.PacketConn, key string, fAddr n
 	}
 }
 
-func handleSocket(request C.ServerAdapter, outbound net.Conn) {
-	relay(request, outbound)
+func handleSocket(ctx C.ConnContext, outbound net.Conn) {
+	relay(ctx.Conn(), outbound)
 }
 
 // relay copies between left and right bidirectionally.

@@ -38,7 +38,7 @@ type ShadowSocksROption struct {
 }
 
 func (ssr *ShadowSocksR) StreamConn(c net.Conn, metadata *C.Metadata) (net.Conn, error) {
-	c = obfs.NewConn(c, ssr.obfs)
+	c = ssr.obfs.StreamConn(c)
 	c = ssr.cipher.StreamConn(c)
 	conn, ok := c.(*shadowstream.Conn)
 	if !ok {
@@ -48,7 +48,7 @@ func (ssr *ShadowSocksR) StreamConn(c net.Conn, metadata *C.Metadata) (net.Conn,
 	if err != nil {
 		return nil, err
 	}
-	c = protocol.NewConn(c, ssr.protocol, iv)
+	c = ssr.protocol.StreamConn(c, iv)
 	_, err = c.Write(serializesSocksAddr(metadata))
 	return c, err
 }
@@ -76,7 +76,7 @@ func (ssr *ShadowSocksR) DialUDP(metadata *C.Metadata) (C.PacketConn, error) {
 	}
 
 	pc = ssr.cipher.PacketConn(pc)
-	pc = protocol.NewPacketConn(pc, ssr.protocol)
+	pc = ssr.protocol.PacketConn(pc)
 	return newPacketConn(&ssPacketConn{PacketConn: pc, rAddr: addr}, ssr), nil
 }
 
@@ -92,7 +92,7 @@ func NewShadowSocksR(option ShadowSocksROption) (*ShadowSocksR, error) {
 	password := option.Password
 	coreCiph, err := core.PickCipher(cipher, nil, password)
 	if err != nil {
-		return nil, fmt.Errorf("ssr %s initialize cipher error: %w", addr, err)
+		return nil, fmt.Errorf("ssr %s initialize error: %w", addr, err)
 	}
 	ciph, ok := coreCiph.(*core.StreamCipher)
 	if !ok {
@@ -106,28 +106,25 @@ func NewShadowSocksR(option ShadowSocksROption) (*ShadowSocksR, error) {
 		option.ProtocolParam = option.ProtocolParamOld
 	}
 
-	obfs, err := obfs.PickObfs(option.Obfs, &obfs.Base{
-		IVSize:  ciph.IVSize(),
-		Key:     ciph.Key,
-		HeadLen: 30,
-		Host:    option.Server,
-		Port:    option.Port,
-		Param:   option.ObfsParam,
+	obfs, obfsOverhead, err := obfs.PickObfs(option.Obfs, &obfs.Base{
+		Host:   option.Server,
+		Port:   option.Port,
+		Key:    ciph.Key,
+		IVSize: ciph.IVSize(),
+		Param:  option.ObfsParam,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("ssr %s initialize obfs error: %w", addr, err)
 	}
 
 	protocol, err := protocol.PickProtocol(option.Protocol, &protocol.Base{
-		IV:     nil,
-		Key:    ciph.Key,
-		TCPMss: 1460,
-		Param:  option.ProtocolParam,
+		Key:      ciph.Key,
+		Overhead: obfsOverhead,
+		Param:    option.ProtocolParam,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("ssr %s initialize protocol error: %w", addr, err)
 	}
-	protocol.SetOverhead(obfs.GetObfsOverhead() + protocol.GetProtocolOverhead())
 
 	return &ShadowSocksR{
 		Base: &Base{

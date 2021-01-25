@@ -1,75 +1,66 @@
 package obfs
 
 import (
-	"encoding/binary"
 	"hash/crc32"
 	"math/rand"
+	"net"
+
+	"github.com/Dreamacro/clash/common/pool"
+	"github.com/Dreamacro/clash/component/ssr/tools"
 )
+
+func init() {
+	register("random_head", newRandomHead, 0)
+}
 
 type randomHead struct {
 	*Base
-	firstRequest  bool
-	firstResponse bool
-	headerSent    bool
-	buffer        []byte
-}
-
-func init() {
-	register("random_head", newRandomHead)
+	hasSentHeader bool
+	rawTransSent  bool
+	rawTransRecv  bool
+	buf           []byte
 }
 
 func newRandomHead(b *Base) Obfs {
 	return &randomHead{Base: b}
 }
 
-func (r *randomHead) initForConn() Obfs {
-	return &randomHead{
-		Base:          r.Base,
-		firstRequest:  true,
-		firstResponse: true,
-	}
-}
-
-func (r *randomHead) GetObfsOverhead() int {
-	return 0
-}
-
-func (r *randomHead) Encode(b []byte) (encoded []byte, err error) {
-	if !r.firstRequest {
-		return b, nil
-	}
-
-	bSize := len(b)
-	if r.headerSent {
-		if bSize > 0 {
-			d := make([]byte, len(r.buffer)+bSize)
-			copy(d, r.buffer)
-			copy(d[len(r.buffer):], b)
-			r.buffer = d
-		} else {
-			encoded = r.buffer
-			r.buffer = nil
-			r.firstRequest = false
-		}
-	} else {
-		size := rand.Intn(96) + 8
-		encoded = make([]byte, size)
-		rand.Read(encoded)
-		crc := (0xFFFFFFFF - crc32.ChecksumIEEE(encoded[:size-4])) & 0xFFFFFFFF
-		binary.LittleEndian.PutUint32(encoded[size-4:], crc)
-
-		d := make([]byte, bSize)
-		copy(d, b)
-		r.buffer = d
-	}
-	r.headerSent = true
-	return encoded, nil
+func (r *randomHead) StreamConn(c net.Conn) net.Conn {
+	o := &randomHead{Base: r.Base}
+	return &Conn{Conn: c, Obfs: o}
 }
 
 func (r *randomHead) Decode(b []byte) ([]byte, bool, error) {
-	if r.firstResponse {
-		r.firstResponse = false
-		return b, true, nil
+	if r.rawTransRecv {
+		return b, false, nil
 	}
-	return b, false, nil
+	r.rawTransRecv = true
+	return nil, true, nil
+}
+
+func (r *randomHead) Encode(buf, b []byte) ([]byte, error) {
+	if r.rawTransSent {
+		return b, nil
+	}
+	if r.buf == nil {
+		if len(b) == 0 {
+			return b, nil
+		}
+		r.buf = pool.Get(pool.RelayBufferSize)[:0]
+	}
+	r.buf = append(r.buf, b...)
+	if !r.hasSentHeader {
+		r.hasSentHeader = true
+		dataLength := rand.Intn(96) + 4
+		buf = tools.AppendRandBytes(buf, dataLength)
+		crc := (0xffffffff - crc32.ChecksumIEEE(buf)) & 0xffffffff
+		return tools.AppendUint32LittleEndian(buf, crc), nil
+	}
+	if r.rawTransRecv {
+		buf = append(buf, r.buf...)
+		pool.Put(r.buf)
+		r.rawTransSent = true
+		return buf, nil
+	}
+	return nil, nil
 }

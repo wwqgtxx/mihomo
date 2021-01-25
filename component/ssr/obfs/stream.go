@@ -6,12 +6,6 @@ import (
 	"github.com/Dreamacro/clash/common/pool"
 )
 
-// NewConn wraps a stream-oriented net.Conn with obfs decoding/encoding
-func NewConn(c net.Conn, o Obfs) net.Conn {
-	return &Conn{Conn: c, Obfs: o.initForConn()}
-}
-
-// Conn represents an obfs connection
 type Conn struct {
 	net.Conn
 	Obfs
@@ -20,7 +14,7 @@ type Conn struct {
 }
 
 func (c *Conn) Read(b []byte) (int, error) {
-	if c.buf != nil {
+	if len(c.buf) > 0 {
 		n := copy(b, c.buf[c.offset:])
 		c.offset += n
 		if c.offset == len(c.buf) {
@@ -37,36 +31,36 @@ func (c *Conn) Read(b []byte) (int, error) {
 		return 0, err
 	}
 	decoded, sendback, err := c.Decode(buf[:n])
-	// decoded may be part of buf
-	decodedData := pool.Get(len(decoded))
-	copy(decodedData, decoded)
 	if err != nil {
-		pool.Put(decodedData)
 		return 0, err
 	}
 	if sendback {
 		c.Write(nil)
-		pool.Put(decodedData)
 		return 0, nil
 	}
+	decodedData := pool.Get(len(decoded))
+	copy(decodedData, decoded)
 	n = copy(b, decodedData)
-	if len(decodedData) > len(b) {
+	if len(decodedData) > n {
 		c.buf = decodedData
 		c.offset = n
 	} else {
 		pool.Put(decodedData)
 	}
-	return n, err
+	return n, nil
 }
 
 func (c *Conn) Write(b []byte) (int, error) {
-	encoded, err := c.Encode(b)
+	length := len(b)
+	buf := pool.Get(pool.RelayBufferSize)
+	defer pool.Put(buf)
+	encoded, err := c.Encode(buf[:0], b)
 	if err != nil {
-		return 0, err
+		return 0, nil
 	}
 	_, err = c.Conn.Write(encoded)
 	if err != nil {
-		return 0, err
+		return 0, nil
 	}
-	return len(b), nil
+	return length, nil
 }

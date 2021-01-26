@@ -172,14 +172,16 @@ func (a *authChainA) DecodePacket(b []byte) ([]byte, error) {
 	if len(b) < 9 {
 		return nil, errAuthChainLengthError
 	}
-	if !bytes.Equal(tools.HmacMD5(a.userKey, b[:len(b)-1])[:1], b[len(b)-1:]) {
+	// if !bytes.Equal(tools.HmacMD5(a.userKey, b[:len(b)-1])[:1], b[len(b)-1:]) {
+	if !bytes.Equal(tools.HmacMD5(a.Key, b[:len(b)-1])[:1], b[len(b)-1:]) {
 		return nil, errAuthChainChksumError
 	}
 	md5Data := tools.HmacMD5(a.Key, b[len(b)-8:len(b)-1])
 
 	randDataLength := udpGetRandLength(md5Data, &a.randomServer)
 
-	key := core.Kdf(base64.StdEncoding.EncodeToString(a.userKey)+base64.StdEncoding.EncodeToString(md5Data), 16)
+	// key := core.Kdf(base64.StdEncoding.EncodeToString(a.userKey)+base64.StdEncoding.EncodeToString(md5Data), 16)
+	key := core.Kdf(base64.StdEncoding.EncodeToString(a.Key)+base64.StdEncoding.EncodeToString(md5Data), 16)
 	rc4Cipher, err := rc4.NewCipher(key)
 	if err != nil {
 		return nil, err
@@ -198,7 +200,8 @@ func (a *authChainA) EncodePacket(buf, b []byte) ([]byte, error) {
 
 	randDataLength := udpGetRandLength(md5Data, &a.randomClient)
 
-	key := core.Kdf(base64.StdEncoding.EncodeToString(a.userKey)+base64.StdEncoding.EncodeToString(md5Data), 16)
+	// key := core.Kdf(base64.StdEncoding.EncodeToString(a.userKey)+base64.StdEncoding.EncodeToString(md5Data), 16)
+	key := core.Kdf(base64.StdEncoding.EncodeToString(a.Key)+base64.StdEncoding.EncodeToString(md5Data), 16)
 	rc4Cipher, err := rc4.NewCipher(key)
 	if err != nil {
 		return nil, err
@@ -209,7 +212,8 @@ func (a *authChainA) EncodePacket(buf, b []byte) ([]byte, error) {
 	buf = tools.AppendRandBytes(buf, randDataLength)
 	buf = append(buf, authData...)
 	buf = tools.AppendUint32LittleEndian(buf, binary.LittleEndian.Uint32(a.userID[:])^binary.LittleEndian.Uint32(md5Data[:4]))
-	return append(buf, tools.HmacMD5(a.userKey, buf)[:1]...), nil
+	// return append(buf, tools.HmacMD5(a.userKey, buf)[:1]...), nil
+	return append(buf, tools.HmacMD5(a.Key, buf)[:1]...), nil
 }
 
 func (a *authChainA) packAuthData(poolBuf, data []byte) []byte {

@@ -172,8 +172,10 @@ func (a *authAES128) DecodePacket(b []byte) ([]byte, error) {
 
 func (a *authAES128) EncodePacket(buf, b []byte) ([]byte, error) {
 	buf = append(buf, b...)
-	buf = append(buf, a.userID[:]...)
-	buf = append(buf, a.hmac(a.userKey, buf)[:4]...)
+	// buf = append(buf, a.userID[:]...)
+	// buf = append(buf, a.hmac(a.userKey, buf)[:4]...)
+	buf = tools.AppendRandBytes(buf, 4)
+	buf = append(buf, a.hmac(a.Key, buf)[:4]...)
 	return buf, nil
 }
 

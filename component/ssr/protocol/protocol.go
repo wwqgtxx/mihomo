@@ -5,24 +5,18 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
-	"time"
-
-	"github.com/Dreamacro/clash/component/ssr/tools"
 )
 
 var (
 	errAuthSHA1V4CRC32Error   = errors.New("auth_sha1_v4 decode data wrong crc32")
 	errAuthSHA1V4LengthError  = errors.New("auth_sha1_v4 decode data wrong length")
 	errAuthSHA1V4Adler32Error = errors.New("auth_sha1_v4 decode data wrong adler32")
-	errAuthAES128MACError     = errors.New("auth_aes128_* decode data wrong mac")
-	errAuthAES128LengthError  = errors.New("auth_aes128_* decode data wrong length")
-	errAuthAES128ChksumError  = errors.New("auth_aes128_* decode data wrong checksum")
+	errAuthAES128MACError     = errors.New("auth_aes128 decode data wrong mac")
+	errAuthAES128LengthError  = errors.New("auth_aes128 decode data wrong length")
+	errAuthAES128ChksumError  = errors.New("auth_aes128 decode data wrong checksum")
+	errAuthChainLengthError   = errors.New("auth_chain decode data wrong length")
+	errAuthChainChksumError   = errors.New("auth_chain decode data wrong checksum")
 )
-
-type authData struct {
-	clientID     [4]byte
-	connectionID uint32
-}
 
 type Protocol interface {
 	StreamConn(net.Conn, []byte) net.Conn
@@ -78,18 +72,4 @@ func getDataLength(b []byte) int {
 		return bLength
 	}
 	return dataLength
-}
-
-func (a *authData) putAuthData(b []byte) []byte {
-	now := uint32(time.Now().Unix())
-	if a.connectionID > 0xff000000 || a.connectionID == 0 {
-		rand.Read(a.clientID[:])
-		a.connectionID = rand.Uint32() & 0xffffff
-	}
-	a.connectionID++
-
-	b = tools.AppendUint32LittleEndian(b, now)
-	b = append(b, a.clientID[:]...)
-	b = tools.AppendUint32LittleEndian(b, a.connectionID)
-	return b
 }

@@ -2,9 +2,6 @@ package protocol
 
 import (
 	"bytes"
-	"crypto/aes"
-	"crypto/cipher"
-	"encoding/base64"
 	"encoding/binary"
 	"math"
 	"math/rand"
@@ -15,7 +12,6 @@ import (
 	"github.com/Dreamacro/clash/common/pool"
 	"github.com/Dreamacro/clash/component/ssr/tools"
 	"github.com/Dreamacro/clash/log"
-	"github.com/Dreamacro/go-shadowsocks2/core"
 )
 
 type hmacMethod func(key, data []byte) []byte
@@ -29,11 +25,6 @@ type authAES128Function struct {
 	salt       string
 	hmac       hmacMethod
 	hashDigest hashDigestMethod
-}
-
-type userData struct {
-	userKey []byte
-	userID  [4]byte
 }
 
 type authAES128 struct {
@@ -56,11 +47,11 @@ func newAuthAES128SHA1(b *Base) Protocol {
 		authAES128Function: &authAES128Function{salt: "auth_aes128_sha1", hmac: tools.HmacSHA1, hashDigest: tools.SHA1Sum},
 		userData:           &userData{},
 	}
-	a.initUserKeyAndID()
+	a.initUserData()
 	return a
 }
 
-func (a *authAES128) initUserKeyAndID() {
+func (a *authAES128) initUserData() {
 	params := strings.Split(a.Param, ":")
 	if len(params) > 1 {
 		if userID, err := strconv.ParseUint(params[0], 10, 32); err == nil {
@@ -136,7 +127,6 @@ func (a *authAES128) Decode(b []byte) ([]byte, error) {
 		}
 
 		a.recvID++
-		a.recvID &= 0xffffffff
 
 		pos := int(a.buf[4+a.offset])
 		if pos < 255 {
@@ -206,7 +196,6 @@ func (a *authAES128) packData(poolBuf, data []byte, fullDataLength int) []byte {
 	copy(macKey, a.userKey)
 	binary.LittleEndian.PutUint32(macKey[len(a.userKey):], a.packID)
 	a.packID++
-	a.packID &= 0xffffffff
 
 	poolBuf = tools.AppendUint16LittleEndian(poolBuf, uint16(packedDataLength))
 	poolBuf = append(poolBuf, a.hmac(macKey, poolBuf[len(poolBuf)-2:])[:2]...)
@@ -266,25 +255,13 @@ func (a *authAES128) packAuthData(poolBuf, data []byte) []byte {
 	copy(macKey, a.IV)
 	copy(macKey[len(a.IV):], a.Key)
 
-	encrypt := pool.Get(16)[:0]
-	defer pool.Put(encrypt)
-	encrypt = a.authData.putAuthData(encrypt)
-	encrypt = tools.AppendUint16LittleEndian(encrypt, uint16(packedAuthDataLength))
-	encrypt = tools.AppendUint16LittleEndian(encrypt, uint16(randDataLength))
-	cipherKey := core.Kdf(base64.StdEncoding.EncodeToString(a.userKey)+a.salt, 16)
-	block, err := aes.NewCipher(cipherKey)
-	if err != nil {
-		log.Errorln("New cipher error: %s", err.Error())
-		return nil
-	}
-	iv := bytes.Repeat([]byte{0}, 16)
-	cbcCipher := cipher.NewCBCEncrypter(block, iv)
-	cbcCipher.CryptBlocks(encrypt, encrypt)
-
 	poolBuf = append(poolBuf, byte(rand.Intn(256)))
 	poolBuf = append(poolBuf, a.hmac(macKey, poolBuf)[:6]...)
 	poolBuf = append(poolBuf, a.userID[:]...)
-	poolBuf = append(poolBuf, encrypt...)
+	poolBuf, err := a.authData.putEncryptedData(poolBuf, a.userKey, [2]int{packedAuthDataLength, randDataLength}, a.salt)
+	if err != nil {
+		return nil
+	}
 	poolBuf = append(poolBuf, a.hmac(macKey, poolBuf[7:])[:4]...)
 	poolBuf = tools.AppendRandBytes(poolBuf, randDataLength)
 	poolBuf = append(poolBuf, data...)

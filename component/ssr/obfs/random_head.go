@@ -53,7 +53,7 @@ func (r *randomHead) Encode(buf, b []byte) ([]byte, error) {
 		r.hasSentHeader = true
 		dataLength := rand.Intn(96) + 4
 		buf = tools.AppendRandBytes(buf, dataLength)
-		crc := (0xffffffff - crc32.ChecksumIEEE(buf)) & 0xffffffff
+		crc := 0xffffffff - crc32.ChecksumIEEE(buf)
 		return tools.AppendUint32LittleEndian(buf, crc), nil
 	}
 	if r.rawTransRecv {

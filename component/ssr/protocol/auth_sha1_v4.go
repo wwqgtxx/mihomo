@@ -71,7 +71,7 @@ func (a *authSHA1V4) Decode(b []byte) ([]byte, error) {
 
 		adler := pool.Get(4)
 		defer pool.Put(adler)
-		binary.LittleEndian.PutUint32(adler, adler32.Checksum(a.buf[a.offset:length-4+a.offset])&0xffffffff)
+		binary.LittleEndian.PutUint32(adler, adler32.Checksum(a.buf[a.offset:length-4+a.offset]))
 		if !bytes.Equal(adler, a.buf[length-4+a.offset:length+a.offset]) {
 			a.rawTrans = true
 			pool.Put(a.buf)
@@ -171,7 +171,7 @@ func (a *authSHA1V4) packAuthData(poolBuf, data []byte) []byte {
 	copy(key[len(a.IV):], a.Key)
 
 	poolBuf = append(poolBuf, crcData[:6]...)
-	binary.LittleEndian.PutUint32(poolBuf[len(poolBuf)-4:], crc32.ChecksumIEEE(crcData)&0xffffffff)
+	binary.LittleEndian.PutUint32(poolBuf[len(poolBuf)-4:], crc32.ChecksumIEEE(crcData))
 	poolBuf = a.packRandData(poolBuf, randDataLength)
 	poolBuf = a.authData.putAuthData(poolBuf)
 	poolBuf = append(poolBuf, data...)

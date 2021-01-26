@@ -13,6 +13,6 @@ func newAuthAES128MD5(b *Base) Protocol {
 		authAES128Function: &authAES128Function{salt: "auth_aes128_md5", hmac: tools.HmacMD5, hashDigest: tools.MD5Sum},
 		userData:           &userData{},
 	}
-	a.initUserKeyAndID()
+	a.initUserData()
 	return a
 }

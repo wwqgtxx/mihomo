@@ -127,7 +127,6 @@ func (a *authAES128) Decode(b []byte) ([]byte, error) {
 		}
 
 		a.recvID++
-		a.recvID &= 0xffffffff
 
 		pos := int(a.buf[4+a.offset])
 		if pos < 255 {
@@ -197,7 +196,6 @@ func (a *authAES128) packData(poolBuf, data []byte, fullDataLength int) []byte {
 	copy(macKey, a.userKey)
 	binary.LittleEndian.PutUint32(macKey[len(a.userKey):], a.packID)
 	a.packID++
-	a.packID &= 0xffffffff
 
 	poolBuf = tools.AppendUint16LittleEndian(poolBuf, uint16(packedDataLength))
 	poolBuf = append(poolBuf, a.hmac(macKey, poolBuf[len(poolBuf)-2:])[:2]...)

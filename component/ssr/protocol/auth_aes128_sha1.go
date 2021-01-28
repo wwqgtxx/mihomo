@@ -32,6 +32,7 @@ type authAES128 struct {
 	*authData
 	*authAES128Function
 	*userData
+	iv            []byte
 	hasSentHeader bool
 	rawTrans      bool
 	packID        uint32
@@ -70,13 +71,13 @@ func (a *authAES128) initUserData() {
 func (a *authAES128) StreamConn(c net.Conn, iv []byte) net.Conn {
 	p := &authAES128{
 		Base:               a.Base,
-		authData:           a.authData,
+		authData:           a.next(),
 		authAES128Function: a.authAES128Function,
 		userData:           a.userData,
 		packID:             1,
 		recvID:             1,
 	}
-	p.IV = iv
+	p.iv = iv
 	return &Conn{Conn: c, Protocol: p}
 }
 
@@ -250,10 +251,10 @@ func (a *authAES128) packAuthData(poolBuf, data []byte) []byte {
 	*/
 	packedAuthDataLength := 7 + 4 + 16 + 4 + randDataLength + dataLength + 4
 
-	macKey := pool.Get(len(a.IV) + len(a.Key))
+	macKey := pool.Get(len(a.iv) + len(a.Key))
 	defer pool.Put(macKey)
-	copy(macKey, a.IV)
-	copy(macKey[len(a.IV):], a.Key)
+	copy(macKey, a.iv)
+	copy(macKey[len(a.iv):], a.Key)
 
 	poolBuf = append(poolBuf, byte(rand.Intn(256)))
 	poolBuf = append(poolBuf, a.hmac(macKey, poolBuf)[:6]...)

@@ -27,6 +27,7 @@ type authChainA struct {
 	*Base
 	*authData
 	*userData
+	iv             []byte
 	salt           string
 	hasSentHeader  bool
 	rawTrans       bool
@@ -73,13 +74,13 @@ func (a *authChainA) initUserData() {
 func (a *authChainA) StreamConn(c net.Conn, iv []byte) net.Conn {
 	p := &authChainA{
 		Base:     a.Base,
-		authData: a.authData,
+		authData: a.next(),
 		userData: a.userData,
 		salt:     a.salt,
 		packID:   1,
 		recvID:   1,
 	}
-	p.IV = iv
+	p.iv = iv
 	p.randDataLength = p.getRandLength
 	return &Conn{Conn: c, Protocol: p}
 }
@@ -222,10 +223,10 @@ func (a *authChainA) packAuthData(poolBuf, data []byte) []byte {
 		packedAuthDataLength := 12 + 4 + 16 + 4 + dataLength
 	*/
 
-	macKey := pool.Get(len(a.IV) + len(a.Key))
+	macKey := pool.Get(len(a.iv) + len(a.Key))
 	defer pool.Put(macKey)
-	copy(macKey, a.IV)
-	copy(macKey[len(a.IV):], a.Key)
+	copy(macKey, a.iv)
+	copy(macKey[len(a.iv):], a.Key)
 
 	// check head
 	poolBuf = tools.AppendRandBytes(poolBuf, 4)

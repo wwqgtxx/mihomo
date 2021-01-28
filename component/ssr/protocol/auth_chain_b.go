@@ -41,7 +41,7 @@ func (a *authChainB) StreamConn(c net.Conn, iv []byte) net.Conn {
 			recvID:   1,
 		},
 	}
-	p.IV = iv
+	p.iv = iv
 	p.randDataLength = p.getRandLength
 	p.initDataSize()
 	return &Conn{Conn: c, Protocol: p}

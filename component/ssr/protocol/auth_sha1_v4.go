@@ -19,6 +19,7 @@ func init() {
 type authSHA1V4 struct {
 	*Base
 	*authData
+	iv            []byte
 	hasSentHeader bool
 	rawTrans      bool
 	buf           []byte
@@ -31,7 +32,7 @@ func newAuthSHA1V4(b *Base) Protocol {
 
 func (a *authSHA1V4) StreamConn(c net.Conn, iv []byte) net.Conn {
 	p := &authSHA1V4{Base: a.Base, authData: a.authData}
-	p.IV = iv
+	p.iv = iv
 	return &Conn{Conn: c, Protocol: p}
 }
 
@@ -165,10 +166,10 @@ func (a *authSHA1V4) packAuthData(poolBuf, data []byte) []byte {
 	copy(crcData[2:], salt)
 	copy(crcData[2+len(salt):], a.Key)
 
-	key := pool.Get(len(a.IV) + len(a.Key))
+	key := pool.Get(len(a.iv) + len(a.Key))
 	defer pool.Put(key)
-	copy(key, a.IV)
-	copy(key[len(a.IV):], a.Key)
+	copy(key, a.iv)
+	copy(key[len(a.iv):], a.Key)
 
 	poolBuf = append(poolBuf, crcData[:6]...)
 	binary.LittleEndian.PutUint32(poolBuf[len(poolBuf)-4:], crc32.ChecksumIEEE(crcData))

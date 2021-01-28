@@ -34,7 +34,7 @@ func (a *authChainB) StreamConn(c net.Conn, iv []byte) net.Conn {
 	p := &authChainB{
 		authChainA: &authChainA{
 			Base:     a.Base,
-			authData: a.authData,
+			authData: a.next(),
 			userData: a.userData,
 			salt:     a.salt,
 			packID:   1,

@@ -74,7 +74,7 @@ func (a *authChainA) initUserData() {
 func (a *authChainA) StreamConn(c net.Conn, iv []byte) net.Conn {
 	p := &authChainA{
 		Base:     a.Base,
-		authData: a.authData,
+		authData: a.next(),
 		userData: a.userData,
 		salt:     a.salt,
 		packID:   1,

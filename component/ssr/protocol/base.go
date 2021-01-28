@@ -6,6 +6,7 @@ import (
 	"crypto/cipher"
 	"encoding/base64"
 	"math/rand"
+	"sync"
 	"time"
 
 	"github.com/Dreamacro/clash/common/pool"
@@ -28,15 +29,25 @@ type userData struct {
 type authData struct {
 	clientID     [4]byte
 	connectionID uint32
+	mutex        sync.Mutex
 }
 
-func (a *authData) putAuthData(b []byte) []byte {
-	now := uint32(time.Now().Unix())
+func (a *authData) next() *authData {
+	r := &authData{}
+	a.mutex.Lock()
+	defer a.mutex.Unlock()
 	if a.connectionID > 0xff000000 || a.connectionID == 0 {
 		rand.Read(a.clientID[:])
 		a.connectionID = rand.Uint32() & 0xffffff
 	}
 	a.connectionID++
+	copy(r.clientID[:], a.clientID[:])
+	r.connectionID = a.connectionID
+	return r
+}
+
+func (a *authData) putAuthData(b []byte) []byte {
+	now := uint32(time.Now().Unix())
 
 	b = tools.AppendUint32LittleEndian(b, now)
 	b = append(b, a.clientID[:]...)

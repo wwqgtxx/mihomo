@@ -71,7 +71,7 @@ func (a *authAES128) initUserData() {
 func (a *authAES128) StreamConn(c net.Conn, iv []byte) net.Conn {
 	p := &authAES128{
 		Base:               a.Base,
-		authData:           a.authData,
+		authData:           a.next(),
 		authAES128Function: a.authAES128Function,
 		userData:           a.userData,
 		packID:             1,

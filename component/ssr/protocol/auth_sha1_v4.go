@@ -31,7 +31,7 @@ func newAuthSHA1V4(b *Base) Protocol {
 }
 
 func (a *authSHA1V4) StreamConn(c net.Conn, iv []byte) net.Conn {
-	p := &authSHA1V4{Base: a.Base, authData: a.authData}
+	p := &authSHA1V4{Base: a.Base, authData: a.next()}
 	p.iv = iv
 	return &Conn{Conn: c, Protocol: p}
 }

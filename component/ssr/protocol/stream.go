@@ -15,7 +15,7 @@ type Conn struct {
 
 func (c *Conn) Read(b []byte) (int, error) {
 	if c.buf != nil {
-		n := copy(b, c.buf)
+		n := copy(b, c.buf[c.offset:])
 		c.offset += n
 		if c.offset == len(c.buf) {
 			pool.Put(c.buf)

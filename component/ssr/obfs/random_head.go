@@ -1,12 +1,12 @@
 package obfs
 
 import (
+	"encoding/binary"
 	"hash/crc32"
 	"math/rand"
 	"net"
 
 	"github.com/Dreamacro/clash/common/pool"
-	"github.com/Dreamacro/clash/component/ssr/tools"
 )
 
 func init() {
@@ -15,52 +15,57 @@ func init() {
 
 type randomHead struct {
 	*Base
-	hasSentHeader bool
-	rawTransSent  bool
-	rawTransRecv  bool
-	buf           []byte
 }
 
 func newRandomHead(b *Base) Obfs {
 	return &randomHead{Base: b}
 }
 
+type randomHeadConn struct {
+	net.Conn
+	*randomHead
+	hasSentHeader bool
+	rawTransSent  bool
+	rawTransRecv  bool
+	buf           []byte
+}
+
 func (r *randomHead) StreamConn(c net.Conn) net.Conn {
-	o := &randomHead{Base: r.Base}
-	return &Conn{Conn: c, Obfs: o}
+	return &randomHeadConn{Conn: c, randomHead: r}
 }
 
-func (r *randomHead) Decode(b []byte) ([]byte, bool, error) {
-	if r.rawTransRecv {
-		return b, false, nil
+func (c *randomHeadConn) Read(b []byte) (int, error) {
+	if c.rawTransRecv {
+		return c.Conn.Read(b)
 	}
-	r.rawTransRecv = true
-	return nil, true, nil
+	buf := pool.Get(pool.RelayBufferSize)
+	defer pool.Put(buf)
+	c.Conn.Read(buf)
+	c.rawTransRecv = true
+	c.Write(nil)
+	return 0, nil
 }
 
-func (r *randomHead) Encode(buf, b []byte) ([]byte, error) {
-	if r.rawTransSent {
-		return b, nil
+func (c *randomHeadConn) Write(b []byte) (int, error) {
+	if c.rawTransSent {
+		return c.Conn.Write(b)
 	}
-	if r.buf == nil {
-		if len(b) == 0 {
-			return b, nil
-		}
-		r.buf = pool.Get(pool.RelayBufferSize)[:0]
-	}
-	r.buf = append(r.buf, b...)
-	if !r.hasSentHeader {
-		r.hasSentHeader = true
+	c.buf = append(c.buf, b...)
+	if !c.hasSentHeader {
+		c.hasSentHeader = true
 		dataLength := rand.Intn(96) + 4
-		buf = tools.AppendRandBytes(buf, dataLength)
-		crc := 0xffffffff - crc32.ChecksumIEEE(buf)
-		return tools.AppendUint32LittleEndian(buf, crc), nil
+		buf := pool.Get(dataLength + 4)
+		defer pool.Put(buf)
+		rand.Read(buf[:dataLength])
+		binary.LittleEndian.PutUint32(buf[dataLength:], 0xffffffff-crc32.ChecksumIEEE(buf[:dataLength]))
+		_, err := c.Conn.Write(buf)
+		return len(b), err
 	}
-	if r.rawTransRecv {
-		buf = append(buf, r.buf...)
-		pool.Put(r.buf)
-		r.rawTransSent = true
-		return buf, nil
+	if c.rawTransRecv {
+		_, err := c.Conn.Write(c.buf)
+		c.buf = nil
+		c.rawTransSent = true
+		return len(b), err
 	}
-	return nil, nil
+	return len(b), nil
 }

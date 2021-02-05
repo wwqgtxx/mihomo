@@ -17,8 +17,6 @@ type authData struct {
 }
 
 type Obfs interface {
-	Decode([]byte) ([]byte, bool, error)
-	Encode(buf, b []byte) ([]byte, error)
 	StreamConn(net.Conn) net.Conn
 }
 

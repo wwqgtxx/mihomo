@@ -8,6 +8,9 @@ import (
 	"net"
 	"strconv"
 	"strings"
+
+	"github.com/Dreamacro/clash/common/pool"
+	"github.com/Dreamacro/clash/component/ssr/tools"
 )
 
 func init() {
@@ -16,39 +19,66 @@ func init() {
 
 type httpObfs struct {
 	*Base
-	hasSentHeader bool
-	hasRecvHeader bool
-	post          bool
+	post bool
 }
 
 func newHTTPSimple(b *Base) Obfs {
 	return &httpObfs{Base: b}
 }
 
+type httpConn struct {
+	net.Conn
+	*httpObfs
+	hasSentHeader bool
+	hasRecvHeader bool
+	buf           []byte
+}
+
 func (h *httpObfs) StreamConn(c net.Conn) net.Conn {
-	o := &httpObfs{Base: h.Base, post: h.post}
-	return &Conn{Conn: c, Obfs: o}
+	return &httpConn{Conn: c, httpObfs: h}
 }
 
-func (h *httpObfs) Decode(b []byte) ([]byte, bool, error) {
-	if h.hasRecvHeader {
-		return b, false, nil
+func (c *httpConn) Read(b []byte) (int, error) {
+	if c.buf != nil {
+		n := copy(b, c.buf)
+		if n == len(c.buf) {
+			c.buf = nil
+		} else {
+			c.buf = c.buf[n:]
+		}
+		return n, nil
 	}
-	pos := bytes.Index(b, []byte("\r\n\r\n"))
-	if pos >= 0 {
-		h.hasRecvHeader = true
-		return b[pos+4:], false, nil
+
+	if c.hasRecvHeader {
+		return c.Conn.Read(b)
 	}
-	return nil, false, io.EOF
+
+	buf := pool.Get(pool.RelayBufferSize)
+	defer pool.Put(buf)
+	n, err := c.Conn.Read(buf)
+	if err != nil {
+		return 0, err
+	}
+	pos := bytes.Index(buf[:n], []byte("\r\n\r\n"))
+	if pos == -1 {
+		return 0, io.EOF
+	}
+	c.hasRecvHeader = true
+	dataLength := n - pos - 4
+	n = copy(b, buf[4+pos:n])
+	if dataLength > n {
+		c.buf = append(c.buf, buf[4+pos+n:4+pos+dataLength]...)
+	}
+	return n, nil
 }
 
-func (h *httpObfs) Encode(buf, b []byte) ([]byte, error) {
-	if h.hasSentHeader {
-		return b, nil
+func (c *httpConn) Write(b []byte) (int, error) {
+	if c.hasSentHeader {
+		return c.Conn.Write(b)
 	}
-	h.hasSentHeader = true
+	c.hasSentHeader = true
 	// 30: head length
-	headLength := h.IVSize + 30
+	headLength := c.IVSize + 30
 
 	bLength := len(b)
 	headDataLength := bLength
@@ -59,9 +89,9 @@ func (h *httpObfs) Encode(buf, b []byte) ([]byte, error) {
 	b = b[headDataLength:]
 
 	var body string
-	host := h.Host
-	if len(h.Param) > 0 {
-		params := strings.Split(h.Param, "#")
+	host := c.Host
+	if len(c.Param) > 0 {
+		params := strings.Split(c.Param, "#")
 		host = params[0]
 		if len(params) > 1 {
 			body = params[1]
@@ -72,49 +102,50 @@ func (h *httpObfs) Encode(buf, b []byte) ([]byte, error) {
 	hosts := strings.Split(host, ",")
 	host = hosts[rand.Intn(len(hosts))]
 
-	if h.post {
-		buf = append(buf, []byte("POST /")...)
+	buf := tools.BufPool.Get().(*bytes.Buffer)
+	defer tools.BufPool.Put(buf)
+	defer buf.Reset()
+	if c.post {
+		buf.WriteString("POST /")
 	} else {
-		buf = append(buf, []byte("GET /")...)
+		buf.WriteString("GET /")
 	}
-	buf = h.packURLEncodedHeadData(buf, headData)
-	buf = append(buf, []byte(" HTTP/1.1\r\nHost: "+host)...)
-	if h.Port != 80 {
-		buf = append(buf, []byte(":"+strconv.Itoa(h.Port))...)
+	packURLEncodedHeadData(buf, headData)
+	buf.WriteString(" HTTP/1.1\r\nHost: " + host)
+	if c.Port != 80 {
+		buf.WriteString(":" + strconv.Itoa(c.Port))
 	}
-	buf = append(buf, []byte("\r\n")...)
+	buf.WriteString("\r\n")
 	if len(body) > 0 {
-		buf = append(buf, []byte(body+"\r\n\r\n")...)
+		buf.WriteString(body + "\r\n\r\n")
 	} else {
-		buf = append(buf, []byte("User-Agent: ")...)
-		buf = append(buf, []byte(userAgent[rand.Intn(len(userAgent))])...)
-		buf = append(buf, []byte("\r\nAccept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\nAccept-Language: en-US,en;q=0.8\r\nAccept-Encoding: gzip, deflate\r\n")...)
-		if h.post {
+		buf.WriteString("User-Agent: ")
+		buf.WriteString(userAgent[rand.Intn(len(userAgent))])
+		buf.WriteString("\r\nAccept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\nAccept-Language: en-US,en;q=0.8\r\nAccept-Encoding: gzip, deflate\r\n")
+		if c.post {
 			packBoundary(buf)
 		}
-		buf = append(buf, []byte("DNT: 1\r\nConnection: keep-alive\r\n\r\n")...)
+		buf.WriteString("DNT: 1\r\nConnection: keep-alive\r\n\r\n")
 	}
-	buf = append(buf, b...)
-	return buf, nil
+	buf.Write(b)
+	return c.Conn.Write(buf.Bytes())
 }
 
-func (h *httpObfs) packURLEncodedHeadData(poolBuf, data []byte) []byte {
+func packURLEncodedHeadData(buf *bytes.Buffer, data []byte) {
 	dataLength := len(data)
 	for i := 0; i < dataLength; i++ {
-		poolBuf = append(poolBuf, '%')
-		poolBuf = append(poolBuf, []byte(hex.EncodeToString(data[i:i+1]))...)
+		buf.WriteRune('%')
+		buf.WriteString(hex.EncodeToString(data[i : i+1]))
 	}
-	return poolBuf
 }
 
-func packBoundary(poolBuf []byte) []byte {
-	poolBuf = append(poolBuf, []byte("Content-Type: multipart/form-data; boundary=")...)
+func packBoundary(buf *bytes.Buffer) {
+	buf.WriteString("Content-Type: multipart/form-data; boundary=")
 	set := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
 	for i := 0; i < 32; i++ {
-		poolBuf = append(poolBuf, set[rand.Intn(62)])
+		buf.WriteByte(set[rand.Intn(62)])
 	}
-	poolBuf = append(poolBuf, []byte("\r\n")...)
-	return poolBuf
+	buf.WriteString("\r\n")
 }
 
 var userAgent = []string{

@@ -1,6 +1,7 @@
 package protocol
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -21,10 +22,10 @@ var (
 type Protocol interface {
 	StreamConn(net.Conn, []byte) net.Conn
 	PacketConn(net.PacketConn) net.PacketConn
-	Decode([]byte) ([]byte, error)
-	Encode(buf, b []byte) ([]byte, error)
+	Decode(dst, src *bytes.Buffer) error
+	Encode(buf *bytes.Buffer, b []byte) error
 	DecodePacket([]byte) ([]byte, error)
-	EncodePacket(buf, b []byte) ([]byte, error)
+	EncodePacket(buf *bytes.Buffer, b []byte) error
 }
 
 type protocolCreator func(b *Base) Protocol

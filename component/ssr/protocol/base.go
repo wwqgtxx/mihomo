@@ -5,12 +5,12 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"encoding/base64"
+	"encoding/binary"
 	"math/rand"
 	"sync"
 	"time"
 
 	"github.com/Dreamacro/clash/common/pool"
-	"github.com/Dreamacro/clash/component/ssr/tools"
 	"github.com/Dreamacro/clash/log"
 	"github.com/Dreamacro/go-shadowsocks2/core"
 )
@@ -46,30 +46,32 @@ func (a *authData) next() *authData {
 	return r
 }
 
-func (a *authData) putAuthData(b []byte) []byte {
-	now := uint32(time.Now().Unix())
-
-	b = tools.AppendUint32LittleEndian(b, now)
-	b = append(b, a.clientID[:]...)
-	b = tools.AppendUint32LittleEndian(b, a.connectionID)
-	return b
+func (a *authData) putAuthData(buf *bytes.Buffer) {
+	binary.Write(buf, binary.LittleEndian, uint32(time.Now().Unix()))
+	buf.Write(a.clientID[:])
+	binary.Write(buf, binary.LittleEndian, a.connectionID)
 }
 
-func (a *authData) putEncryptedData(b, userKey []byte, paddings [2]int, salt string) ([]byte, error) {
-	encrypt := pool.Get(16)[:0]
+func (a *authData) putEncryptedData(b *bytes.Buffer, userKey []byte, paddings [2]int, salt string) error {
+	encrypt := pool.Get(16)
 	defer pool.Put(encrypt)
-	encrypt = a.putAuthData(encrypt)
-	encrypt = tools.AppendUint16LittleEndian(encrypt, uint16(paddings[0]))
-	encrypt = tools.AppendUint16LittleEndian(encrypt, uint16(paddings[1]))
+	binary.LittleEndian.PutUint32(encrypt, uint32(time.Now().Unix()))
+	copy(encrypt[4:], a.clientID[:])
+	binary.LittleEndian.PutUint32(encrypt[8:], a.connectionID)
+	binary.LittleEndian.PutUint16(encrypt[12:], uint16(paddings[0]))
+	binary.LittleEndian.PutUint16(encrypt[14:], uint16(paddings[1]))
+
 	cipherKey := core.Kdf(base64.StdEncoding.EncodeToString(userKey)+salt, 16)
 	block, err := aes.NewCipher(cipherKey)
 	if err != nil {
 		log.Errorln("New cipher error: %s", err.Error())
-		return nil, err
+		return err
 	}
 	iv := bytes.Repeat([]byte{0}, 16)
 	cbcCipher := cipher.NewCBCEncrypter(block, iv)
+
 	cbcCipher.CryptBlocks(encrypt, encrypt)
 
-	return append(b, encrypt...), nil
+	b.Write(encrypt)
+	return nil
 }

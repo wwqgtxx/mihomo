@@ -123,8 +123,6 @@ func (a *authSHA1V4) packData(poolBuf *bytes.Buffer, data []byte) {
 	a.packRandData(poolBuf, randDataLength)
 	poolBuf.Write(data)
 	binary.Write(poolBuf, binary.LittleEndian, adler32.Checksum(poolBuf.Bytes()[poolBuf.Len()-packedDataLength+4:]))
-
-	return
 }
 
 func (a *authSHA1V4) packAuthData(poolBuf *bytes.Buffer, data []byte) {
@@ -160,7 +158,6 @@ func (a *authSHA1V4) packAuthData(poolBuf *bytes.Buffer, data []byte) {
 	a.putAuthData(poolBuf)
 	poolBuf.Write(data)
 	poolBuf.Write(tools.HmacSHA1(key, poolBuf.Bytes()[poolBuf.Len()-packedAuthDataLength+10:])[:10])
-	return
 }
 
 func (a *authSHA1V4) packRandData(poolBuf *bytes.Buffer, size int) {
@@ -172,7 +169,6 @@ func (a *authSHA1V4) packRandData(poolBuf *bytes.Buffer, size int) {
 	poolBuf.WriteByte(255)
 	binary.Write(poolBuf, binary.BigEndian, uint16(size+3))
 	tools.AppendRandBytes(poolBuf, size)
-	return
 }
 
 func (a *authSHA1V4) getRandDataLength(size int) int {

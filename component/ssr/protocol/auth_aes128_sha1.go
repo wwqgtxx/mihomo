@@ -272,5 +272,4 @@ func (a *authAES128) packRandData(poolBuf *bytes.Buffer, size int) {
 	poolBuf.WriteByte(255)
 	binary.Write(poolBuf, binary.LittleEndian, uint16(size+3))
 	tools.AppendRandBytes(poolBuf, size)
-	return
 }

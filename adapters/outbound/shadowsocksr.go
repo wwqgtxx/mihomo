@@ -12,12 +12,13 @@ import (
 	"github.com/Dreamacro/clash/component/ssr/protocol"
 	C "github.com/Dreamacro/clash/constant"
 	"github.com/Dreamacro/go-shadowsocks2/core"
+	"github.com/Dreamacro/go-shadowsocks2/shadowaead"
 	"github.com/Dreamacro/go-shadowsocks2/shadowstream"
 )
 
 type ShadowSocksR struct {
 	*Base
-	cipher   *core.StreamCipher
+	cipher   core.Cipher
 	obfs     obfs.Obfs
 	protocol protocol.Protocol
 }
@@ -38,14 +39,27 @@ type ShadowSocksROption struct {
 func (ssr *ShadowSocksR) StreamConn(c net.Conn, metadata *C.Metadata) (net.Conn, error) {
 	c = ssr.obfs.StreamConn(c)
 	c = ssr.cipher.StreamConn(c)
-	conn, ok := c.(*shadowstream.Conn)
-	if !ok {
+	var (
+		iv  []byte
+		err error
+	)
+	if conn, ok := c.(*shadowstream.Conn); ok {
+		iv, err = conn.ObtainWriteIV()
+		if err != nil {
+			return nil, err
+		}
+	} else if _, ok := c.(*shadowaead.Conn); ok {
 		return nil, fmt.Errorf("invalid connection type")
 	}
-	iv, err := conn.ObtainWriteIV()
-	if err != nil {
-		return nil, err
-	}
+
+	// conn, ok := c.(*shadowstream.Conn)
+	// if !ok {
+	// 	return nil, fmt.Errorf("invalid connection type")
+	// }
+	// iv, err := conn.ObtainWriteIV()
+	// if err != nil {
+	// 	return nil, err
+	// }
 	c = ssr.protocol.StreamConn(c, iv)
 	_, err = c.Write(serializesSocksAddr(metadata))
 	return c, err
@@ -92,16 +106,28 @@ func NewShadowSocksR(option ShadowSocksROption) (*ShadowSocksR, error) {
 	if err != nil {
 		return nil, fmt.Errorf("ssr %s initialize error: %w", addr, err)
 	}
-	ciph, ok := coreCiph.(*core.StreamCipher)
-	if !ok {
-		return nil, fmt.Errorf("%s is not a supported stream cipher in ssr", cipher)
+	var (
+		ivSize int
+		key    []byte
+	)
+	if option.Cipher == "dummy" {
+		ivSize = 0
+		key = core.Kdf(option.Password, 16)
+	} else {
+		ciph, ok := coreCiph.(*core.StreamCipher)
+		if !ok {
+			return nil, fmt.Errorf("%s is not dummy or a supported stream cipher in ssr", cipher)
+		} else {
+			ivSize = ciph.IVSize()
+			key = ciph.Key
+		}
 	}
 
 	obfs, obfsOverhead, err := obfs.PickObfs(option.Obfs, &obfs.Base{
 		Host:   option.Server,
 		Port:   option.Port,
-		Key:    ciph.Key,
-		IVSize: ciph.IVSize(),
+		Key:    key,
+		IVSize: ivSize,
 		Param:  option.ObfsParam,
 	})
 	if err != nil {
@@ -109,7 +135,7 @@ func NewShadowSocksR(option ShadowSocksROption) (*ShadowSocksR, error) {
 	}
 
 	protocol, err := protocol.PickProtocol(option.Protocol, &protocol.Base{
-		Key:      ciph.Key,
+		Key:      key,
 		Overhead: obfsOverhead,
 		Param:    option.ProtocolParam,
 	})
@@ -124,7 +150,7 @@ func NewShadowSocksR(option ShadowSocksROption) (*ShadowSocksR, error) {
 			tp:   C.ShadowsocksR,
 			udp:  option.UDP,
 		},
-		cipher:   ciph,
+		cipher:   coreCiph,
 		obfs:     obfs,
 		protocol: protocol,
 	}, nil

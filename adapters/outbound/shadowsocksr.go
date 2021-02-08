@@ -51,15 +51,6 @@ func (ssr *ShadowSocksR) StreamConn(c net.Conn, metadata *C.Metadata) (net.Conn,
 	} else if _, ok := c.(*shadowaead.Conn); ok {
 		return nil, fmt.Errorf("invalid connection type")
 	}
-
-	// conn, ok := c.(*shadowstream.Conn)
-	// if !ok {
-	// 	return nil, fmt.Errorf("invalid connection type")
-	// }
-	// iv, err := conn.ObtainWriteIV()
-	// if err != nil {
-	// 	return nil, err
-	// }
 	c = ssr.protocol.StreamConn(c, iv)
 	_, err = c.Write(serializesSocksAddr(metadata))
 	return c, err

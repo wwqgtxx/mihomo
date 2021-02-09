@@ -76,7 +76,6 @@ func (c *httpConn) Write(b []byte) (int, error) {
 	if c.hasSentHeader {
 		return c.Conn.Write(b)
 	}
-	c.hasSentHeader = true
 	// 30: head length
 	headLength := c.IVSize + 30
 
@@ -91,12 +90,13 @@ func (c *httpConn) Write(b []byte) (int, error) {
 	var body string
 	host := c.Host
 	if len(c.Param) > 0 {
-		params := strings.Split(c.Param, "#")
-		host = params[0]
-		if len(params) > 1 {
-			body = params[1]
-			body = strings.ReplaceAll(body, "\n", "\r\n")
+		pos := strings.Index(c.Param, "#")
+		if pos != -1 {
+			body = strings.ReplaceAll(c.Param[pos+1:], "\n", "\r\n")
 			body = strings.ReplaceAll(body, "\\n", "\r\n")
+			host = c.Param[:pos]
+		} else {
+			host = c.Param
 		}
 	}
 	hosts := strings.Split(host, ",")
@@ -128,7 +128,12 @@ func (c *httpConn) Write(b []byte) (int, error) {
 		buf.WriteString("DNT: 1\r\nConnection: keep-alive\r\n\r\n")
 	}
 	buf.Write(b)
-	return c.Conn.Write(buf.Bytes())
+	_, err := c.Conn.Write(buf.Bytes())
+	if err != nil {
+		return 0, nil
+	}
+	c.hasSentHeader = true
+	return bLength, nil
 }
 
 func packURLEncodedHeadData(buf *bytes.Buffer, data []byte) {

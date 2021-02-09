@@ -66,17 +66,17 @@ func (a *authChainB) initDataSize() {
 }
 
 func (a *authChainB) getRandLength(length int, lashHash []byte, random *tools.XorShift128Plus) int {
-	if length > 1440 {
+	if length >= 1440 {
 		return 0
 	}
 	random.InitFromBinAndLength(lashHash, length)
-	pos := sort.Search(len(a.dataSizeList), func(i int) bool { return a.dataSizeList[i] > length+a.Overhead })
+	pos := sort.Search(len(a.dataSizeList), func(i int) bool { return a.dataSizeList[i] >= length+a.Overhead })
 	finalPos := pos + int(random.Next()%uint64(len(a.dataSizeList)))
 	if finalPos < len(a.dataSizeList) {
 		return a.dataSizeList[finalPos] - length - a.Overhead
 	}
 
-	pos = sort.Search(len(a.dataSizeList2), func(i int) bool { return a.dataSizeList2[i] > length+a.Overhead })
+	pos = sort.Search(len(a.dataSizeList2), func(i int) bool { return a.dataSizeList2[i] >= length+a.Overhead })
 	finalPos = pos + int(random.Next()%uint64(len(a.dataSizeList2)))
 	if finalPos < len(a.dataSizeList2) {
 		return a.dataSizeList2[finalPos] - length - a.Overhead

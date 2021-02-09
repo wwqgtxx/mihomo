@@ -36,11 +36,10 @@ type tls12TicketConn struct {
 	decoded         bytes.Buffer
 	underDecoded    bytes.Buffer
 	sendBuf         bytes.Buffer
-	ticketBuf       map[string][]byte
 }
 
 func (t *tls12Ticket) StreamConn(c net.Conn) net.Conn {
-	return &tls12TicketConn{Conn: c, tls12Ticket: t, ticketBuf: make(map[string][]byte)}
+	return &tls12TicketConn{Conn: c, tls12Ticket: t}
 }
 
 func (c *tls12TicketConn) Read(b []byte) (int, error) {
@@ -167,12 +166,7 @@ func (c *tls12TicketConn) Write(b []byte) (int, error) {
 		defer buf.Reset()
 
 		buf.Write([]byte{0x14, 3, 3, 0, 1, 1, 0x16, 3, 3, 0, 0x20})
-
-		randData := pool.Get(22)
-		defer pool.Put(randData)
-		rand.Read(randData)
-		buf.Write(randData)
-
+		tools.AppendRandBytes(buf, 22)
 		buf.Write(c.hmacSHA1(buf.Bytes())[:10])
 		buf.ReadFrom(&c.sendBuf)
 
@@ -192,10 +186,7 @@ func packData(buf *bytes.Buffer, data []byte) {
 
 func (t *tls12Ticket) packAuthData(buf *bytes.Buffer) {
 	binary.Write(buf, binary.BigEndian, uint32(time.Now().Unix()))
-	randData := pool.Get(18)
-	defer pool.Put(randData)
-	rand.Read(randData)
-	buf.Write(randData)
+	tools.AppendRandBytes(buf, 18)
 	buf.Write(t.hmacSHA1(buf.Bytes()[buf.Len()-22:])[:10])
 }
 
@@ -210,15 +201,10 @@ func packSNIData(buf *bytes.Buffer, u string) {
 }
 
 func (c *tls12TicketConn) packTicketBuf(buf *bytes.Buffer, u string) {
-	if c.ticketBuf[u] == nil {
-		bufLen := rand.Intn(17) + 8
-		bufLen *= 16
-		c.ticketBuf[u] = make([]byte, bufLen)
-		rand.Read(c.ticketBuf[u])
-	}
+	length := 16 * (rand.Intn(17) + 8)
 	buf.Write([]byte{0, 0x23})
-	binary.Write(buf, binary.BigEndian, uint16(len(c.ticketBuf[u])))
-	buf.Write(c.ticketBuf[u])
+	binary.Write(buf, binary.BigEndian, uint16(length))
+	tools.AppendRandBytes(buf, length)
 }
 
 func (t *tls12Ticket) hmacSHA1(data []byte) []byte {

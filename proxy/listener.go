@@ -28,6 +28,8 @@ var (
 	tproxyUDPListener      *redir.RedirUDPListener
 	mixedListener          *mixed.MixedListener
 	mixedUDPLister         *socks.SockUDPListener
+	mixECListener          *mixed.MixECListener
+	mixECUDPLister         *socks.SockUDPListener
 	shadowSocksListener    *shadowsocks.ShadowSocksListener
 	shadowSocksUDPListener *shadowsocks.ShadowSocksUDPListener
 	tcpTunListener         *tunnel.TcpTunListener
@@ -39,6 +41,7 @@ var (
 	redirMux  sync.Mutex
 	tproxyMux sync.Mutex
 	mixedMux  sync.Mutex
+	mixECMux  sync.Mutex
 	ssMux     sync.Mutex
 	tcpTunMux sync.Mutex
 	udpTunMux sync.Mutex
@@ -49,6 +52,7 @@ type Ports struct {
 	SocksPort         int    `json:"socks-port"`
 	RedirPort         int    `json:"redir-port"`
 	MixedPort         int    `json:"mixed-port"`
+	MixECPort         int    `json:"mixec-port"`
 	TProxyPort        int    `json:"tproxy-port"`
 	ShadowSocksConfig string `json:"ss-config"`
 	TcpTunConfig      string `json:"tcptun-config"`
@@ -378,6 +382,55 @@ func ReCreateMixed(port int) error {
 	mixedUDPLister, err = socks.NewSocksUDPProxy(addr)
 	if err != nil {
 		mixedListener.Close()
+		return err
+	}
+
+	return nil
+}
+
+func ReCreateMixEC(port int) error {
+	mixECMux.Lock()
+	defer mixECMux.Unlock()
+
+	addr := genAddr(bindAddress, port, allowLan)
+
+	shouldTCPIgnore := false
+	shouldUDPIgnore := false
+
+	if mixECListener != nil {
+		if mixECListener.Address() != addr {
+			mixECListener.Close()
+			mixECListener = nil
+		} else {
+			shouldTCPIgnore = true
+		}
+	}
+	if mixECUDPLister != nil {
+		if mixECUDPLister.Address() != addr {
+			mixECUDPLister.Close()
+			mixECUDPLister = nil
+		} else {
+			shouldUDPIgnore = true
+		}
+	}
+
+	if shouldTCPIgnore && shouldUDPIgnore {
+		return nil
+	}
+
+	if portIsZero(addr) {
+		return nil
+	}
+
+	var err error
+	mixECListener, err = mixed.NewMixECProxy(addr)
+	if err != nil {
+		return err
+	}
+
+	mixECUDPLister, err = socks.NewSocksUDPProxy(addr)
+	if err != nil {
+		mixECListener.Close()
 		return err
 	}
 

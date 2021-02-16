@@ -81,6 +81,8 @@ func Start(addr string, secret string) {
 		})
 	}
 
+	C.SetECHandler(r)
+
 	log.Infoln("RESTful API listening at: %s", addr)
 	err := http.ListenAndServe(addr, r)
 	if err != nil {

@@ -42,6 +42,7 @@ type Inbound struct {
 	RedirPort         int      `json:"redir-port"`
 	TProxyPort        int      `json:"tproxy-port"`
 	MixedPort         int      `json:"mixed-port"`
+	MixECPort         int      `json:"mixec-port"`
 	ShadowSocksConfig string   `json:"ss-config"`
 	TcpTunConfig      string   `json:"tcptun-config"`
 	UdpTunConfig      string   `json:"udptun-config"`
@@ -119,6 +120,7 @@ type RawConfig struct {
 	RedirPort              int          `yaml:"redir-port"`
 	TProxyPort             int          `yaml:"tproxy-port"`
 	MixedPort              int          `yaml:"mixed-port"`
+	MixECPort              int          `yaml:"mixec-port"`
 	ShadowSocksConfig      string       `yaml:"ss-config"`
 	TcpTunConfig           string       `yaml:"tcptun-config"`
 	UdpTunConfig           string       `yaml:"udptun-config"`
@@ -250,6 +252,7 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 			RedirPort:         cfg.RedirPort,
 			TProxyPort:        cfg.TProxyPort,
 			MixedPort:         cfg.MixedPort,
+			MixECPort:         cfg.MixECPort,
 			ShadowSocksConfig: cfg.ShadowSocksConfig,
 			TcpTunConfig:      cfg.TcpTunConfig,
 			UdpTunConfig:      cfg.UdpTunConfig,

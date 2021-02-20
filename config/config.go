@@ -42,6 +42,7 @@ type Inbound struct {
 	RedirPort         int      `json:"redir-port"`
 	TProxyPort        int      `json:"tproxy-port"`
 	MixedPort         int      `json:"mixed-port"`
+	MixECPort         int      `json:"mixec-port"`
 	Tun               Tun      `json:"tun"`
 	ShadowSocksConfig string   `json:"ss-config"`
 	TcpTunConfig      string   `json:"tcptun-config"`
@@ -86,6 +87,11 @@ type Tun struct {
 	DNSListen string `yaml:"dns-listen" json:"dns-listen"`
 }
 
+// Profile config
+type Profile struct {
+	StoreSelected bool `yaml:"store-selected"`
+}
+
 // Experimental config
 type Experimental struct{}
 
@@ -96,6 +102,7 @@ type Config struct {
 	DNS          *DNS
 	Experimental *Experimental
 	Hosts        *trie.DomainTrie
+	Profile      *Profile
 	Rules        []C.Rule
 	Users        []auth.AuthUser
 	Proxies      map[string]C.Proxy
@@ -128,6 +135,7 @@ type RawConfig struct {
 	RedirPort              int          `yaml:"redir-port"`
 	TProxyPort             int          `yaml:"tproxy-port"`
 	MixedPort              int          `yaml:"mixed-port"`
+	MixECPort              int          `yaml:"mixec-port"`
 	ShadowSocksConfig      string       `yaml:"ss-config"`
 	TcpTunConfig           string       `yaml:"tcptun-config"`
 	UdpTunConfig           string       `yaml:"udptun-config"`
@@ -149,6 +157,7 @@ type RawConfig struct {
 	DNS           RawDNS                            `yaml:"dns"`
 	Tun           Tun                               `yaml:"tun"`
 	Experimental  Experimental                      `yaml:"experimental"`
+	Profile       Profile                           `yaml:"profile"`
 	Proxy         []map[string]interface{}          `yaml:"proxies"`
 	ProxyGroup    []map[string]interface{}          `yaml:"proxy-groups"`
 	Rule          []string                          `yaml:"rules"`
@@ -165,7 +174,7 @@ func Parse(buf []byte) (*Config, error) {
 }
 
 func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
-	// config with some default value
+	// config with default value
 	rawCfg := &RawConfig{
 		AllowLan:               false,
 		BindAddress:            "*",
@@ -196,6 +205,9 @@ func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 				"8.8.8.8",
 			},
 		},
+		Profile: Profile{
+			StoreSelected: true,
+		},
 	}
 
 	if err := yaml.Unmarshal(buf, &rawCfg); err != nil {
@@ -209,6 +221,7 @@ func ParseRawConfig(rawCfg *RawConfig) (*Config, error) {
 	config := &Config{}
 
 	config.Experimental = &rawCfg.Experimental
+	config.Profile = &rawCfg.Profile
 
 	general, err := parseGeneral(rawCfg)
 	if err != nil {
@@ -265,6 +278,7 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 			RedirPort:         cfg.RedirPort,
 			TProxyPort:        cfg.TProxyPort,
 			MixedPort:         cfg.MixedPort,
+			MixECPort:         cfg.MixECPort,
 			Tun:               cfg.Tun,
 			ShadowSocksConfig: cfg.ShadowSocksConfig,
 			TcpTunConfig:      cfg.TcpTunConfig,

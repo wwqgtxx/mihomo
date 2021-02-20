@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/Dreamacro/clash/adapters/provider"
+	"github.com/Dreamacro/clash/component/resolver"
 	"github.com/Dreamacro/clash/config"
 	"github.com/Dreamacro/clash/hub/executor"
 	"github.com/Dreamacro/clash/log"
@@ -29,6 +30,7 @@ type configSchema struct {
 	RedirPort              *int               `json:"redir-port"`
 	TProxyPort             *int               `json:"tproxy-port"`
 	MixedPort              *int               `json:"mixed-port"`
+	MixECPort              *int               `json:"mixec-port"`
 	Tun                    *config.Tun        `json:"tun"`
 	ShadowSocksConfig      *string            `json:"ss-config"`
 	TcptunConfig           *string            `json:"tcptun-config"`
@@ -37,6 +39,7 @@ type configSchema struct {
 	BindAddress            *string            `json:"bind-address"`
 	Mode                   *tunnel.TunnelMode `json:"mode"`
 	LogLevel               *log.LogLevel      `json:"log-level"`
+	IPv6                   *bool              `json:"ipv6"`
 	HealthCheckLazyDefault *bool              `json:"health-check-lazy-default"`
 	TouchAfterLazyPassNum  *int               `json:"touch-after-lazy-pass-num"`
 }
@@ -84,6 +87,7 @@ func patchConfigs(w http.ResponseWriter, r *http.Request) {
 	_ = P.ReCreateRedir(pointerOrDefault(general.RedirPort, ports.RedirPort))
 	_ = P.ReCreateTProxy(pointerOrDefault(general.TProxyPort, ports.TProxyPort))
 	_ = P.ReCreateMixed(pointerOrDefault(general.MixedPort, ports.MixedPort))
+	_ = P.ReCreateMixEC(pointerOrDefault(general.MixECPort, ports.MixECPort))
 	_ = P.ReCreateShadowSocks(pointerOrDefault_string(general.ShadowSocksConfig, ports.ShadowSocksConfig))
 	_ = P.ReCreateTcpTun(pointerOrDefault_string(general.TcptunConfig, ports.TcpTunConfig))
 	_ = P.ReCreateUdpTun(pointerOrDefault_string(general.UdptunConfig, ports.UdpTunConfig))
@@ -118,6 +122,11 @@ func patchConfigs(w http.ResponseWriter, r *http.Request) {
 
 	if general.TouchAfterLazyPassNum != nil {
 		provider.SetTouchAfterLazyPassNum(*general.TouchAfterLazyPassNum)
+	}
+
+	if general.IPv6 != nil {
+		resolver.DisableIPv6 = !*general.IPv6
+
 	}
 
 	render.NoContent(w, r)

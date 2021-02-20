@@ -39,12 +39,7 @@ func SetUIPath(path string) {
 	uiPath = C.Path.Resolve(path)
 }
 
-func Start(addr string, secret string) {
-	if serverAddr != "" {
-		return
-	}
-
-	serverAddr = addr
+func Init(secret string) {
 	serverSecret = secret
 
 	r := chi.NewRouter()
@@ -81,8 +76,18 @@ func Start(addr string, secret string) {
 		})
 	}
 
+	C.SetECHandler(r)
+}
+
+func Start(addr string) {
+	if serverAddr != "" {
+		return
+	}
+
+	serverAddr = addr
+
 	log.Infoln("RESTful API listening at: %s", addr)
-	err := http.ListenAndServe(addr, r)
+	err := http.ListenAndServe(addr, C.GetECHandler())
 	if err != nil {
 		log.Errorln("External controller error: %s", err.Error())
 	}

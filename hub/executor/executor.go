@@ -6,9 +6,13 @@ import (
 	"os"
 	"sync"
 
+	"github.com/Dreamacro/clash/adapters/outbound"
+	"github.com/Dreamacro/clash/adapters/outboundgroup"
 	"github.com/Dreamacro/clash/adapters/provider"
 	"github.com/Dreamacro/clash/component/auth"
 	"github.com/Dreamacro/clash/component/dialer"
+	"github.com/Dreamacro/clash/component/profile"
+	"github.com/Dreamacro/clash/component/profile/cachefile"
 	"github.com/Dreamacro/clash/component/resolver"
 	"github.com/Dreamacro/clash/component/trie"
 	"github.com/Dreamacro/clash/config"
@@ -72,6 +76,7 @@ func ApplyConfig(cfg *config.Config, force bool) {
 	updateRules(cfg.Rules)
 	updateHosts(cfg.Hosts)
 	updateExperimental(cfg)
+	updateProfile(cfg)
 }
 
 func GetGeneral() *config.General {
@@ -87,6 +92,7 @@ func GetGeneral() *config.General {
 			SocksPort:         ports.SocksPort,
 			RedirPort:         ports.RedirPort,
 			MixedPort:         ports.MixedPort,
+			MixECPort:         ports.MixECPort,
 			TProxyPort:        ports.TProxyPort,
 			Tun:               P.Tun(),
 			ShadowSocksConfig: ports.ShadowSocksConfig,
@@ -97,9 +103,9 @@ func GetGeneral() *config.General {
 		},
 		Mode:                   tunnel.Mode(),
 		LogLevel:               log.Level(),
+		IPv6:                   !resolver.DisableIPv6,
 		HealthCheckLazyDefault: provider.HealthCheckLazyDefault(),
 		TouchAfterLazyPassNum:  provider.TouchAfterLazyPassNum(),
-		IPv6:                   !resolver.DisableIPv6,
 	}
 
 	return general
@@ -208,6 +214,10 @@ func updateGeneral(general *config.General, force bool) {
 		log.Errorln("Start Mixed(http and socks5) server error: %s", err.Error())
 	}
 
+	if err := P.ReCreateMixEC(general.MixECPort); err != nil {
+		log.Errorln("Start MixEC(RESTful Api and socks5) server error: %s", err.Error())
+	}
+
 	if err := P.ReCreateShadowSocks(general.ShadowSocksConfig); err != nil {
 		log.Errorln("Start ShadowSocks server error: %s", err.Error())
 	}
@@ -231,5 +241,40 @@ func updateUsers(users []auth.AuthUser) {
 	authStore.SetAuthenticator(authenticator)
 	if authenticator != nil {
 		log.Infoln("Authentication of local server updated")
+	}
+}
+
+func updateProfile(cfg *config.Config) {
+	profileCfg := cfg.Profile
+
+	profile.StoreSelected.Store(profileCfg.StoreSelected)
+	if profileCfg.StoreSelected {
+		patchSelectGroup(cfg.Proxies)
+	}
+}
+
+func patchSelectGroup(proxies map[string]C.Proxy) {
+	mapping := cachefile.Cache().SelectedMap()
+	if mapping == nil {
+		return
+	}
+
+	for name, proxy := range proxies {
+		outbound, ok := proxy.(*outbound.Proxy)
+		if !ok {
+			continue
+		}
+
+		selector, ok := outbound.ProxyAdapter.(*outboundgroup.Selector)
+		if !ok {
+			continue
+		}
+
+		selected, exist := mapping[name]
+		if !exist {
+			continue
+		}
+
+		selector.Set(selected)
 	}
 }

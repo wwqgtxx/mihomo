@@ -99,6 +99,7 @@ func GetGeneral() *config.General {
 		LogLevel:               log.Level(),
 		HealthCheckLazyDefault: provider.HealthCheckLazyDefault(),
 		TouchAfterLazyPassNum:  provider.TouchAfterLazyPassNum(),
+		IPv6:                   !resolver.DisableIPv6,
 	}
 
 	return general

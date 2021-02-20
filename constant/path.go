@@ -65,3 +65,7 @@ func (p *path) MMDB() string {
 		return "embed"
 	}
 }
+
+func (p *path) Cache() string {
+	return P.Join(p.homeDir, ".cache")
+}

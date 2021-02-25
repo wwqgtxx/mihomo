@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/Dreamacro/clash/component/mtproxy/tools"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -44,6 +45,11 @@ func init() {
 }
 
 func main() {
+	if len(os.Args) > 2 && os.Args[1] == "generate-secret" {
+		tools.Generate(os.Args[2])
+		return
+	}
+
 	if version {
 		fmt.Printf("Clash %s %s %s %s\n", C.Version, runtime.GOOS, runtime.GOARCH, C.BuildTime)
 		return

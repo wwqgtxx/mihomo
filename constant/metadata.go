@@ -23,6 +23,7 @@ const (
 	TPROXY
 	TCPTUN
 	UDPTUN
+	MTPROXY
 )
 
 type NetWork int
@@ -58,6 +59,8 @@ func (t Type) String() string {
 		return "TcpTun"
 	case UDPTUN:
 		return "UdpTun"
+	case MTPROXY:
+		return "MTProxy"
 	default:
 		return "Unknown"
 	}

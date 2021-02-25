@@ -46,6 +46,7 @@ type Inbound struct {
 	ShadowSocksConfig string   `json:"ss-config"`
 	TcpTunConfig      string   `json:"tcptun-config"`
 	UdpTunConfig      string   `json:"udptun-config"`
+	MTProxyConfig     string   `json:"mtproxy-config"`
 	Authentication    []string `json:"authentication"`
 	AllowLan          bool     `json:"allow-lan"`
 	BindAddress       string   `json:"bind-address"`
@@ -130,6 +131,7 @@ type RawConfig struct {
 	ShadowSocksConfig      string       `yaml:"ss-config"`
 	TcpTunConfig           string       `yaml:"tcptun-config"`
 	UdpTunConfig           string       `yaml:"udptun-config"`
+	MTProxyConfig          string       `yaml:"mtproxy-config"`
 	Authentication         []string     `yaml:"authentication"`
 	AllowLan               bool         `yaml:"allow-lan"`
 	BindAddress            string       `yaml:"bind-address"`
@@ -267,6 +269,7 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 			ShadowSocksConfig: cfg.ShadowSocksConfig,
 			TcpTunConfig:      cfg.TcpTunConfig,
 			UdpTunConfig:      cfg.UdpTunConfig,
+			MTProxyConfig:     cfg.MTProxyConfig,
 			AllowLan:          cfg.AllowLan,
 			BindAddress:       cfg.BindAddress,
 		},

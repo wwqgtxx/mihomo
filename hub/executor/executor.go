@@ -97,6 +97,7 @@ func GetGeneral() *config.General {
 			ShadowSocksConfig: ports.ShadowSocksConfig,
 			TcpTunConfig:      ports.TcpTunConfig,
 			UdpTunConfig:      ports.UdpTunConfig,
+			MTProxyConfig:     ports.MTProxyConfig,
 			Authentication:    authenticator,
 			AllowLan:          P.AllowLan(),
 		},
@@ -227,6 +228,10 @@ func updateGeneral(general *config.General, force bool) {
 
 	if err := P.ReCreateUdpTun(general.UdpTunConfig); err != nil {
 		log.Errorln("Start UdpTun server error: %s", err.Error())
+	}
+
+	if err := P.ReCreateMTProxy(general.MTProxyConfig); err != nil {
+		log.Errorln("Start MTProxy server error: %s", err.Error())
 	}
 }
 

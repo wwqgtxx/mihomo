@@ -39,6 +39,9 @@ type MTProxyListener struct {
 var mtp *MTProxyListener
 
 func NewMTProxy(config string) (*MTProxyListener, error) {
+	if len(config) == 0 {
+		return nil, nil
+	}
 	spliced := strings.Split(config, "@")
 	if len(spliced) != 2 {
 		return nil, errors.New("addr format error")
@@ -81,6 +84,9 @@ func NewMTProxy(config string) (*MTProxyListener, error) {
 
 	mtp = hl
 
+	if len(addr) == 0 {
+		return nil, nil
+	}
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
 		return nil, err

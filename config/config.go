@@ -74,6 +74,11 @@ type FallbackFilter struct {
 	Domain []string     `yaml:"domain"`
 }
 
+// Profile config
+type Profile struct {
+	StoreSelected bool `yaml:"store-selected"`
+}
+
 // Tun config
 type Tun struct {
 	Enable    bool   `yaml:"enable" json:"enable"`
@@ -91,6 +96,7 @@ type Config struct {
 	DNS          *DNS
 	Experimental *Experimental
 	Hosts        *trie.DomainTrie
+	Profile      *Profile
 	Rules        []C.Rule
 	Users        []auth.AuthUser
 	Proxies      map[string]C.Proxy
@@ -139,6 +145,7 @@ type RawConfig struct {
 	DNS           RawDNS                            `yaml:"dns"`
 	Tun           Tun                               `yaml:"tun"`
 	Experimental  Experimental                      `yaml:"experimental"`
+	Profile       Profile                           `yaml:"profile"`
 	Proxy         []map[string]interface{}          `yaml:"proxies"`
 	ProxyGroup    []map[string]interface{}          `yaml:"proxy-groups"`
 	Rule          []string                          `yaml:"rules"`
@@ -155,7 +162,7 @@ func Parse(buf []byte) (*Config, error) {
 }
 
 func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
-	// config with some default value
+	// config with default value
 	rawCfg := &RawConfig{
 		AllowLan:       false,
 		BindAddress:    "*",
@@ -184,6 +191,9 @@ func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 				"8.8.8.8",
 			},
 		},
+		Profile: Profile{
+			StoreSelected: true,
+		},
 	}
 
 	if err := yaml.Unmarshal(buf, &rawCfg); err != nil {
@@ -197,6 +207,7 @@ func ParseRawConfig(rawCfg *RawConfig) (*Config, error) {
 	config := &Config{}
 
 	config.Experimental = &rawCfg.Experimental
+	config.Profile = &rawCfg.Profile
 
 	general, err := parseGeneral(rawCfg)
 	if err != nil {

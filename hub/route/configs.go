@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"path/filepath"
 
+	"github.com/Dreamacro/clash/component/resolver"
 	"github.com/Dreamacro/clash/config"
 	"github.com/Dreamacro/clash/hub/executor"
 	"github.com/Dreamacro/clash/log"
@@ -33,6 +34,7 @@ type configSchema struct {
 	BindAddress *string            `json:"bind-address"`
 	Mode        *tunnel.TunnelMode `json:"mode"`
 	LogLevel    *log.LogLevel      `json:"log-level"`
+	IPv6        *bool              `json:"ipv6"`
 }
 
 func getConfigs(w http.ResponseWriter, r *http.Request) {
@@ -85,6 +87,10 @@ func patchConfigs(w http.ResponseWriter, r *http.Request) {
 
 	if general.LogLevel != nil {
 		log.SetLevel(*general.LogLevel)
+	}
+
+	if general.IPv6 != nil {
+		resolver.DisableIPv6 = !*general.IPv6
 	}
 
 	render.NoContent(w, r)

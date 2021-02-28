@@ -115,9 +115,9 @@ func (p *Proxy) Dial(metadata *C.Metadata) (C.Conn, error) {
 
 func (p *Proxy) DialContext(ctx context.Context, metadata *C.Metadata) (C.Conn, error) {
 	conn, err := p.ProxyAdapter.DialContext(ctx, metadata)
-	if err != nil {
-		p.alive.Store(false)
-	}
+	//if err != nil {
+	//	p.alive.Store(false)
+	//}
 	return conn, err
 }
 

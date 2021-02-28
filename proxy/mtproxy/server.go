@@ -1,8 +1,6 @@
 package mtproxy
 
 import (
-	"bytes"
-	"encoding/hex"
 	"errors"
 	"io"
 	"net"
@@ -11,7 +9,7 @@ import (
 
 	"github.com/Dreamacro/clash/component/mtproxy/common"
 	"github.com/Dreamacro/clash/component/mtproxy/server_protocol"
-	"github.com/Dreamacro/clash/component/mtproxy/telegram"
+	"github.com/Dreamacro/clash/component/mtproxy/tools"
 	C "github.com/Dreamacro/clash/constant"
 	"github.com/Dreamacro/clash/context"
 	"github.com/Dreamacro/clash/log"
@@ -19,21 +17,21 @@ import (
 )
 
 const (
-	SimpleSecretLength = common.SimpleSecretLength
-	FakeTLSFirstByte   = server_protocol.FakeTLSFirstByte
+	FakeTLSFirstByte = server_protocol.FakeTLSFirstByte
 )
+
+func init() {
+	common.PrintlnFunc = func(str string) {
+		log.Warnln(str)
+	}
+}
 
 type MTProxyListener struct {
 	net.Listener
-	address             string
-	config              string
-	closed              bool
-	serverProtocolMaker common.ServerProtocolMaker
-	telegramDialer      *telegram.TelegramDialer
-	secret              []byte
-	secretMode          common.SecretMode
-	cloakHost           string
-	cloakPort           string
+	address    string
+	config     string
+	closed     bool
+	serverInfo *tools.ServerInfo
 }
 
 var mtp *MTProxyListener
@@ -49,37 +47,19 @@ func NewMTProxy(config string) (*MTProxyListener, error) {
 	addr := spliced[1]
 
 	spliced2 := strings.Split(spliced[0], ":")
-	secret, err := hex.DecodeString(spliced2[0])
+	serverInfo, err := tools.ParseHexedSecret(spliced2[0])
 	if err != nil {
 		return nil, err
 	}
-	cloakPort := "443"
 	if len(spliced2) == 2 {
-		cloakPort = spliced2[1]
+		serverInfo.CloakPort = spliced2[1]
 	}
 
 	hl := &MTProxyListener{
-		address:             addr,
-		config:              config,
-		closed:              false,
-		serverProtocolMaker: server_protocol.MakeNormalServerProtocol,
-		telegramDialer:      telegram.NewTelegramDialer(),
-	}
-	switch {
-	case len(secret) == 1+SimpleSecretLength && bytes.HasPrefix(secret, []byte{0xdd}):
-		hl.secretMode = common.SecretModeSecured
-		hl.secret = bytes.TrimPrefix(secret, []byte{0xdd})
-	case len(secret) > SimpleSecretLength && bytes.HasPrefix(secret, []byte{0xee}):
-		hl.secretMode = common.SecretModeTLS
-		secret := bytes.TrimPrefix(secret, []byte{0xee})
-		hl.secret = secret[:SimpleSecretLength]
-		hl.cloakHost = string(secret[SimpleSecretLength:])
-		hl.cloakPort = cloakPort
-		hl.serverProtocolMaker = server_protocol.MakeFakeTLSServerProtocol
-	case len(secret) == SimpleSecretLength:
-		hl.secretMode = common.SecretModeSimple
-	default:
-		return nil, errors.New("incorrect secret")
+		address:    addr,
+		config:     config,
+		closed:     false,
+		serverInfo: serverInfo,
 	}
 
 	mtp = hl
@@ -125,11 +105,16 @@ func (l *MTProxyListener) Config() string {
 }
 
 func (l *MTProxyListener) SecretMode() common.SecretMode {
-	return l.secretMode
+	return l.serverInfo.SecretMode
 }
 
 func (l *MTProxyListener) HandleConn(conn net.Conn) {
-	serverProtocol := l.serverProtocolMaker(l.secret, l.secretMode, l.cloakHost, l.cloakPort)
+	serverProtocol := l.serverInfo.ServerProtocolMaker(
+		l.serverInfo.Secret,
+		l.serverInfo.SecretMode,
+		l.serverInfo.CloakHost,
+		l.serverInfo.CloakPort,
+	)
 	serverConn, err := serverProtocol.Handshake(conn)
 	if err != nil {
 		//logger.Warnw("Cannot perform client handshake", "error", err)
@@ -138,25 +123,27 @@ func (l *MTProxyListener) HandleConn(conn net.Conn) {
 	}
 	defer serverConn.Close()
 
-	telegramConn, err := l.telegramDialer.Dial(serverProtocol, func(addr string) (io.ReadWriteCloser, error) {
-		conn1, conn2 := net.Pipe()
-		host, port, _ := net.SplitHostPort(addr)
-		remoteHost, remotePort, _ := net.SplitHostPort(conn.RemoteAddr().String())
-		remoteIp := net.ParseIP(remoteHost)
-		metadata := &C.Metadata{
-			NetWork:  C.TCP,
-			AddrType: C.AtypDomainName,
-			Host:     host,
-			DstIP:    nil,
-			DstPort:  port,
-			SrcIP:    remoteIp,
-			SrcPort:  remotePort,
-		}
-		metadata.Type = C.MTPROXY
-		connContext := context.NewConnContext(conn2, metadata)
-		tunnel.Add(connContext)
-		return conn1, nil
-	})
+	telegramConn, err := l.serverInfo.TelegramDialer.Dial(
+		serverProtocol,
+		func(addr string) (io.ReadWriteCloser, error) {
+			conn1, conn2 := net.Pipe()
+			host, port, _ := net.SplitHostPort(addr)
+			remoteHost, remotePort, _ := net.SplitHostPort(conn.RemoteAddr().String())
+			remoteIp := net.ParseIP(remoteHost)
+			metadata := &C.Metadata{
+				NetWork:  C.TCP,
+				AddrType: C.AtypDomainName,
+				Host:     host,
+				DstIP:    nil,
+				DstPort:  port,
+				SrcIP:    remoteIp,
+				SrcPort:  remotePort,
+			}
+			metadata.Type = C.MTPROXY
+			connContext := context.NewConnContext(conn2, metadata)
+			tunnel.Add(connContext)
+			return conn1, nil
+		})
 	if err != nil {
 		return
 	}

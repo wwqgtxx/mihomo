@@ -7,7 +7,6 @@ import (
 	"math/rand"
 
 	"github.com/Dreamacro/clash/component/mtproxy/common"
-	"github.com/Dreamacro/clash/log"
 )
 
 const (
@@ -48,12 +47,12 @@ func (b *TelegramDialer) Dial(serverProtocol common.ServerProtocol, dialFunc fun
 	for _, addr := range b.getAddresses(serverProtocol.DC(), serverProtocol.ConnectionProtocol()) {
 		conn, err := dialFunc(addr)
 		if err != nil {
-			log.Warnln("Cannot dial to Telegram, address: %s error: %s", addr, err)
+			common.PrintlnFunc(fmt.Sprintf("Cannot dial to Telegram, address: %s error: %s", addr, err))
 			continue
 		}
 		conn, err = b.handshake(conn, serverProtocol.ConnectionType())
 		if err != nil {
-			log.Warnln("Cannot handshake to Telegram, address: %s error: %s", addr, err)
+			common.PrintlnFunc(fmt.Sprintf("Cannot handshake to Telegram, address: %s error: %s", addr, err))
 			continue
 		}
 		return conn, nil

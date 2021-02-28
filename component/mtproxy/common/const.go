@@ -86,3 +86,5 @@ type ServerProtocol interface {
 }
 
 type ServerProtocolMaker func(secret []byte, secretMode SecretMode, cloakHost string, cloakPort string) ServerProtocol
+
+var PrintlnFunc = func(str string) {}

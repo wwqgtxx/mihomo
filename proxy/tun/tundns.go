@@ -45,16 +45,16 @@ type dnsEndpoint struct {
 
 // Keep track of the source of DNS request
 type dnsResponseWriter struct {
-	s  *stack.Stack
-	r  *stack.Route
-	id stack.TransportEndpointID
+	s   *stack.Stack
+	pkt *stack.PacketBuffer // The request packet
+	id  stack.TransportEndpointID
 }
 
 func (e *dnsEndpoint) UniqueID() uint64 {
 	return e.uniqueID
 }
 
-func (e *dnsEndpoint) HandlePacket(r *stack.Route, id stack.TransportEndpointID, pkt *stack.PacketBuffer) {
+func (e *dnsEndpoint) HandlePacket(id stack.TransportEndpointID, pkt *stack.PacketBuffer) {
 	hdr := header.UDP(pkt.TransportHeader().View())
 	if int(hdr.Length()) > pkt.Data.Size()+header.UDPMinimumSize {
 		// Malformed packet.
@@ -65,11 +65,8 @@ func (e *dnsEndpoint) HandlePacket(r *stack.Route, id stack.TransportEndpointID,
 	// server DNS
 	var msg D.Msg
 	msg.Unpack(pkt.Data.ToView())
-	writer := dnsResponseWriter{s: e.stack, r: r, id: id}
+	writer := dnsResponseWriter{s: e.stack, pkt: pkt, id: id}
 	go e.server.ServeDNS(&writer, &msg)
-}
-
-func (e *dnsEndpoint) HandleControlPacket(id stack.TransportEndpointID, typ stack.ControlType, extra uint32, pkt *stack.PacketBuffer) {
 }
 
 func (e *dnsEndpoint) Close() {
@@ -110,7 +107,9 @@ func (w *dnsResponseWriter) Write(b []byte) (int, error) {
 	v := buffer.NewView(len(b))
 	copy(v, b)
 	data := v.ToVectorisedView()
-	return writeUDP(w.r, data, w.id.LocalPort, w.id.RemotePort)
+	r, _ := w.s.FindRoute(w.pkt.NICID, "", w.id.RemoteAddress, w.pkt.NetworkProtocolNumber, false /* multicastLoop */)
+	r.LocalAddress = w.id.LocalAddress // set the source ip of DNS response
+	return writeUDP(r, data, w.id.LocalPort, w.id.RemotePort)
 }
 
 func (w *dnsResponseWriter) Close() error {
@@ -157,7 +156,7 @@ func CreateDNSServer(s *stack.Stack, resolver *dns.Resolver, mapper *dns.Resolve
 		server:   serverIn,
 	}
 
-	if tcpiperr := s.RegisterTransportEndpoint(nicID,
+	if tcpiperr := s.RegisterTransportEndpoint(
 		[]tcpip.NetworkProtocolNumber{
 			ipv4.ProtocolNumber,
 			ipv6.ProtocolNumber,
@@ -209,7 +208,7 @@ func (s *DNSServer) Stop() {
 		s.Listener.Close()
 	}
 	// remove udp endpoint from stack
-	s.stack.UnregisterTransportEndpoint(s.NICID,
+	s.stack.UnregisterTransportEndpoint(
 		[]tcpip.NetworkProtocolNumber{
 			ipv4.ProtocolNumber,
 			ipv6.ProtocolNumber,

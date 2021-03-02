@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"strings"
 
 	adapters "github.com/Dreamacro/clash/adapters/inbound"
 	"github.com/Dreamacro/clash/component/socks5"
@@ -51,8 +52,8 @@ func NewTunProxy(deviceURL string) (TunAdapter, error) {
 	}
 
 	ipstack := stack.New(stack.Options{
-		NetworkProtocols:   []stack.NetworkProtocol{ipv4.NewProtocol(), ipv6.NewProtocol()},
-		TransportProtocols: []stack.TransportProtocol{tcp.NewProtocol(), udp.NewProtocol()},
+		NetworkProtocols:   []stack.NetworkProtocolFactory{ipv4.NewProtocol, ipv6.NewProtocol},
+		TransportProtocols: []stack.TransportProtocolFactory{tcp.NewProtocol, udp.NewProtocol},
 	})
 
 	tl := &tunAdapter{
@@ -70,6 +71,13 @@ func NewTunProxy(deviceURL string) (TunAdapter, error) {
 	}
 
 	ipstack.SetPromiscuousMode(nicID, true) // Accept all the traffice from this NIC
+	ipstack.SetSpoofing(nicID, true)        // Otherwise our TCP connection can not find the route backward
+
+	// Add route for ipv4 & ipv6
+	subnet, _ := tcpip.NewSubnet(tcpip.Address(strings.Repeat("\x00", 4)), tcpip.AddressMask(strings.Repeat("\x00", 4)))
+	ipstack.AddRoute(tcpip.Route{Destination: subnet, Gateway: "", NIC: nicID})
+	subnet, _ = tcpip.NewSubnet(tcpip.Address(strings.Repeat("\x00", 6)), tcpip.AddressMask(strings.Repeat("\x00", 6)))
+	ipstack.AddRoute(tcpip.Route{Destination: subnet, Gateway: "", NIC: nicID})
 
 	// TCP handler
 	// maximum number of half-open tcp connection set to 1024
@@ -85,7 +93,7 @@ func NewTunProxy(deviceURL string) (TunAdapter, error) {
 		r.Complete(false)
 
 		conn := gonet.NewTCPConn(&wq, ep)
-		target := getAddr(ep.Info().(*tcp.EndpointInfo).ID)
+		target := getAddr(ep.Info().(*stack.TransportEndpointInfo).ID)
 		tunnel.Add(adapters.NewSocket(target, conn, C.TUN))
 
 	})
@@ -113,7 +121,7 @@ func (t *tunAdapter) DeviceURL() string {
 	return t.device.URL()
 }
 
-func (t *tunAdapter) udpHandlePacket(r *stack.Route, id stack.TransportEndpointID, pkt *stack.PacketBuffer) bool {
+func (t *tunAdapter) udpHandlePacket(id stack.TransportEndpointID, pkt *stack.PacketBuffer) bool {
 	// ref: gvisor pkg/tcpip/transport/udp/endpoint.go HandlePacket
 	hdr := header.UDP(pkt.TransportHeader().View())
 	if int(hdr.Length()) > pkt.Data.Size()+header.UDPMinimumSize {
@@ -126,7 +134,8 @@ func (t *tunAdapter) udpHandlePacket(r *stack.Route, id stack.TransportEndpointI
 
 	packet := &fakeConn{
 		id:      id,
-		r:       r,
+		pkt:     pkt,
+		s:       t.ipstack,
 		payload: pkt.Data.ToView(),
 	}
 	tunnel.AddPacket(adapters.NewPacket(target, packet, C.TUN))

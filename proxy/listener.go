@@ -12,6 +12,7 @@ import (
 	"github.com/Dreamacro/clash/log"
 	"github.com/Dreamacro/clash/proxy/http"
 	"github.com/Dreamacro/clash/proxy/mixed"
+	"github.com/Dreamacro/clash/proxy/mtproxy"
 	"github.com/Dreamacro/clash/proxy/redir"
 	"github.com/Dreamacro/clash/proxy/shadowsocks"
 	"github.com/Dreamacro/clash/proxy/socks"
@@ -38,6 +39,7 @@ var (
 	shadowSocksUDPListener *shadowsocks.ShadowSocksUDPListener
 	tcpTunListener         *tunnel.TcpTunListener
 	udpTunListener         *tunnel.UdpTunListener
+	mtpListener            *mtproxy.MTProxyListener
 	tunAdapter             tun.TunAdapter
 
 	// lock for recreate function
@@ -50,6 +52,7 @@ var (
 	ssMux     sync.Mutex
 	tcpTunMux sync.Mutex
 	udpTunMux sync.Mutex
+	mtpMux    sync.Mutex
 	tunMux    sync.Mutex
 )
 
@@ -63,6 +66,7 @@ type Ports struct {
 	ShadowSocksConfig string `json:"ss-config"`
 	TcpTunConfig      string `json:"tcptun-config"`
 	UdpTunConfig      string `json:"udptun-config"`
+	MTProxyConfig     string `json:"mtproxy-config"`
 }
 
 func AllowLan() bool {
@@ -450,6 +454,35 @@ func ReCreateMixEC(port int) error {
 		mixECListener.Close()
 		return err
 	}
+	return nil
+}
+
+func ReCreateMTProxy(config string) error {
+	mtpMux.Lock()
+	defer mtpMux.Unlock()
+
+	shouldIgnore := false
+
+	if mtpListener != nil {
+		if mtpListener.Config() != config {
+			mtpListener.Close()
+			mtpListener = nil
+		} else {
+			shouldIgnore = true
+		}
+	}
+
+	if shouldIgnore {
+		return nil
+	}
+
+	mtp, err := mtproxy.NewMTProxy(config)
+	if err != nil {
+		return err
+	}
+
+	mtpListener = mtp
+
 	return nil
 }
 

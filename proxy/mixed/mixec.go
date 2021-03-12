@@ -2,12 +2,13 @@ package mixed
 
 import (
 	"errors"
-	"github.com/Dreamacro/clash/component/socks5"
-	C "github.com/Dreamacro/clash/constant"
-	"github.com/Dreamacro/clash/log"
 	"net"
 	"net/http"
 
+	"github.com/Dreamacro/clash/component/socks5"
+	C "github.com/Dreamacro/clash/constant"
+	"github.com/Dreamacro/clash/log"
+	"github.com/Dreamacro/clash/proxy/mtproxy"
 	"github.com/Dreamacro/clash/proxy/socks"
 )
 
@@ -28,7 +29,7 @@ func NewMixECProxy(addr string) (*MixECListener, error) {
 
 	go http.Serve(ml, C.GetECHandler())
 	go func() {
-		log.Infoln("MixEC(RESTful Api+socks5) proxy listening at: %s", addr)
+		log.Infoln("MixEC(RESTful Api+socks5+MTProxy) proxy listening at: %s", addr)
 		for {
 			c, err := l.Accept()
 			if err != nil {
@@ -68,9 +69,14 @@ func handleECConn(conn net.Conn, ch chan net.Conn) {
 		return
 	}
 
-	if head[0] == socks5.Version {
+	switch head[0] {
+	case socks5.Version: // 0x5
 		socks.HandleSocks(bufConn)
 		return
+	case mtproxy.FakeTLSFirstByte: // 0x16
+		if mtproxy.HandleFakeTLS(bufConn) {
+			return
+		}
 	}
 
 	ch <- bufConn

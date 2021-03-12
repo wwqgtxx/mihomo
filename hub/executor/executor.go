@@ -94,10 +94,11 @@ func GetGeneral() *config.General {
 			MixedPort:         ports.MixedPort,
 			MixECPort:         ports.MixECPort,
 			TProxyPort:        ports.TProxyPort,
-			Tun:               P.Tun(),
 			ShadowSocksConfig: ports.ShadowSocksConfig,
 			TcpTunConfig:      ports.TcpTunConfig,
 			UdpTunConfig:      ports.UdpTunConfig,
+			MTProxyConfig:     ports.MTProxyConfig,
+			Tun:               P.Tun(),
 			Authentication:    authenticator,
 			AllowLan:          P.AllowLan(),
 		},
@@ -230,10 +231,13 @@ func updateGeneral(general *config.General, force bool) {
 		log.Errorln("Start UdpTun server error: %s", err.Error())
 	}
 
+	if err := P.ReCreateMTProxy(general.MTProxyConfig); err != nil {
+		log.Errorln("Start MTProxy server error: %s", err.Error())
+	}
+
 	if err := P.ReCreateTun(general.Tun); err != nil {
 		log.Errorln("Start Tun interface error: %s", err.Error())
 	}
-
 }
 
 func updateUsers(users []auth.AuthUser) {

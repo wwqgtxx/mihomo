@@ -26,4 +26,4 @@ require (
 
 replace github.com/Dreamacro/go-shadowsocks2 v0.1.6 => github.com/wwqgtxx/go-shadowsocks2 v0.1.6
 
-replace gvisor.dev/gvisor => github.com/comzyh/gvisor v0.0.0-20200922152710-c36c6379af83
+replace gvisor.dev/gvisor => github.com/comzyh/gvisor v0.0.0-20210301140817-31d323141418

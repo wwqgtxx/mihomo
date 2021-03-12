@@ -13,8 +13,9 @@ import (
 )
 
 type fakeConn struct {
-	id      stack.TransportEndpointID
-	r       *stack.Route
+	id      stack.TransportEndpointID // The endpoint of incomming packet, it's remote address is the source address it sent from
+	pkt     *stack.PacketBuffer       // The original packet comming from tun
+	s       *stack.Stack
 	payload []byte
 	fakeip  *bool
 }
@@ -26,19 +27,21 @@ func (c *fakeConn) Data() []byte {
 func (c *fakeConn) WriteBack(b []byte, addr net.Addr) (n int, err error) {
 	v := buffer.View(b)
 	data := v.ToVectorisedView()
+
+	r, _ := c.s.FindRoute(c.pkt.NICID, "", c.id.RemoteAddress, c.pkt.NetworkProtocolNumber, false /* multicastLoop */)
 	// if addr is not provided, write back use original dst Addr as src Addr
 	if c.FakeIP() || addr == nil {
-		return writeUDP(c.r, data, uint16(c.id.LocalPort), c.id.RemotePort)
+		r.LocalAddress = c.id.LocalAddress
+		return writeUDP(r, data, uint16(c.id.LocalPort), c.id.RemotePort)
 	}
 
 	udpaddr, _ := addr.(*net.UDPAddr)
-	r := c.r.Clone()
 	if ipv4 := udpaddr.IP.To4(); ipv4 != nil {
 		r.LocalAddress = tcpip.Address(ipv4)
 	} else {
 		r.LocalAddress = tcpip.Address(udpaddr.IP)
 	}
-	return writeUDP(&r, data, uint16(udpaddr.Port), c.id.RemotePort)
+	return writeUDP(r, data, uint16(udpaddr.Port), c.id.RemotePort)
 }
 
 func (c *fakeConn) LocalAddr() net.Addr {
@@ -81,8 +84,11 @@ func writeUDP(r *stack.Route, data buffer.VectorisedView, localPort, remotePort 
 		Length:  length,
 	})
 
-	// Only calculate the checksum if offloading isn't supported.
-	if r.Capabilities()&stack.CapabilityTXChecksumOffload == 0 {
+	// Set the checksum field unless TX checksum offload is enabled.
+	// On IPv4, UDP checksum is optional, and a zero value indicates the
+	// transmitter skipped the checksum generation (RFC768).
+	// On IPv6, UDP checksum is not optional (RFC2460 Section 8.1).
+	if r.RequiresTXTransportChecksum() {
 		xsum := r.PseudoHeaderChecksum(protocol, length)
 		for _, v := range data.Views() {
 			xsum = header.Checksum(v, xsum)

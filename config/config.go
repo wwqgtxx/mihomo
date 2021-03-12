@@ -80,16 +80,16 @@ type FallbackFilter struct {
 	Domain []string     `yaml:"domain"`
 }
 
+// Profile config
+type Profile struct {
+	StoreSelected bool `yaml:"store-selected"`
+}
+
 // Tun config
 type Tun struct {
 	Enable    bool   `yaml:"enable" json:"enable"`
 	DeviceURL string `yaml:"device-url" json:"device-url"`
 	DNSListen string `yaml:"dns-listen" json:"dns-listen"`
-}
-
-// Profile config
-type Profile struct {
-	StoreSelected bool `yaml:"store-selected"`
 }
 
 // Experimental config

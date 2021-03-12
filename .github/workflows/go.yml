@@ -29,6 +29,12 @@ jobs:
           go install honnef.co/go/tools/cmd/staticcheck@latest
           staticcheck -- $(go list ./...)
 
+      - name: Update Country.mmdb
+        run: |
+          cd component/mmdb
+          rm Country.mmdb
+          wget -O Country.mmdb https://raw.githubusercontent.com/JMVoid/ipip2mmdb/release/Country.mmdb
+
       - name: Build
 #        if: startsWith(github.ref, 'refs/tags/')
         env:

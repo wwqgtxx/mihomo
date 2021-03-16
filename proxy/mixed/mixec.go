@@ -38,6 +38,7 @@ func NewMixECProxy(addr string) (*MixECListener, error) {
 				}
 				continue
 			}
+			_ = c.(*net.TCPConn).SetKeepAlive(true)
 			go handleECConn(c, ml.ch)
 		}
 	}()

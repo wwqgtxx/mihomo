@@ -84,6 +84,7 @@ func NewMTProxy(config string) (*MTProxyListener, error) {
 				}
 				continue
 			}
+			_ = c.(*net.TCPConn).SetKeepAlive(true)
 			go hl.HandleConn(c)
 		}
 	}()

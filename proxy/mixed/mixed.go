@@ -37,6 +37,7 @@ func NewMixedProxy(addr string) (*MixedListener, error) {
 				}
 				continue
 			}
+			_ = c.(*net.TCPConn).SetKeepAlive(true)
 			go handleConn(c, ml.cache)
 		}
 	}()

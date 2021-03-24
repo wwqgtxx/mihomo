@@ -250,10 +250,10 @@ type ReadWriteCloseRewinder interface {
 }
 
 type wrapperRewind struct {
-	parent   io.ReadWriteCloser
-	buf      bytes.Buffer
-	mutex    sync.Mutex
-	rewinded bool
+	parent       io.ReadWriteCloser
+	activeReader io.Reader
+	buf          bytes.Buffer
+	mutex        sync.Mutex
 }
 
 func (w *wrapperRewind) Write(p []byte) (int, error) {
@@ -264,19 +264,7 @@ func (w *wrapperRewind) Read(p []byte) (int, error) {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
-	if w.rewinded {
-		if n, err := w.buf.Read(p); err != io.EOF {
-			return n, err
-		}
-	}
-
-	n, err := w.parent.Read(p)
-
-	if !w.rewinded {
-		w.buf.Write(p[:n])
-	}
-
-	return n, err
+	return w.activeReader.Read(p)
 }
 
 func (w *wrapperRewind) Close() error {
@@ -287,14 +275,17 @@ func (w *wrapperRewind) Close() error {
 
 func (w *wrapperRewind) Rewind() {
 	w.mutex.Lock()
-	w.rewinded = true
+	w.activeReader = io.MultiReader(&w.buf, w.parent)
 	w.mutex.Unlock()
 }
 
 func NewRewind(parent io.ReadWriteCloser) ReadWriteCloseRewinder {
-	return &wrapperRewind{
+	rv := &wrapperRewind{
 		parent: parent,
 	}
+	rv.activeReader = io.TeeReader(parent, &rv.buf)
+
+	return rv
 }
 
 type wrapperFakeTLS struct {

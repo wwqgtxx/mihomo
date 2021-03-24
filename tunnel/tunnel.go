@@ -121,6 +121,12 @@ func preHandleMetadata(metadata *C.Metadata) error {
 	// handle IP string on host
 	if ip := net.ParseIP(metadata.Host); ip != nil {
 		metadata.DstIP = ip
+		metadata.Host = ""
+		if ip.To4() != nil {
+			metadata.AddrType = C.AtypIPv4
+		} else {
+			metadata.AddrType = C.AtypIPv6
+		}
 	}
 
 	// preprocess enhanced-mode metadata

@@ -92,7 +92,7 @@ func GetGeneral() *config.General {
 			SocksPort:         ports.SocksPort,
 			RedirPort:         ports.RedirPort,
 			MixedPort:         ports.MixedPort,
-			MixECPort:         ports.MixECPort,
+			MixECConfig:       ports.MixECConfig,
 			TProxyPort:        ports.TProxyPort,
 			ShadowSocksConfig: ports.ShadowSocksConfig,
 			TcpTunConfig:      ports.TcpTunConfig,
@@ -214,7 +214,7 @@ func updateGeneral(general *config.General, force bool) {
 		log.Errorln("Start Mixed(http and socks5) server error: %s", err.Error())
 	}
 
-	if err := P.ReCreateMixEC(general.MixECPort); err != nil {
+	if err := P.ReCreateMixEC(general.MixECConfig); err != nil {
 		log.Errorln("Start MixEC(RESTful Api and socks5) server error: %s", err.Error())
 	}
 

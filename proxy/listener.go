@@ -8,6 +8,7 @@ import (
 
 	"github.com/Dreamacro/clash/log"
 	"github.com/Dreamacro/clash/proxy/http"
+	"github.com/Dreamacro/clash/proxy/mixec"
 	"github.com/Dreamacro/clash/proxy/mixed"
 	"github.com/Dreamacro/clash/proxy/mtproxy"
 	"github.com/Dreamacro/clash/proxy/redir"
@@ -29,8 +30,7 @@ var (
 	tproxyUDPListener      *redir.RedirUDPListener
 	mixedListener          *mixed.MixedListener
 	mixedUDPLister         *socks.SockUDPListener
-	mixECListener          *mixed.MixECListener
-	mixECUDPLister         *socks.SockUDPListener
+	mixECListener          *mixec.MixECListener
 	shadowSocksListener    *shadowsocks.ShadowSocksListener
 	shadowSocksUDPListener *shadowsocks.ShadowSocksUDPListener
 	tcpTunListener         *tunnel.TcpTunListener
@@ -55,8 +55,8 @@ type Ports struct {
 	SocksPort         int    `json:"socks-port"`
 	RedirPort         int    `json:"redir-port"`
 	MixedPort         int    `json:"mixed-port"`
-	MixECPort         int    `json:"mixec-port"`
 	TProxyPort        int    `json:"tproxy-port"`
+	MixECConfig       string `json:"mixec-config"`
 	ShadowSocksConfig string `json:"ss-config"`
 	TcpTunConfig      string `json:"tcptun-config"`
 	UdpTunConfig      string `json:"udptun-config"`
@@ -392,49 +392,28 @@ func ReCreateMixed(port int) error {
 	return nil
 }
 
-func ReCreateMixEC(port int) error {
+func ReCreateMixEC(config string) error {
 	mixECMux.Lock()
 	defer mixECMux.Unlock()
 
-	addr := genAddr(bindAddress, port, allowLan)
-
 	shouldTCPIgnore := false
-	shouldUDPIgnore := false
 
 	if mixECListener != nil {
-		if mixECListener.Address() != addr {
+		if mixECListener.Config() != config {
 			mixECListener.Close()
 			mixECListener = nil
 		} else {
 			shouldTCPIgnore = true
 		}
 	}
-	if mixECUDPLister != nil {
-		if mixECUDPLister.Address() != addr {
-			mixECUDPLister.Close()
-			mixECUDPLister = nil
-		} else {
-			shouldUDPIgnore = true
-		}
-	}
 
-	if shouldTCPIgnore && shouldUDPIgnore {
-		return nil
-	}
-
-	if portIsZero(addr) {
+	if shouldTCPIgnore {
 		return nil
 	}
 
 	var err error
-	mixECListener, err = mixed.NewMixECProxy(addr)
+	mixECListener, err = mixec.NewMixECProxy(config)
 	if err != nil {
-		return err
-	}
-
-	mixECUDPLister, err = socks.NewSocksUDPProxy(addr)
-	if err != nil {
-		mixECListener.Close()
 		return err
 	}
 

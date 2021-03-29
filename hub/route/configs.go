@@ -30,7 +30,7 @@ type configSchema struct {
 	RedirPort              *int               `json:"redir-port"`
 	TProxyPort             *int               `json:"tproxy-port"`
 	MixedPort              *int               `json:"mixed-port"`
-	MixECPort              *int               `json:"mixec-port"`
+	MixECConfig            *string            `json:"mixec-config"`
 	ShadowSocksConfig      *string            `json:"ss-config"`
 	TcptunConfig           *string            `json:"tcptun-config"`
 	UdptunConfig           *string            `json:"udptun-config"`
@@ -86,7 +86,7 @@ func patchConfigs(w http.ResponseWriter, r *http.Request) {
 	_ = P.ReCreateRedir(pointerOrDefault(general.RedirPort, ports.RedirPort))
 	_ = P.ReCreateTProxy(pointerOrDefault(general.TProxyPort, ports.TProxyPort))
 	_ = P.ReCreateMixed(pointerOrDefault(general.MixedPort, ports.MixedPort))
-	_ = P.ReCreateMixEC(pointerOrDefault(general.MixECPort, ports.MixECPort))
+	_ = P.ReCreateMixEC(pointerOrDefault_string(general.MixECConfig, ports.MixECConfig))
 	_ = P.ReCreateShadowSocks(pointerOrDefault_string(general.ShadowSocksConfig, ports.ShadowSocksConfig))
 	_ = P.ReCreateTcpTun(pointerOrDefault_string(general.TcptunConfig, ports.TcpTunConfig))
 	_ = P.ReCreateUdpTun(pointerOrDefault_string(general.UdptunConfig, ports.UdpTunConfig))

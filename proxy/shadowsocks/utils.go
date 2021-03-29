@@ -40,6 +40,10 @@ func (c *packet) Drop() {
 	pool.Put(c.bufRef)
 }
 
+func (c *packet) InAddr() net.Addr {
+	return c.pc.LocalAddr()
+}
+
 func parseSSURL(s string) (addr, cipher, password string, err error) {
 	u, err := url.Parse(s)
 	if err != nil {

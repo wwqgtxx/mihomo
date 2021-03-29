@@ -78,6 +78,8 @@ type Metadata struct {
 	DstIP    net.IP  `json:"destinationIP"`
 	SrcPort  string  `json:"sourcePort"`
 	DstPort  string  `json:"destinationPort"`
+	InIP     net.IP  `json:"inboundIP"`
+	InPort   string  `json:"inboundPort"`
 	AddrType int     `json:"-"`
 	Host     string  `json:"host"`
 }

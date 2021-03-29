@@ -9,18 +9,18 @@ import (
 type Port struct {
 	adapter  string
 	port     string
-	isSource bool
+	ruleType C.RuleType
 }
 
 func (p *Port) RuleType() C.RuleType {
-	if p.isSource {
-		return C.SrcPort
-	}
-	return C.DstPort
+	return p.ruleType
 }
 
 func (p *Port) Match(metadata *C.Metadata) bool {
-	if p.isSource {
+	switch p.ruleType {
+	case C.InPort:
+		return metadata.InPort == p.port
+	case C.SrcPort:
 		return metadata.SrcPort == p.port
 	}
 	return metadata.DstPort == p.port
@@ -38,7 +38,7 @@ func (p *Port) ShouldResolveIP() bool {
 	return false
 }
 
-func NewPort(port string, adapter string, isSource bool) (*Port, error) {
+func NewPort(port string, adapter string, ruleType C.RuleType) (*Port, error) {
 	_, err := strconv.Atoi(port)
 	if err != nil {
 		return nil, errPayload
@@ -46,6 +46,6 @@ func NewPort(port string, adapter string, isSource bool) (*Port, error) {
 	return &Port{
 		adapter:  adapter,
 		port:     port,
-		isSource: isSource,
+		ruleType: ruleType,
 	}, nil
 }

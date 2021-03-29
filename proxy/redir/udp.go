@@ -72,6 +72,7 @@ func (l *RedirUDPListener) Address() string {
 func handleRedirUDP(pc net.PacketConn, buf []byte, lAddr *net.UDPAddr, rAddr *net.UDPAddr) {
 	target := socks5.ParseAddrToSocksAddr(rAddr)
 	pkt := &packet{
+		pc:    pc,
 		lAddr: lAddr,
 		buf:   buf,
 	}

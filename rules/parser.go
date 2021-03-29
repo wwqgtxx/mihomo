@@ -28,9 +28,11 @@ func ParseRule(tp, payload, target string, params []string) (C.Rule, error) {
 	case "SRC-IP-CIDR":
 		parsed, parseErr = NewIPCIDR(payload, target, WithIPCIDRSourceIP(true), WithIPCIDRNoResolve(true))
 	case "SRC-PORT":
-		parsed, parseErr = NewPort(payload, target, true)
+		parsed, parseErr = NewPort(payload, target, C.SrcPort)
 	case "DST-PORT":
-		parsed, parseErr = NewPort(payload, target, false)
+		parsed, parseErr = NewPort(payload, target, C.DstPort)
+	case "IN-PORT":
+		parsed, parseErr = NewPort(payload, target, C.InPort)
 	case "PROCESS-NAME":
 		parsed, parseErr = NewProcess(payload, target)
 	case "MATCH":

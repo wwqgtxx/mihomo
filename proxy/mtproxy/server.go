@@ -141,6 +141,11 @@ func (l *MTProxyListener) HandleConn(conn net.Conn) {
 				SrcPort:  remotePort,
 			}
 			metadata.Type = C.MTPROXY
+			if host, port, err := net.SplitHostPort(conn.LocalAddr().String()); err == nil {
+				ip := net.ParseIP(host)
+				metadata.InIP = ip
+				metadata.InPort = port
+			}
 			connContext := context.NewConnContext(conn2, metadata)
 			tunnel.Add(connContext)
 			return conn1, nil

@@ -17,6 +17,10 @@ func NewSocket(target socks5.Addr, conn net.Conn, source C.Type) *context.ConnCo
 		metadata.SrcIP = ip
 		metadata.SrcPort = port
 	}
+	if ip, port, err := parseAddr(conn.LocalAddr().String()); err == nil {
+		metadata.InIP = ip
+		metadata.InPort = port
+	}
 
 	return context.NewConnContext(conn, metadata)
 }

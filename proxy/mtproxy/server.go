@@ -27,10 +27,9 @@ func init() {
 }
 
 type MTProxyListener struct {
-	net.Listener
-	address    string
 	config     string
 	closed     bool
+	listeners  []net.Listener
 	serverInfo *tools.ServerInfo
 }
 
@@ -41,10 +40,13 @@ func NewMTProxy(config string) (*MTProxyListener, error) {
 		return nil, nil
 	}
 	spliced := strings.Split(config, "@")
-	if len(spliced) != 2 {
+	addrString := ""
+	if len(spliced) > 2 {
 		return nil, errors.New("addr format error")
 	}
-	addr := spliced[1]
+	if len(spliced) > 1 {
+		addrString = spliced[1]
+	}
 
 	spliced2 := strings.Split(spliced[0], ":")
 	serverInfo, err := tools.ParseHexedSecret(spliced2[0])
@@ -56,7 +58,6 @@ func NewMTProxy(config string) (*MTProxyListener, error) {
 	}
 
 	hl := &MTProxyListener{
-		address:    addr,
 		config:     config,
 		closed:     false,
 		serverInfo: serverInfo,
@@ -64,41 +65,44 @@ func NewMTProxy(config string) (*MTProxyListener, error) {
 
 	mtp = hl
 
-	if len(addr) == 0 {
-		return nil, nil
+	if len(addrString) == 0 {
+		return hl, nil
 	}
-	l, err := net.Listen("tcp", addr)
-	if err != nil {
-		return nil, err
-	}
-	hl.Listener = l
 
-	go func() {
-		log.Infoln("MTProxy listening at: %s", addr)
+	for _, addr := range strings.Split(addrString, ",") {
+		addr := addr
 
-		for {
-			c, err := hl.Accept()
-			if err != nil {
-				if hl.closed {
-					break
-				}
-				continue
-			}
-			_ = c.(*net.TCPConn).SetKeepAlive(true)
-			go hl.HandleConn(c)
+		l, err := net.Listen("tcp", addr)
+		if err != nil {
+			return nil, err
 		}
-	}()
+		hl.listeners = append(hl.listeners, l)
+
+		go func() {
+			log.Infoln("MTProxy listening at: %s", addr)
+
+			for {
+				c, err := l.Accept()
+				if err != nil {
+					if hl.closed {
+						break
+					}
+					continue
+				}
+				_ = c.(*net.TCPConn).SetKeepAlive(true)
+				go hl.HandleConn(c)
+			}
+		}()
+	}
 
 	return hl, nil
 }
 
 func (l *MTProxyListener) Close() {
 	l.closed = true
-	l.Listener.Close()
-}
-
-func (l *MTProxyListener) Address() string {
-	return l.address
+	for _, lis := range l.listeners {
+		_ = lis.Close()
+	}
 }
 
 func (l *MTProxyListener) Config() string {

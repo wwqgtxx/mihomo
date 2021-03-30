@@ -1,37 +1,35 @@
 package shadowsocks
 
 import (
-	"github.com/Dreamacro/go-shadowsocks2/core"
 	"net"
 
 	adapters "github.com/Dreamacro/clash/adapters/inbound"
 	"github.com/Dreamacro/clash/common/pool"
+	"github.com/Dreamacro/clash/common/sockopt"
 	"github.com/Dreamacro/clash/component/socks5"
 	C "github.com/Dreamacro/clash/constant"
+	"github.com/Dreamacro/clash/log"
 	"github.com/Dreamacro/clash/tunnel"
+	"github.com/Dreamacro/go-shadowsocks2/core"
 )
 
 type ShadowSocksUDPListener struct {
 	net.PacketConn
-	config string
 	closed bool
 }
 
-func NewShadowSocksUDPProxy(config string) (*ShadowSocksUDPListener, error) {
-	addr, cipher, password, err := parseSSURL(config)
-	if err != nil {
-		return nil, err
-	}
+func NewShadowSocksUDPProxy(addr string, pickCipher core.Cipher) (*ShadowSocksUDPListener, error) {
 	l, err := net.ListenPacket("udp", addr)
 	if err != nil {
 		return nil, err
 	}
 
-	sl := &ShadowSocksUDPListener{l, config, false}
-	pickCipher, err := core.PickCipher(cipher, nil, password)
+	err = sockopt.UDPReuseaddr(l.(*net.UDPConn))
 	if err != nil {
-		return nil, err
+		log.Warnln("Failed to Reuse UDP Address: %s", err)
 	}
+
+	sl := &ShadowSocksUDPListener{l, false}
 	conn := pickCipher.PacketConn(l)
 	go func() {
 		for {
@@ -54,10 +52,6 @@ func NewShadowSocksUDPProxy(config string) (*ShadowSocksUDPListener, error) {
 func (l *ShadowSocksUDPListener) Close() error {
 	l.closed = true
 	return l.PacketConn.Close()
-}
-
-func (l *ShadowSocksUDPListener) Config() string {
-	return l.config
 }
 
 func handleSocksUDP(pc net.PacketConn, buf []byte, addr net.Addr) {

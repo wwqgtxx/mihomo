@@ -167,3 +167,10 @@ func StreamWebsocketConn(conn net.Conn, c *WebsocketConfig) (net.Conn, error) {
 		remoteAddr: conn.RemoteAddr(),
 	}, nil
 }
+
+func StreamUpgradedWebsocketConn(wsConn *websocket.Conn) net.Conn {
+	return &websocketConn{
+		conn:       wsConn,
+		remoteAddr: wsConn.RemoteAddr(),
+	}
+}

@@ -20,7 +20,7 @@ type MixECListener struct {
 
 func NewMixECProxy(config string) (*MixECListener, error) {
 	ml := &MixECListener{false, config, nil, nil}
-	cl := getChanListener()
+	cl := GetChanListener()
 
 	for _, addr := range strings.Split(config, ",") {
 		addr := addr
@@ -40,7 +40,7 @@ func NewMixECProxy(config string) (*MixECListener, error) {
 		ml.listeners = append(ml.listeners, l)
 
 		go func() {
-			log.Infoln("MixEC(RESTful Api+socks5+MTProxy) proxy listening at: %s", addr)
+			log.Infoln("MixEC(RESTful Api+socks5+MTProxy+ShadowSocksWS) proxy listening at: %s", addr)
 			for {
 				c, err := l.Accept()
 				if err != nil {
@@ -50,7 +50,7 @@ func NewMixECProxy(config string) (*MixECListener, error) {
 					continue
 				}
 				_ = c.(*net.TCPConn).SetKeepAlive(true)
-				go handleECConn(c, cl.ch)
+				go handleECConn(c, cl)
 			}
 		}()
 	}
@@ -72,7 +72,7 @@ func (l *MixECListener) Config() string {
 	return l.config
 }
 
-func handleECConn(conn net.Conn, ch chan net.Conn) {
+func handleECConn(conn net.Conn, cl ChanListener) {
 	bufConn := mixed.NewBufferedConn(conn)
 	head, err := bufConn.Peek(1)
 	if err != nil {
@@ -89,5 +89,5 @@ func handleECConn(conn net.Conn, ch chan net.Conn) {
 		}
 	}
 
-	ch <- bufConn
+	cl.PutConn(bufConn)
 }

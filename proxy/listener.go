@@ -21,21 +21,20 @@ var (
 	allowLan    = false
 	bindAddress = "*"
 
-	socksListener          *socks.SockListener
-	socksUDPListener       *socks.SockUDPListener
-	httpListener           *http.HTTPListener
-	redirListener          *redir.RedirListener
-	redirUDPListener       *redir.RedirUDPListener
-	tproxyListener         *redir.TProxyListener
-	tproxyUDPListener      *redir.RedirUDPListener
-	mixedListener          *mixed.MixedListener
-	mixedUDPLister         *socks.SockUDPListener
-	mixECListener          *mixec.MixECListener
-	shadowSocksListener    *shadowsocks.ShadowSocksListener
-	shadowSocksUDPListener *shadowsocks.ShadowSocksUDPListener
-	tcpTunListener         *tunnel.TcpTunListener
-	udpTunListener         *tunnel.UdpTunListener
-	mtpListener            *mtproxy.MTProxyListener
+	socksListener       *socks.SockListener
+	socksUDPListener    *socks.SockUDPListener
+	httpListener        *http.HTTPListener
+	redirListener       *redir.RedirListener
+	redirUDPListener    *redir.RedirUDPListener
+	tproxyListener      *redir.TProxyListener
+	tproxyUDPListener   *redir.RedirUDPListener
+	mixedListener       *mixed.MixedListener
+	mixedUDPLister      *socks.SockUDPListener
+	mixECListener       *mixec.MixECListener
+	shadowSocksListener *shadowsocks.ShadowSocksListener
+	tcpTunListener      *tunnel.TcpTunListener
+	udpTunListener      *tunnel.UdpTunListener
+	mtpListener         *mtproxy.MTProxyListener
 
 	// lock for recreate function
 	socksMux  sync.Mutex
@@ -162,28 +161,18 @@ func ReCreateShadowSocks(shadowSocksConfig string) error {
 	ssMux.Lock()
 	defer ssMux.Unlock()
 
-	shouldTCPIgnore := false
-	shouldUDPIgnore := false
+	shouldIgnore := false
 
 	if shadowSocksListener != nil {
 		if shadowSocksListener.Config() != shadowSocksConfig {
 			shadowSocksListener.Close()
 			shadowSocksListener = nil
 		} else {
-			shouldTCPIgnore = true
+			shouldIgnore = true
 		}
 	}
 
-	if shadowSocksUDPListener != nil {
-		if shadowSocksUDPListener.Config() != shadowSocksConfig {
-			shadowSocksUDPListener.Close()
-			shadowSocksUDPListener = nil
-		} else {
-			shouldUDPIgnore = true
-		}
-	}
-
-	if shouldTCPIgnore && shouldUDPIgnore {
+	if shouldIgnore {
 		return nil
 	}
 
@@ -191,18 +180,12 @@ func ReCreateShadowSocks(shadowSocksConfig string) error {
 		return nil
 	}
 
-	tcpListener, err := shadowsocks.NewShadowSocksProxy(shadowSocksConfig)
+	listener, err := shadowsocks.NewShadowSocksProxy(shadowSocksConfig)
 	if err != nil {
 		return err
 	}
 
-	udpListener, err := shadowsocks.NewShadowSocksUDPProxy(shadowSocksConfig)
-	if err != nil {
-		return err
-	}
-
-	shadowSocksListener = tcpListener
-	shadowSocksUDPListener = udpListener
+	shadowSocksListener = listener
 
 	return nil
 }
@@ -396,26 +379,27 @@ func ReCreateMixEC(config string) error {
 	mixECMux.Lock()
 	defer mixECMux.Unlock()
 
-	shouldTCPIgnore := false
+	shouldIgnore := false
 
 	if mixECListener != nil {
 		if mixECListener.Config() != config {
 			mixECListener.Close()
 			mixECListener = nil
 		} else {
-			shouldTCPIgnore = true
+			shouldIgnore = true
 		}
 	}
 
-	if shouldTCPIgnore {
+	if shouldIgnore {
 		return nil
 	}
 
 	var err error
-	mixECListener, err = mixec.NewMixECProxy(config)
+	listener, err := mixec.NewMixECProxy(config)
 	if err != nil {
 		return err
 	}
+	mixECListener = listener
 
 	return nil
 }
@@ -481,6 +465,10 @@ func GetPorts() *Ports {
 		_, portStr, _ := net.SplitHostPort(mixedListener.Address())
 		port, _ := strconv.Atoi(portStr)
 		ports.MixedPort = port
+	}
+
+	if mixECListener != nil {
+		ports.MixECConfig = mixECListener.Config()
 	}
 
 	if shadowSocksListener != nil {

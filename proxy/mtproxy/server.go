@@ -33,7 +33,7 @@ type MTProxyListener struct {
 	serverInfo *tools.ServerInfo
 }
 
-var mtp *MTProxyListener
+var _listener *MTProxyListener
 
 func NewMTProxy(config string) (*MTProxyListener, error) {
 	if len(config) == 0 {
@@ -63,7 +63,7 @@ func NewMTProxy(config string) (*MTProxyListener, error) {
 		serverInfo: serverInfo,
 	}
 
-	mtp = hl
+	_listener = hl
 
 	if len(addrString) == 0 {
 		return hl, nil
@@ -174,8 +174,8 @@ func directPipe(dst io.WriteCloser, src io.ReadCloser, wg *sync.WaitGroup) {
 }
 
 func HandleFakeTLS(conn net.Conn) bool {
-	if mtp != nil && mtp.SecretMode() == common.SecretModeTLS {
-		mtp.HandleConn(conn)
+	if _listener != nil && _listener.SecretMode() == common.SecretModeTLS {
+		go _listener.HandleConn(conn)
 		return true
 	}
 	return false

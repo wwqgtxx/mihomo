@@ -246,6 +246,7 @@ func NewVmess(option VmessOption) (*Vmess, error) {
 		Security: security,
 		HostName: option.Server,
 		Port:     strconv.Itoa(option.Port),
+		IsAead:   option.AlterID == 0,
 	})
 	if err != nil {
 		return nil, err
@@ -269,7 +270,12 @@ func NewVmess(option VmessOption) (*Vmess, error) {
 		option: &option,
 	}
 
-	if option.Network == "grpc" {
+	switch option.Network {
+	case "h2":
+		if len(option.HTTP2Opts.Host) == 0 {
+			option.HTTP2Opts.Host = append(option.HTTP2Opts.Host, "www.example.com")
+		}
+	case "grpc":
 		dialFn := func(network, addr string) (net.Conn, error) {
 			c, err := dialer.DialContext(context.Background(), "tcp", v.addr)
 			if err != nil {

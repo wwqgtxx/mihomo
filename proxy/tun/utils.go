@@ -28,20 +28,20 @@ func (c *fakeConn) WriteBack(b []byte, addr net.Addr) (n int, err error) {
 	v := buffer.View(b)
 	data := v.ToVectorisedView()
 
-	r, _ := c.s.FindRoute(c.pkt.NICID, "", c.id.RemoteAddress, c.pkt.NetworkProtocolNumber, false /* multicastLoop */)
+	var localAddress tcpip.Address
+	var localPort uint16
 	// if addr is not provided, write back use original dst Addr as src Addr
 	if c.FakeIP() || addr == nil {
-		r.LocalAddress = c.id.LocalAddress
-		return writeUDP(r, data, uint16(c.id.LocalPort), c.id.RemotePort)
+		localAddress = c.id.LocalAddress
+		localPort = c.id.LocalPort
+	} else {
+		udpaddr, _ := addr.(*net.UDPAddr)
+		localAddress = tcpip.Address(udpaddr.IP)
+		localPort = uint16(udpaddr.Port)
 	}
 
-	udpaddr, _ := addr.(*net.UDPAddr)
-	if ipv4 := udpaddr.IP.To4(); ipv4 != nil {
-		r.LocalAddress = tcpip.Address(ipv4)
-	} else {
-		r.LocalAddress = tcpip.Address(udpaddr.IP)
-	}
-	return writeUDP(r, data, uint16(udpaddr.Port), c.id.RemotePort)
+	r, _ := c.s.FindRoute(c.pkt.NICID, localAddress, c.id.RemoteAddress, c.pkt.NetworkProtocolNumber, false /* multicastLoop */)
+	return writeUDP(r, data, localPort, c.id.RemotePort)
 }
 
 func (c *fakeConn) LocalAddr() net.Addr {

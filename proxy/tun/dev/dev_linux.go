@@ -103,9 +103,9 @@ func (t *tunLinux) AsLinkEndpoint() (result stack.LinkEndpoint, err error) {
 				p = header.IPv6ProtocolNumber
 			}
 			if linkEP.IsAttached() {
-				linkEP.InjectInbound(p, &stack.PacketBuffer{
+				linkEP.InjectInbound(p, stack.NewPacketBuffer(stack.PacketBufferOptions{
 					Data: buffer.View(packet[:n]).ToVectorisedView(),
-				})
+				}))
 			} else {
 				log.Debugln("received packet from tun when %s is not attached to any dispatcher.", t.Name())
 			}
@@ -134,11 +134,14 @@ func (t *tunLinux) Read(buff []byte) (int, error) {
 func (t *tunLinux) WriteNotify() {
 	packet, ok := t.linkCache.Read()
 	if ok {
-		networkHeader := packet.Pkt.NetworkHeader().View()
-		transportHeader := packet.Pkt.TransportHeader().View()
-		data := packet.Pkt.Data.ToView()
-		buf := buffer.NewVectorisedView(len(networkHeader)+len(transportHeader)+len(data), []buffer.View{networkHeader, transportHeader, data})
-		_, err := t.Write(buf.ToView())
+		var vv buffer.VectorisedView
+		// Append upper headers.
+		vv.AppendView(packet.Pkt.NetworkHeader().View())
+		vv.AppendView(packet.Pkt.TransportHeader().View())
+		// Append data payload.
+		vv.Append(packet.Pkt.Data().ExtractVV())
+
+		_, err := t.Write(vv.ToView())
 		if err != nil {
 			log.Errorln("can not read from tun: %v", err)
 		}

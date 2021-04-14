@@ -56,7 +56,7 @@ func (e *dnsEndpoint) UniqueID() uint64 {
 
 func (e *dnsEndpoint) HandlePacket(id stack.TransportEndpointID, pkt *stack.PacketBuffer) {
 	hdr := header.UDP(pkt.TransportHeader().View())
-	if int(hdr.Length()) > pkt.Data.Size()+header.UDPMinimumSize {
+	if int(hdr.Length()) > pkt.Data().Size()+header.UDPMinimumSize {
 		// Malformed packet.
 		e.stack.Stats().UDP.MalformedPacketsReceived.Increment()
 		return
@@ -64,7 +64,7 @@ func (e *dnsEndpoint) HandlePacket(id stack.TransportEndpointID, pkt *stack.Pack
 
 	// server DNS
 	var msg D.Msg
-	msg.Unpack(pkt.Data.ToView())
+	msg.Unpack(pkt.Data().AsRange().ToOwnedView())
 	writer := dnsResponseWriter{s: e.stack, pkt: pkt, id: id}
 	go e.server.ServeDNS(&writer, &msg)
 }
@@ -117,8 +117,8 @@ func (w *dnsResponseWriter) Write(b []byte) (int, error) {
 	v := buffer.NewView(len(b))
 	copy(v, b)
 	data := v.ToVectorisedView()
-	r, _ := w.s.FindRoute(w.pkt.NICID, "", w.id.RemoteAddress, w.pkt.NetworkProtocolNumber, false /* multicastLoop */)
-	r.LocalAddress = w.id.LocalAddress // set the source ip of DNS response
+	// w.id.LocalAddress is the source ip of DNS response
+	r, _ := w.s.FindRoute(w.pkt.NICID, w.id.LocalAddress, w.id.RemoteAddress, w.pkt.NetworkProtocolNumber, false /* multicastLoop */)
 	return writeUDP(r, data, w.id.LocalPort, w.id.RemotePort)
 }
 

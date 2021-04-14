@@ -76,6 +76,16 @@ func (e *dnsEndpoint) Wait() {
 
 }
 
+func (e *dnsEndpoint) HandleError(transErr stack.TransportError, pkt *stack.PacketBuffer) {
+	log.Warnln("DNS endpoint get a transport error: %v", transErr)
+	log.Debugln("DNS endpoint transport error packet : %v", pkt)
+}
+
+// Abort implements stack.TransportEndpoint.Abort.
+func (e *dnsEndpoint) Abort() {
+	e.Close()
+}
+
 func (w *dnsResponseWriter) LocalAddr() net.Addr {
 	return &net.UDPAddr{IP: net.IP(w.id.LocalAddress), Port: int(w.id.LocalPort)}
 }

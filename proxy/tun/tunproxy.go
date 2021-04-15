@@ -94,6 +94,15 @@ func NewTunProxy(deviceURL string) (TunAdapter, error) {
 		r.Complete(false)
 
 		conn := gonet.NewTCPConn(&wq, ep)
+
+		// if the endpoint is not in connected state, conn.RemoteAddr() will return nil
+		// this protection may be not enough, but will help us debug the panic
+		if conn.RemoteAddr() == nil {
+			log.Warnln("TCP endpoint is not connected, current state: %v", tcp.EndpointState(ep.State()))
+			conn.Close()
+			return
+		}
+
 		target := getAddr(ep.Info().(*stack.TransportEndpointInfo).ID)
 		tunnel.Add(adapters.NewSocket(target, conn, C.TUN))
 

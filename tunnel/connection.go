@@ -21,6 +21,9 @@ func handleHTTP(ctx *context.HTTPContext, outbound net.Conn) {
 	req := ctx.Request()
 	conn := ctx.Conn()
 
+	// make outbound close after inbound error or close
+	conn = &connLinker{conn, outbound}
+
 	inboundReader := bufio.NewReader(conn)
 	outboundReader := bufio.NewReader(outbound)
 
@@ -29,7 +32,6 @@ func handleHTTP(ctx *context.HTTPContext, outbound net.Conn) {
 	for {
 		keepAlive := strings.TrimSpace(strings.ToLower(req.Header.Get("Proxy-Connection"))) == "keep-alive"
 
-		req.Header.Set("Connection", "close")
 		req.RequestURI = ""
 		inbound.RemoveHopByHopHeaders(req.Header)
 		err := req.Write(outbound)
@@ -69,14 +71,6 @@ func handleHTTP(ctx *context.HTTPContext, outbound net.Conn) {
 		}
 		err = resp.Write(conn)
 		if err != nil || resp.Close {
-			break
-		}
-
-		// even if resp.Write write body to the connection, but some http request have to Copy to close it
-		buf := pool.Get(pool.RelayBufferSize)
-		_, err = io.CopyBuffer(conn, resp.Body, buf)
-		pool.Put(buf)
-		if err != nil && err != io.EOF {
 			break
 		}
 
@@ -167,4 +161,32 @@ func relay(leftConn, rightConn net.Conn) {
 	pool.Put(buf)
 	rightConn.SetReadDeadline(time.Now())
 	<-ch
+}
+
+// connLinker make the two net.Conn correlated, for temporary resolution of leaks.
+// There is no better way to do this for now.
+type connLinker struct {
+	net.Conn
+	linker net.Conn
+}
+
+func (conn *connLinker) Read(b []byte) (n int, err error) {
+	n, err = conn.Conn.Read(b)
+	if err != nil {
+		conn.linker.Close()
+	}
+	return n, err
+}
+
+func (conn *connLinker) Write(b []byte) (n int, err error) {
+	n, err = conn.Conn.Write(b)
+	if err != nil {
+		conn.linker.Close()
+	}
+	return n, err
+}
+
+func (conn *connLinker) Close() error {
+	conn.linker.Close()
+	return conn.Conn.Close()
 }

@@ -98,7 +98,7 @@ func writeUDP(r *stack.Route, data buffer.VectorisedView, localPort, remotePort 
 
 	ttl := r.DefaultTTL()
 
-	if err := r.WritePacket(nil /* gso */, stack.NetworkHeaderParams{Protocol: protocol, TTL: ttl, TOS: 0 /* default */}, pkt); err != nil {
+	if err := r.WritePacket(stack.NetworkHeaderParams{Protocol: protocol, TTL: ttl, TOS: 0 /* default */}, pkt); err != nil {
 		r.Stats().UDP.PacketSendErrors.Increment()
 		return 0, fmt.Errorf("%v", err)
 	}

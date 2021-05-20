@@ -11,10 +11,10 @@ import (
 	"strings"
 
 	"github.com/Dreamacro/clash/component/dialer"
-	"github.com/Dreamacro/clash/component/gun"
 	"github.com/Dreamacro/clash/component/resolver"
-	"github.com/Dreamacro/clash/component/vmess"
 	C "github.com/Dreamacro/clash/constant"
+	"github.com/Dreamacro/clash/transport/gun"
+	"github.com/Dreamacro/clash/transport/vmess"
 
 	"golang.org/x/net/http2"
 )
@@ -64,6 +64,7 @@ type GrpcOptions struct {
 	GrpcServiceName string `proxy:"grpc-service-name,omitempty"`
 }
 
+// StreamConn implements C.ProxyAdapter
 func (v *Vmess) StreamConn(c net.Conn, metadata *C.Metadata) (net.Conn, error) {
 	var err error
 	switch v.option.Network {
@@ -170,6 +171,7 @@ func (v *Vmess) StreamConn(c net.Conn, metadata *C.Metadata) (net.Conn, error) {
 	return v.client.StreamConn(c, parseVmessAddr(metadata))
 }
 
+// DialContext implements C.ProxyAdapter
 func (v *Vmess) DialContext(ctx context.Context, metadata *C.Metadata) (_ C.Conn, err error) {
 	// gun transport
 	if v.transport != nil {
@@ -198,6 +200,7 @@ func (v *Vmess) DialContext(ctx context.Context, metadata *C.Metadata) (_ C.Conn
 	return NewConn(c, v), err
 }
 
+// DialUDP implements C.ProxyAdapter
 func (v *Vmess) DialUDP(metadata *C.Metadata) (_ C.PacketConn, err error) {
 	// vmess use stream-oriented udp with a special address, so we needs a net.UDPAddr
 	if !metadata.Resolved() {

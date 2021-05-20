@@ -4,9 +4,9 @@ import (
 	"net"
 
 	"github.com/Dreamacro/clash/adapters/inbound"
-	"github.com/Dreamacro/clash/component/socks5"
 	C "github.com/Dreamacro/clash/constant"
 	"github.com/Dreamacro/clash/log"
+	"github.com/Dreamacro/clash/transport/socks5"
 	"github.com/Dreamacro/clash/tunnel"
 )
 
@@ -48,7 +48,7 @@ func NewTProxy(addr string) (*TProxyListener, error) {
 				}
 				continue
 			}
-			go rl.handleRedir(c)
+			go rl.handleTProxy(c)
 		}
 	}()
 
@@ -64,7 +64,7 @@ func (l *TProxyListener) Address() string {
 	return l.address
 }
 
-func (l *TProxyListener) handleRedir(conn net.Conn) {
+func (l *TProxyListener) handleTProxy(conn net.Conn) {
 	target := socks5.ParseAddrToSocksAddr(conn.LocalAddr())
 	conn.(*net.TCPConn).SetKeepAlive(true)
 	tunnel.Add(inbound.NewSocket(target, conn, C.TPROXY))

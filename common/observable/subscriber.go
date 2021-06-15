@@ -3,22 +3,22 @@ package observable
 import (
 	"sync"
 
-	"gopkg.in/eapache/channels.v1"
+	"github.com/Dreamacro/clash/common/channel"
 )
 
 type Subscription <-chan interface{}
 
 type Subscriber struct {
-	buffer *channels.InfiniteChannel
+	buffer *channel.InfiniteChannel
 	once   sync.Once
 }
 
 func (s *Subscriber) Emit(item interface{}) {
-	s.buffer.In() <- item
+	s.buffer.In().(chan interface{}) <- item
 }
 
 func (s *Subscriber) Out() Subscription {
-	return s.buffer.Out()
+	return s.buffer.Out().(chan interface{})
 }
 
 func (s *Subscriber) Close() {
@@ -29,7 +29,7 @@ func (s *Subscriber) Close() {
 
 func newSubscriber() *Subscriber {
 	sub := &Subscriber{
-		buffer: channels.NewInfiniteChannel(),
+		buffer: channel.NewInfiniteChannel(make(chan interface{})),
 	}
 	return sub
 }

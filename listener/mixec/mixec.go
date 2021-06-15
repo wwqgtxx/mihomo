@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/Dreamacro/clash/adapter/inbound"
+	N "github.com/Dreamacro/clash/common/net"
 	C "github.com/Dreamacro/clash/constant"
-	"github.com/Dreamacro/clash/listener/mixed"
 	"github.com/Dreamacro/clash/listener/mtproxy"
 	"github.com/Dreamacro/clash/listener/socks"
 	"github.com/Dreamacro/clash/log"
@@ -75,7 +75,7 @@ func (l *Listener) Config() string {
 }
 
 func handleECConn(conn net.Conn, cl ChanListener, in chan<- C.ConnContext) {
-	bufConn := mixed.NewBufferedConn(conn)
+	bufConn := N.NewBufferedConn(conn)
 	head, err := bufConn.Peek(1)
 	if err != nil {
 		return

@@ -4,7 +4,7 @@ go 1.16
 
 require (
 	github.com/Dreamacro/go-shadowsocks2 v0.1.7
-	github.com/eapache/queue v1.1.0 // indirect
+	github.com/eapache/queue v1.1.0
 	github.com/go-chi/chi/v5 v5.0.3
 	github.com/go-chi/cors v1.2.0
 	github.com/go-chi/render v1.0.1

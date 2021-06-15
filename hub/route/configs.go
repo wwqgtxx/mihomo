@@ -4,12 +4,12 @@ import (
 	"net/http"
 	"path/filepath"
 
-	"github.com/Dreamacro/clash/adapters/provider"
+	"github.com/Dreamacro/clash/adapter/provider"
 	"github.com/Dreamacro/clash/component/resolver"
 	"github.com/Dreamacro/clash/config"
 	"github.com/Dreamacro/clash/hub/executor"
+	P "github.com/Dreamacro/clash/listener"
 	"github.com/Dreamacro/clash/log"
-	P "github.com/Dreamacro/clash/proxy"
 	"github.com/Dreamacro/clash/tunnel"
 
 	"github.com/go-chi/chi/v5"
@@ -81,15 +81,19 @@ func patchConfigs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ports := P.GetPorts()
-	_ = P.ReCreateHTTP(pointerOrDefault(general.Port, ports.Port))
-	_ = P.ReCreateSocks(pointerOrDefault(general.SocksPort, ports.SocksPort))
-	_ = P.ReCreateRedir(pointerOrDefault(general.RedirPort, ports.RedirPort))
-	_ = P.ReCreateTProxy(pointerOrDefault(general.TProxyPort, ports.TProxyPort))
-	_ = P.ReCreateMixed(pointerOrDefault(general.MixedPort, ports.MixedPort))
-	_ = P.ReCreateMixEC(pointerOrDefault_string(general.MixECConfig, ports.MixECConfig))
-	_ = P.ReCreateShadowSocks(pointerOrDefault_string(general.ShadowSocksConfig, ports.ShadowSocksConfig))
-	_ = P.ReCreateTcpTun(pointerOrDefault_string(general.TcptunConfig, ports.TcpTunConfig))
-	_ = P.ReCreateUdpTun(pointerOrDefault_string(general.UdptunConfig, ports.UdpTunConfig))
+
+	tcpIn := tunnel.TCPIn()
+	udpIn := tunnel.UDPIn()
+
+	_ = P.ReCreateHTTP(pointerOrDefault(general.Port, ports.Port), tcpIn)
+	_ = P.ReCreateSocks(pointerOrDefault(general.SocksPort, ports.SocksPort), tcpIn, udpIn)
+	_ = P.ReCreateRedir(pointerOrDefault(general.RedirPort, ports.RedirPort), tcpIn, udpIn)
+	_ = P.ReCreateTProxy(pointerOrDefault(general.TProxyPort, ports.TProxyPort), tcpIn, udpIn)
+	_ = P.ReCreateMixed(pointerOrDefault(general.MixedPort, ports.MixedPort), tcpIn, udpIn)
+	_ = P.ReCreateMixEC(pointerOrDefault_string(general.MixECConfig, ports.MixECConfig), tcpIn, udpIn)
+	_ = P.ReCreateShadowSocks(pointerOrDefault_string(general.ShadowSocksConfig, ports.ShadowSocksConfig), tcpIn, udpIn)
+	_ = P.ReCreateTcpTun(pointerOrDefault_string(general.TcptunConfig, ports.TcpTunConfig), tcpIn, udpIn)
+	_ = P.ReCreateUdpTun(pointerOrDefault_string(general.UdptunConfig, ports.UdpTunConfig), tcpIn, udpIn)
 
 	if general.Mode != nil {
 		tunnel.SetMode(*general.Mode)

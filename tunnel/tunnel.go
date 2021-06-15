@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Dreamacro/clash/adapters/inbound"
-	"github.com/Dreamacro/clash/adapters/provider"
+	"github.com/Dreamacro/clash/adapter/inbound"
+	"github.com/Dreamacro/clash/adapter/provider"
 	"github.com/Dreamacro/clash/component/nat"
 	"github.com/Dreamacro/clash/component/resolver"
 	C "github.com/Dreamacro/clash/constant"
@@ -16,17 +16,21 @@ import (
 	"github.com/Dreamacro/clash/log"
 	"github.com/Dreamacro/clash/tunnel/statistic"
 
-	channels "gopkg.in/eapache/channels.v1"
+	"github.com/eapache/queue"
 )
 
 var (
-	tcpQueue  = channels.NewInfiniteChannel()
-	udpQueue  = channels.NewInfiniteChannel()
-	natTable  = nat.New()
-	rules     []C.Rule
-	proxies   = make(map[string]C.Proxy)
-	providers map[string]provider.ProxyProvider
-	configMux sync.RWMutex
+	tcpQueueIn     = make(chan C.ConnContext)
+	udpQueueIn     = make(chan *inbound.PacketAdapter)
+	tcpQueueOut    = make(chan C.ConnContext)
+	udpQueueOut    = make(chan *inbound.PacketAdapter)
+	tcpQueueBuffer = queue.New()
+	udpQueueBuffer = queue.New()
+	natTable       = nat.New()
+	rules          []C.Rule
+	proxies        = make(map[string]C.Proxy)
+	providers      map[string]provider.ProxyProvider
+	configMux      sync.RWMutex
 
 	// Outbound Rule
 	mode = Rule
@@ -37,19 +41,72 @@ var (
 
 func init() {
 	go process()
+	go func() {
+		var input, output chan C.ConnContext
+		var next C.ConnContext
+		input = tcpQueueIn
+
+		for input != nil || output != nil {
+			select {
+			case elem, open := <-input:
+				if open {
+					tcpQueueBuffer.Add(elem)
+				} else {
+					input = nil
+				}
+			case output <- next:
+				tcpQueueBuffer.Remove()
+			}
+
+			if tcpQueueBuffer.Length() > 0 {
+				output = tcpQueueOut
+				next = tcpQueueBuffer.Peek().(C.ConnContext)
+			} else {
+				output = nil
+				next = nil
+			}
+		}
+
+		close(tcpQueueOut)
+	}()
+	go func() {
+		var input, output chan *inbound.PacketAdapter
+		var next *inbound.PacketAdapter
+		input = udpQueueIn
+
+		for input != nil || output != nil {
+			select {
+			case elem, open := <-input:
+				if open {
+					udpQueueBuffer.Add(elem)
+				} else {
+					input = nil
+				}
+			case output <- next:
+				udpQueueBuffer.Remove()
+			}
+
+			if udpQueueBuffer.Length() > 0 {
+				output = udpQueueOut
+				next = udpQueueBuffer.Peek().(*inbound.PacketAdapter)
+			} else {
+				output = nil
+				next = nil
+			}
+		}
+
+		close(tcpQueueOut)
+	}()
 }
 
-// Add request to queue
-func Add(ctx C.ConnContext) {
-	tcpQueue.In() <- ctx
+// TCPIn return fan-in queue
+func TCPIn() chan<- C.ConnContext {
+	return tcpQueueIn
 }
 
-// AddPacket add udp Packet to queue
-func AddPacket(packet *inbound.PacketAdapter) {
-	select {
-	case udpQueue.In() <- packet:
-	default:
-	}
+// UDPIn return fan-in udp queue
+func UDPIn() chan<- *inbound.PacketAdapter {
+	return udpQueueIn
 }
 
 // Rules return all rules
@@ -94,9 +151,8 @@ func SetMode(m TunnelMode) {
 
 // processUDP starts a loop to handle udp packet
 func processUDP() {
-	queue := udpQueue.Out()
-	for elm := range queue {
-		conn := elm.(*inbound.PacketAdapter)
+	queue := udpQueueOut
+	for conn := range queue {
 		handleUDPConn(conn)
 	}
 }
@@ -110,9 +166,8 @@ func process() {
 		go processUDP()
 	}
 
-	queue := tcpQueue.Out()
-	for elm := range queue {
-		conn := elm.(C.ConnContext)
+	queue := tcpQueueOut
+	for conn := range queue {
 		go handleTCPConn(conn)
 	}
 }

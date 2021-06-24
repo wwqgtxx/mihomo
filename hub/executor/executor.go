@@ -70,10 +70,10 @@ func ApplyConfig(cfg *config.Config, force bool) {
 	defer mux.Unlock()
 
 	updateUsers(cfg.Users)
+	updateDNS(cfg.DNS)
 	updateGeneral(cfg.General, force)
 	updateProxies(cfg.Proxies, cfg.Providers)
 	updateRules(cfg.Rules)
-	updateDNS(cfg.DNS)
 	updateHosts(cfg.Hosts)
 	updateExperimental(cfg)
 	updateProfile(cfg)
@@ -92,6 +92,7 @@ func GetGeneral() *config.General {
 			SocksPort:         ports.SocksPort,
 			RedirPort:         ports.RedirPort,
 			MixedPort:         ports.MixedPort,
+			Tun:               P.Tun(),
 			MixECConfig:       ports.MixECConfig,
 			TProxyPort:        ports.TProxyPort,
 			ShadowSocksConfig: ports.ShadowSocksConfig,
@@ -216,6 +217,10 @@ func updateGeneral(general *config.General, force bool) {
 
 	if err := P.ReCreateMixed(general.MixedPort, tcpIn, udpIn); err != nil {
 		log.Errorln("Start Mixed(http and socks5) server error: %s", err.Error())
+	}
+
+	if err := P.ReCreateTun(general.Tun, tcpIn, udpIn); err != nil {
+		log.Errorln("Start Tun interface error: %s", err.Error())
 	}
 
 	if err := P.ReCreateMixEC(general.MixECConfig, tcpIn, udpIn); err != nil {

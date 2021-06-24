@@ -21,6 +21,7 @@ const (
 	SHADOWSOCKS
 	REDIR
 	TPROXY
+	TUN
 	TCPTUN
 	UDPTUN
 	MTPROXY
@@ -55,6 +56,8 @@ func (t Type) String() string {
 		return "Redir"
 	case TPROXY:
 		return "TProxy"
+	case TUN:
+		return "Tun"
 	case TCPTUN:
 		return "TcpTun"
 	case UDPTUN:

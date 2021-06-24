@@ -19,6 +19,7 @@ require (
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/sys v0.0.0-20210507161434-a76c4d0a0096
 	gopkg.in/yaml.v2 v2.4.0
+	gvisor.dev/gvisor v0.0.0-20210519191755-bd7eb2c99ba9
 )
 
 replace github.com/Dreamacro/go-shadowsocks2 v0.1.7 => github.com/wwqgtxx/go-shadowsocks2 v0.1.7

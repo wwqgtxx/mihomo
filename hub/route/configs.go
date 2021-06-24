@@ -30,6 +30,7 @@ type configSchema struct {
 	RedirPort              *int               `json:"redir-port"`
 	TProxyPort             *int               `json:"tproxy-port"`
 	MixedPort              *int               `json:"mixed-port"`
+	Tun                    *config.Tun        `json:"tun"`
 	MixECConfig            *string            `json:"mixec-config"`
 	ShadowSocksConfig      *string            `json:"ss-config"`
 	TcptunConfig           *string            `json:"tcptun-config"`
@@ -94,6 +95,14 @@ func patchConfigs(w http.ResponseWriter, r *http.Request) {
 	_ = P.ReCreateShadowSocks(pointerOrDefault_string(general.ShadowSocksConfig, ports.ShadowSocksConfig), tcpIn, udpIn)
 	_ = P.ReCreateTcpTun(pointerOrDefault_string(general.TcptunConfig, ports.TcpTunConfig), tcpIn, udpIn)
 	_ = P.ReCreateUdpTun(pointerOrDefault_string(general.UdptunConfig, ports.UdpTunConfig), tcpIn, udpIn)
+
+	if general.Tun != nil {
+		if err := P.ReCreateTun(*general.Tun, tcpIn, udpIn); err != nil {
+			render.Status(r, http.StatusBadRequest)
+			render.JSON(w, r, newError(err.Error()))
+			return
+		}
+	}
 
 	if general.Mode != nil {
 		tunnel.SetMode(*general.Mode)

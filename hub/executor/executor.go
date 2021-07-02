@@ -105,6 +105,7 @@ func GetGeneral() *config.General {
 		Mode:                   tunnel.Mode(),
 		LogLevel:               log.Level(),
 		IPv6:                   !resolver.DisableIPv6,
+		UseRemoteDnsDefault:    dns.UseRemoteDnsDefault(),
 		HealthCheckLazyDefault: provider.HealthCheckLazyDefault(),
 		TouchAfterLazyPassNum:  provider.TouchAfterLazyPassNum(),
 	}
@@ -175,6 +176,7 @@ func updateGeneral(general *config.General, force bool) {
 	log.SetLevel(general.LogLevel)
 	tunnel.SetMode(general.Mode)
 	resolver.DisableIPv6 = !general.IPv6
+	dns.SetUseRemoteDnsDefault(general.UseRemoteDnsDefault)
 	provider.SetHealthCheckLazyDefault(general.HealthCheckLazyDefault)
 	provider.SetTouchAfterLazyPassNum(general.TouchAfterLazyPassNum)
 

@@ -21,10 +21,20 @@ import (
 )
 
 var (
-	globalSessionCache = tls.NewLRUClientSessionCache(64)
+	globalSessionCache  = tls.NewLRUClientSessionCache(64)
+	useRemoteDnsDefault = true
 )
 
+func UseRemoteDnsDefault() bool {
+	return useRemoteDnsDefault
+}
+
+func SetUseRemoteDnsDefault(newUseRemoteDnsDefault bool) {
+	useRemoteDnsDefault = newUseRemoteDnsDefault
+}
+
 type dnsClient interface {
+	UseRemote() bool
 	Exchange(m *D.Msg) (msg *D.Msg, err error)
 	ExchangeContext(ctx context.Context, m *D.Msg) (msg *D.Msg, err error)
 }
@@ -302,8 +312,9 @@ func (r *Resolver) asyncExchange(client []dnsClient, msg *D.Msg) <-chan *result 
 }
 
 type NameServer struct {
-	Net  string
-	Addr string
+	Net       string
+	Addr      string
+	UseRemote bool
 }
 
 type FallbackFilter struct {

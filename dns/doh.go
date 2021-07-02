@@ -22,6 +22,11 @@ const (
 type dohClient struct {
 	url       string
 	transport *http.Transport
+	useRemote bool
+}
+
+func (dc *dohClient) UseRemote() bool {
+	return dc.useRemote
 }
 
 func (dc *dohClient) Exchange(m *D.Msg) (msg *D.Msg, err error) {
@@ -72,13 +77,17 @@ func (dc *dohClient) doRequest(req *http.Request) (msg *D.Msg, err error) {
 	return msg, err
 }
 
-func newDoHClient(url string, r *Resolver) *dohClient {
+func newDoHClient(url string, r *Resolver, useRemote bool) *dohClient {
 	return &dohClient{
 		url: url,
 		transport: &http.Transport{
 			TLSClientConfig:   &tls.Config{ClientSessionCache: globalSessionCache},
 			ForceAttemptHTTP2: true,
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				if useRemote {
+					return remoteDial(network, addr)
+				}
+
 				host, port, err := net.SplitHostPort(addr)
 				if err != nil {
 					return nil, err

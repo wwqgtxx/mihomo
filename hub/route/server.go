@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -27,6 +28,20 @@ var (
 		CheckOrigin: func(r *http.Request) bool {
 			return true
 		},
+	}
+
+	builtinMimeTypesLower = map[string]string{
+		".css":  "text/css; charset=utf-8",
+		".gif":  "image/gif",
+		".htm":  "text/html; charset=utf-8",
+		".html": "text/html; charset=utf-8",
+		".jpg":  "image/jpeg",
+		".js":   "application/javascript",
+		".wasm": "application/wasm",
+		".pdf":  "application/pdf",
+		".png":  "image/png",
+		".svg":  "image/svg+xml",
+		".xml":  "text/xml; charset=utf-8",
 	}
 )
 
@@ -71,6 +86,12 @@ func Init(secret string) {
 			fs := http.StripPrefix("/ui", http.FileServer(http.Dir(uiPath)))
 			r.Get("/ui", http.RedirectHandler("/ui/", http.StatusTemporaryRedirect).ServeHTTP)
 			r.Get("/ui/*", func(w http.ResponseWriter, r *http.Request) {
+				// fix for windows mime error
+				// ref: https://github.com/golang/go/issues/32350
+				if v, ok := builtinMimeTypesLower[filepath.Ext(r.URL.Path)]; ok {
+					w.Header().Set("Content-Type", v)
+				}
+
 				fs.ServeHTTP(w, r)
 			})
 		})

@@ -24,6 +24,7 @@ const (
 	TCPTUN
 	UDPTUN
 	MTPROXY
+	DNS
 )
 
 type NetWork int
@@ -61,6 +62,8 @@ func (t Type) String() string {
 		return "UdpTun"
 	case MTPROXY:
 		return "MTProxy"
+	case DNS:
+		return "DNS"
 	default:
 		return "Unknown"
 	}
@@ -89,6 +92,9 @@ func (m *Metadata) RemoteAddress() string {
 }
 
 func (m *Metadata) SourceAddress() string {
+	if len(m.SrcIP) == 0 {
+		return m.Type.String()
+	}
 	return net.JoinHostPort(m.SrcIP.String(), m.SrcPort)
 }
 

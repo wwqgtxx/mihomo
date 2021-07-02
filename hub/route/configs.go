@@ -7,6 +7,7 @@ import (
 	"github.com/Dreamacro/clash/adapter/provider"
 	"github.com/Dreamacro/clash/component/resolver"
 	"github.com/Dreamacro/clash/config"
+	"github.com/Dreamacro/clash/dns"
 	"github.com/Dreamacro/clash/hub/executor"
 	P "github.com/Dreamacro/clash/listener"
 	"github.com/Dreamacro/clash/log"
@@ -39,6 +40,7 @@ type configSchema struct {
 	Mode                   *tunnel.TunnelMode `json:"mode"`
 	LogLevel               *log.LogLevel      `json:"log-level"`
 	IPv6                   *bool              `json:"ipv6"`
+	UseRemoteDnsDefault    *bool              `json:"use-remote-dns-default"`
 	HealthCheckLazyDefault *bool              `json:"health-check-lazy-default"`
 	TouchAfterLazyPassNum  *int               `json:"touch-after-lazy-pass-num"`
 }
@@ -101,6 +103,10 @@ func patchConfigs(w http.ResponseWriter, r *http.Request) {
 
 	if general.LogLevel != nil {
 		log.SetLevel(*general.LogLevel)
+	}
+
+	if general.UseRemoteDnsDefault != nil {
+		dns.SetUseRemoteDnsDefault(*general.UseRemoteDnsDefault)
 	}
 
 	if general.HealthCheckLazyDefault != nil {

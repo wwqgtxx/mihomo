@@ -10,6 +10,7 @@ import (
 	"github.com/Dreamacro/clash/adapter/inbound"
 	"github.com/Dreamacro/clash/adapter/provider"
 	"github.com/Dreamacro/clash/common/channel"
+	"github.com/Dreamacro/clash/component/mmdb"
 	"github.com/Dreamacro/clash/component/nat"
 	"github.com/Dreamacro/clash/component/resolver"
 	C "github.com/Dreamacro/clash/constant"
@@ -220,9 +221,9 @@ func handleUDPConn(packet *inbound.PacketAdapter) {
 		rawPc, err := proxy.DialUDP(metadata)
 		if err != nil {
 			if rule == nil {
-				log.Warnln("[%s][UDP] dial %s to %s error: %s", metadata.Type.String(), proxy.Name(), metadata.String(), err.Error())
+				log.Warnln("[%s][UDP] dial %s to %s:%s error: %s", metadata.Type.String(), proxy.Name(), metadata.String(), metadata.DstPort, err.Error())
 			} else {
-				log.Warnln("[%s][UDP] dial %s (match %s/%s) to %s error: %s", metadata.Type.String(), proxy.Name(), rule.RuleType().String(), rule.Payload(), metadata.String(), err.Error())
+				log.Warnln("[%s][UDP] dial %s (match %s/%s) to %s:%s error: %s", metadata.Type.String(), proxy.Name(), rule.RuleType().String(), rule.Payload(), metadata.String(), metadata.DstPort, err.Error())
 			}
 			return
 		}
@@ -231,13 +232,13 @@ func handleUDPConn(packet *inbound.PacketAdapter) {
 
 		switch true {
 		case rule != nil:
-			log.Infoln("[%s][UDP] %s --> %v match %s(%s) using %s", metadata.Type.String(), metadata.SourceAddress(), metadata.String(), rule.RuleType().String(), rule.Payload(), rawPc.Chains().String())
+			log.Infoln("[%s][UDP] %s --> %v:%s match %s(%s) using %s", metadata.Type.String(), metadata.SourceAddress(), metadata.String(), metadata.DstPort, rule.RuleType().String(), rule.Payload(), rawPc.Chains().String())
 		case mode == Global:
-			log.Infoln("[%s][UDP] %s --> %v using GLOBAL", metadata.Type.String(), metadata.SourceAddress(), metadata.String())
+			log.Infoln("[%s][UDP] %s --> %v:%s using GLOBAL", metadata.Type.String(), metadata.SourceAddress(), metadata.String(), metadata.DstPort)
 		case mode == Direct:
-			log.Infoln("[%s][UDP] %s --> %v using DIRECT", metadata.Type.String(), metadata.SourceAddress(), metadata.String())
+			log.Infoln("[%s][UDP] %s --> %v:%s using DIRECT", metadata.Type.String(), metadata.SourceAddress(), metadata.String(), metadata.DstPort)
 		default:
-			log.Infoln("[%s][UDP] %s --> %v doesn't match any rule using DIRECT", metadata.Type.String(), metadata.SourceAddress(), metadata.String())
+			log.Infoln("[%s][UDP] %s --> %v:%s doesn't match any rule using DIRECT", metadata.Type.String(), metadata.SourceAddress(), metadata.String(), metadata.DstPort)
 		}
 
 		go handleUDPToLocal(packet.UDPPacket, pc, key, fAddr)
@@ -270,9 +271,9 @@ func handleTCPConn(ctx C.ConnContext) {
 	remoteConn, err := proxy.Dial(metadata)
 	if err != nil {
 		if rule == nil {
-			log.Warnln("[%s][TCP] dial %s to %s error: %s", metadata.Type.String(), proxy.Name(), metadata.String(), err.Error())
+			log.Warnln("[%s][TCP] dial %s to %s:%s error: %s", metadata.Type.String(), proxy.Name(), metadata.String(), metadata.DstPort, err.Error())
 		} else {
-			log.Warnln("[%s][TCP] dial %s (match %s/%s) to %s error: %s", metadata.Type.String(), proxy.Name(), rule.RuleType().String(), rule.Payload(), metadata.String(), err.Error())
+			log.Warnln("[%s][TCP] dial %s (match %s/%s) to %s:%s error: %s", metadata.Type.String(), proxy.Name(), rule.RuleType().String(), rule.Payload(), metadata.String(), metadata.DstPort, err.Error())
 		}
 		return
 	}
@@ -281,13 +282,13 @@ func handleTCPConn(ctx C.ConnContext) {
 
 	switch true {
 	case rule != nil:
-		log.Infoln("[%s][TCP] %s --> %v match %s(%s) using %s", metadata.Type.String(), metadata.SourceAddress(), metadata.String(), rule.RuleType().String(), rule.Payload(), remoteConn.Chains().String())
+		log.Infoln("[%s][TCP] %s --> %v:%s match %s(%s) using %s", metadata.Type.String(), metadata.SourceAddress(), metadata.String(), metadata.DstPort, rule.RuleType().String(), rule.Payload(), remoteConn.Chains().String())
 	case mode == Global:
-		log.Infoln("[%s][TCP] %s --> %v using GLOBAL", metadata.Type.String(), metadata.SourceAddress(), metadata.String())
+		log.Infoln("[%s][TCP] %s --> %v:%s using GLOBAL", metadata.Type.String(), metadata.SourceAddress(), metadata.String(), metadata.DstPort)
 	case mode == Direct:
-		log.Infoln("[%s][TCP] %s --> %v using DIRECT", metadata.Type.String(), metadata.SourceAddress(), metadata.String())
+		log.Infoln("[%s][TCP] %s --> %v:%s using DIRECT", metadata.Type.String(), metadata.SourceAddress(), metadata.String(), metadata.DstPort)
 	default:
-		log.Infoln("[%s][TCP] %s --> %v doesn't match any rule using DIRECT", metadata.Type.String(), metadata.SourceAddress(), metadata.String())
+		log.Infoln("[%s][TCP] %s --> %v:%s doesn't match any rule using DIRECT", metadata.Type.String(), metadata.SourceAddress(), metadata.String(), metadata.DstPort)
 	}
 
 	handleSocket(ctx, remoteConn)
@@ -313,9 +314,15 @@ func match(metadata *C.Metadata) (C.Proxy, C.Rule, error) {
 		if !resolved && shouldResolveIP(rule, metadata) {
 			ip, err := resolver.ResolveIP(metadata.Host)
 			if err != nil {
-				log.Debugln("[DNS] resolve %s error: %s", metadata.Host, err.Error())
+				log.Infoln("[DNS] resolve %s error: %s", metadata.Host, err.Error())
 			} else {
-				log.Debugln("[DNS] %s --> %s", metadata.Host, ip.String())
+				record, _ := mmdb.Instance().Country(ip)
+				if len(record.Country.IsoCode) > 0 {
+					log.Infoln("[DNS] %s --> %s [GEO=%s]", metadata.Host, ip.String(), record.Country.IsoCode)
+				} else {
+					log.Infoln("[DNS] %s --> %s", metadata.Host, ip.String())
+				}
+
 				metadata.DstIP = ip
 			}
 			resolved = true

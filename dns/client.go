@@ -2,6 +2,7 @@ package dns
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"strings"
@@ -14,9 +15,14 @@ import (
 
 type client struct {
 	*D.Client
-	r    *Resolver
-	port string
-	host string
+	r         *Resolver
+	port      string
+	host      string
+	useRemote bool
+}
+
+func (c *client) UseRemote() bool {
+	return c.useRemote
 }
 
 func (c *client) Exchange(m *D.Msg) (msg *D.Msg, err error) {
@@ -59,6 +65,16 @@ func (c *client) ExchangeContext(ctx context.Context, m *D.Msg) (msg *D.Msg, err
 	}
 	ch := make(chan result, 1)
 	go func() {
+		if c.useRemote {
+			conn, err := c.remoteDial(net.JoinHostPort(ip.String(), c.port))
+			if err != nil {
+				ch <- result{msg, err}
+			}
+			msg, _, err := c.Client.ExchangeWithConn(m, conn)
+			ch <- result{msg, err}
+			return
+		}
+
 		msg, _, err := c.Client.Exchange(m, net.JoinHostPort(ip.String(), c.port))
 		ch <- result{msg, err}
 	}()
@@ -69,4 +85,28 @@ func (c *client) ExchangeContext(ctx context.Context, m *D.Msg) (msg *D.Msg, err
 	case ret := <-ch:
 		return ret.msg, ret.err
 	}
+}
+
+func (c *client) remoteDial(address string) (conn *D.Conn, err error) {
+	network := c.Net
+	if network == "" || network == "udp" { // force use tcp when do remote dns
+		network = "tcp"
+	}
+
+	useTLS := strings.HasPrefix(network, "tcp") && strings.HasSuffix(network, "-tls")
+	network = strings.TrimSuffix(network, "-tls")
+
+	conn = new(D.Conn)
+
+	conn.Conn, err = remoteDial(network, address)
+	if useTLS {
+		tlsConn := tls.Client(conn.Conn, c.TLSConfig)
+		err = tlsConn.Handshake()
+		conn.Conn = tlsConn
+	}
+	if err != nil {
+		return nil, err
+	}
+	conn.UDPSize = c.UDPSize
+	return conn, nil
 }

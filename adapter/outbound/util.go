@@ -58,7 +58,7 @@ func resolveUDPAddr(network, address string) (*net.UDPAddr, error) {
 		return nil, err
 	}
 
-	ip, err := resolver.ResolveIP(host)
+	ip, err := resolver.ResolveIPWithResolver(host, nil)
 	if err != nil {
 		return nil, err
 	}

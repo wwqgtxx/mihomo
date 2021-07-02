@@ -118,7 +118,7 @@ func transform(servers []NameServer, resolver *Resolver) []dnsClient {
 	ret := []dnsClient{}
 	for _, s := range servers {
 		if s.Net == "https" {
-			ret = append(ret, newDoHClient(s.Addr, resolver))
+			ret = append(ret, newDoHClient(s.Addr, resolver, s.UseRemote))
 			continue
 		}
 
@@ -135,9 +135,10 @@ func transform(servers []NameServer, resolver *Resolver) []dnsClient {
 				UDPSize: 4096,
 				Timeout: 5 * time.Second,
 			},
-			port: port,
-			host: host,
-			r:    resolver,
+			port:      port,
+			host:      host,
+			r:         resolver,
+			useRemote: s.UseRemote,
 		})
 	}
 	return ret

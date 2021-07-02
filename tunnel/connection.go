@@ -17,7 +17,7 @@ func handleUDPToRemote(packet C.UDPPacket, pc C.PacketConn, metadata *C.Metadata
 
 	// local resolve UDP dns
 	if !metadata.Resolved() {
-		ip, err := resolver.ResolveIP(metadata.Host)
+		ip, err := resolver.ResolveIPWithResolver(metadata.Host, nil)
 		if err != nil {
 			return err
 		}

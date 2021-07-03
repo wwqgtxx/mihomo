@@ -2,6 +2,7 @@ package shadowsocks
 
 import (
 	"net"
+	"strings"
 
 	"github.com/Dreamacro/clash/adapter/inbound"
 	C "github.com/Dreamacro/clash/constant"
@@ -11,11 +12,11 @@ import (
 )
 
 type Listener struct {
-	closed      bool
-	config      string
-	listener    net.Listener
-	udpListener *UDPListener
-	pickCipher  core.Cipher
+	closed       bool
+	config       string
+	listeners    []net.Listener
+	udpListeners []*UDPListener
+	pickCipher   core.Cipher
 }
 
 var _listener *Listener
@@ -32,46 +33,51 @@ func New(config string, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.Packet
 	}
 
 	sl := &Listener{false, config, nil, nil, pickCipher}
-
 	_listener = sl
 
-	//UDP
-	ul, err := NewUDP(addr, pickCipher, udpIn)
-	if err != nil {
-		return nil, err
-	}
-	sl.udpListener = ul
+	for _, addr := range strings.Split(addr, ",") {
+		addr := addr
 
-	//TCP
-	l, err := net.Listen("tcp", addr)
-	if err != nil {
-		return nil, err
-	}
-	sl.listener = l
-
-	go func() {
-		log.Infoln("ShadowSocks proxy listening at: %s", addr)
-		for {
-			c, err := l.Accept()
-			if err != nil {
-				if sl.closed {
-					break
-				}
-				continue
-			}
-			_ = c.(*net.TCPConn).SetKeepAlive(true)
-			go sl.HandleConn(c, tcpIn)
+		//UDP
+		ul, err := NewUDP(addr, pickCipher, udpIn)
+		if err != nil {
+			return nil, err
 		}
-	}()
+		sl.udpListeners = append(sl.udpListeners, ul)
+
+		//TCP
+		l, err := net.Listen("tcp", addr)
+		if err != nil {
+			return nil, err
+		}
+		sl.listeners = append(sl.listeners, l)
+
+		go func() {
+			log.Infoln("ShadowSocks proxy listening at: %s", addr)
+			for {
+				c, err := l.Accept()
+				if err != nil {
+					if sl.closed {
+						break
+					}
+					continue
+				}
+				_ = c.(*net.TCPConn).SetKeepAlive(true)
+				go sl.HandleConn(c, tcpIn)
+			}
+		}()
+	}
 
 	return sl, nil
 }
 
 func (l *Listener) Close() {
 	l.closed = true
-	_ = l.listener.Close()
-	if l.udpListener != nil {
-		_ = l.udpListener.Close()
+	for _, lis := range l.listeners {
+		_ = lis.Close()
+	}
+	for _, lis := range l.udpListeners {
+		_ = lis.Close()
 	}
 }
 

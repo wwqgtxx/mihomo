@@ -2,7 +2,7 @@ package cachefile
 
 import (
 	"bytes"
-	"encoding/gob"
+	"encoding/json"
 	"io/ioutil"
 	"os"
 	"sync"
@@ -42,7 +42,7 @@ func (c *CacheFile) SetSelected(group, selected string) {
 
 	model.Selected[group] = selected
 	c.buf.Reset()
-	if err := gob.NewEncoder(c.buf).Encode(model); err != nil {
+	if err := json.NewEncoder(c.buf).Encode(model); err != nil {
 		log.Warnln("[CacheFile] encode gob failed: %s", err.Error())
 		return
 	}
@@ -81,7 +81,7 @@ func (c *CacheFile) element() *cache {
 
 	if buf, err := ioutil.ReadFile(c.path); err == nil {
 		bufReader := bytes.NewBuffer(buf)
-		gob.NewDecoder(bufReader).Decode(model)
+		json.NewDecoder(bufReader).Decode(model)
 	}
 
 	c.model = model

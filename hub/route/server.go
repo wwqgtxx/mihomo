@@ -3,8 +3,11 @@ package route
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -79,6 +82,7 @@ func Init(secret string) {
 		r.Mount("/rules", ruleRouter())
 		r.Mount("/connections", connectionRouter())
 		r.Mount("/providers/proxies", proxyProviderRouter())
+		r.Mount("/providers/rules", ruleProviderRouter())
 	})
 
 	if uiPath != "" {
@@ -92,12 +96,53 @@ func Init(secret string) {
 					w.Header().Set("Content-Type", v)
 				}
 
+				// change clash-dashboard's default url from Host
+				isRootPath := r.URL.Path == "/ui/"
+				if isRootPath {
+					fw := &fakeResponseWriter{w, &bytes.Buffer{}, -1}
+					fs.ServeHTTP(fw, r)
+					data := fw.buf.Bytes()
+					old := []byte("<!--meta name=\"external-controller\" content=\"http://secret@example.com:9090\"-->")
+					host := r.Host
+					if !strings.Contains(host, ":") {
+						host = host + ":80"
+					}
+					new := []byte(fmt.Sprintf("<meta name=\"external-controller\" content=\"http://%s\">", host))
+					target := bytes.ReplaceAll(data, old, new)
+					fw.buf.Reset()
+					fw.buf.Write(target)
+
+					if w.Header().Get("Content-Encoding") == "" && w.Header().Get("Content-Length") != "" {
+						w.Header().Set("Content-Length", strconv.FormatInt(int64(len(target)), 10))
+					}
+					if fw.statusCode != -1 {
+						w.WriteHeader(fw.statusCode)
+					}
+					_, _ = io.Copy(w, fw.buf)
+					return
+				}
+
 				fs.ServeHTTP(w, r)
 			})
 		})
 	}
 
 	C.SetECHandler(r)
+}
+
+type fakeResponseWriter struct {
+	http.ResponseWriter
+	buf        *bytes.Buffer
+	statusCode int
+}
+
+func (w *fakeResponseWriter) Write(buf []byte) (int, error) {
+	w.buf.Write(buf)
+	return len(buf), nil
+}
+
+func (w *fakeResponseWriter) WriteHeader(statusCode int) {
+	w.statusCode = statusCode
 }
 
 func Start(addr string) {
@@ -259,5 +304,5 @@ func getLogs(w http.ResponseWriter, r *http.Request) {
 }
 
 func version(w http.ResponseWriter, r *http.Request) {
-	render.JSON(w, r, render.M{"version": C.Version})
+	render.JSON(w, r, render.M{"version": C.Version, "premium": true})
 }

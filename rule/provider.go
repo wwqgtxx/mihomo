@@ -29,7 +29,8 @@ type RuleSetProvider struct {
 
 type ruleSetProvider struct {
 	*provider.Fetcher
-	rules []C.Rule
+	rules    []C.Rule
+	behavior string
 }
 
 func (rp *ruleSetProvider) MarshalJSON() ([]byte, error) {
@@ -37,7 +38,8 @@ func (rp *ruleSetProvider) MarshalJSON() ([]byte, error) {
 		"name":        rp.Name(),
 		"type":        rp.Type().String(),
 		"vehicleType": rp.VehicleType().String(),
-		"rules":       rp.rules,
+		"behavior":    rp.behavior,
+		"ruleCount":   len(rp.rules),
 		"updatedAt":   rp.UpdateAt(),
 	})
 }
@@ -110,7 +112,8 @@ func stopRuleProvider(rd *RuleSetProvider) {
 func NewRuleSetProvider(name string, interval time.Duration, vehicle provider.Vehicle, behavior string) *RuleSetProvider {
 
 	rd := &ruleSetProvider{
-		rules: []C.Rule{},
+		rules:    []C.Rule{},
+		behavior: behavior,
 	}
 
 	onUpdate := func(elm interface{}) {

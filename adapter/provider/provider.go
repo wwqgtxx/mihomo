@@ -66,7 +66,7 @@ type ProxySetProvider struct {
 }
 
 type proxySetProvider struct {
-	*fetcher
+	*Fetcher
 	proxies     []C.Proxy
 	healthCheck *HealthCheck
 }
@@ -90,7 +90,7 @@ func (pp *proxySetProvider) HealthCheck() {
 }
 
 func (pp *proxySetProvider) Update() error {
-	elm, same, err := pp.fetcher.Update()
+	elm, same, err := pp.Fetcher.Update()
 	if err == nil && !same {
 		pp.onUpdate(elm)
 	}
@@ -98,7 +98,7 @@ func (pp *proxySetProvider) Update() error {
 }
 
 func (pp *proxySetProvider) Initial() error {
-	elm, err := pp.fetcher.Initial()
+	elm, err := pp.Fetcher.Initial()
 	if err != nil {
 		return err
 	}
@@ -157,7 +157,7 @@ func (pp *proxySetProvider) setProxies(proxies []C.Proxy) {
 
 func stopProxyProvider(pd *ProxySetProvider) {
 	pd.healthCheck.close()
-	pd.fetcher.Destroy()
+	pd.Fetcher.Destroy()
 }
 
 func NewProxySetProvider(name string, interval time.Duration, vehicle Vehicle, hc *HealthCheck) *ProxySetProvider {
@@ -175,8 +175,8 @@ func NewProxySetProvider(name string, interval time.Duration, vehicle Vehicle, h
 		pd.setProxies(ret)
 	}
 
-	fetcher := newFetcher(name, interval, vehicle, proxiesParse, onUpdate)
-	pd.fetcher = fetcher
+	fetcher := NewFetcher(name, interval, vehicle, proxiesParse, onUpdate)
+	pd.Fetcher = fetcher
 
 	wrapper := &ProxySetProvider{pd}
 	runtime.SetFinalizer(wrapper, stopProxyProvider)

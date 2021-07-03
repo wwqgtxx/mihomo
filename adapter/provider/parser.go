@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	errVehicleType = errors.New("unsupport vehicle type")
+	ErrVehicleType = errors.New("unsupport vehicle type")
 )
 
 type healthCheckSchema struct {
@@ -55,7 +55,7 @@ func ParseProxyProvider(name string, mapping map[string]interface{}) (ProxyProvi
 	case "http":
 		vehicle = NewHTTPVehicle(schema.URL, path)
 	default:
-		return nil, fmt.Errorf("%w: %s", errVehicleType, schema.Type)
+		return nil, fmt.Errorf("%w: %s", ErrVehicleType, schema.Type)
 	}
 
 	interval := time.Duration(uint(schema.Interval)) * time.Second

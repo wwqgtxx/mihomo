@@ -2,9 +2,17 @@ package rules
 
 import (
 	"fmt"
+	"strings"
 
 	C "github.com/Dreamacro/clash/constant"
 )
+
+func trimArr(arr []string) (r []string) {
+	for _, e := range arr {
+		r = append(r, strings.Trim(e, " "))
+	}
+	return
+}
 
 func ParseRule(tp, payload, target string, params []string) (C.Rule, error) {
 	var (
@@ -37,8 +45,51 @@ func ParseRule(tp, payload, target string, params []string) (C.Rule, error) {
 		parsed, parseErr = NewProcess(payload, target)
 	case "MATCH":
 		parsed = NewMatch(target)
+	case "RULE-SET":
+		if target == "" { // don't allow use RULE-SET in a Rule Providers' classical config file
+			parseErr = fmt.Errorf("unsupported rule type %s", tp)
+			break
+		}
+		parsed = NewRuleSet(payload, target)
 	default:
 		parseErr = fmt.Errorf("unsupported rule type %s", tp)
+	}
+
+	return parsed, parseErr
+}
+
+func parseProviderRule(str string, behavior string) (C.Rule, error) {
+	var (
+		parseErr error
+		parsed   C.Rule
+	)
+
+	switch behavior {
+	case "domain":
+		parsed, parseErr = NewDomainTrie(str, "")
+	case "ipcidr":
+		parsed, parseErr = NewIPCIDR(str, "")
+	default:
+		line := str
+
+		var rule []string
+		var payload string
+		var params []string
+
+		rule = trimArr(strings.Split(line, ","))
+		switch l := len(rule); {
+		case l == 2:
+			payload = rule[1]
+		case l >= 3:
+			payload = rule[1]
+			params = rule[2:]
+		default:
+			return nil, fmt.Errorf("rules[%s] error: format invalid", line)
+		}
+		rule = trimArr(rule)
+		params = trimArr(params)
+		parsed, parseErr = ParseRule(rule[0], payload, "", params)
+
 	}
 
 	return parsed, parseErr

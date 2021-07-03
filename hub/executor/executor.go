@@ -21,6 +21,7 @@ import (
 	P "github.com/Dreamacro/clash/listener"
 	authStore "github.com/Dreamacro/clash/listener/auth"
 	"github.com/Dreamacro/clash/log"
+	R "github.com/Dreamacro/clash/rule"
 	"github.com/Dreamacro/clash/tunnel"
 )
 
@@ -72,7 +73,7 @@ func ApplyConfig(cfg *config.Config, force bool) {
 	updateUsers(cfg.Users)
 	updateGeneral(cfg.General, force)
 	updateProxies(cfg.Proxies, cfg.Providers)
-	updateRules(cfg.Rules)
+	updateRules(cfg.Rules, cfg.RulesProviders)
 	updateDNS(cfg.DNS)
 	updateHosts(cfg.Hosts)
 	updateExperimental(cfg)
@@ -167,8 +168,8 @@ func updateProxies(proxies map[string]C.Proxy, providers map[string]provider.Pro
 	tunnel.UpdateProxies(proxies, providers)
 }
 
-func updateRules(rules []C.Rule) {
-	tunnel.UpdateRules(rules)
+func updateRules(rules []C.Rule, providers map[string]R.RuleProvider) {
+	tunnel.UpdateRules(rules, providers)
 }
 
 func updateGeneral(general *config.General, force bool) {

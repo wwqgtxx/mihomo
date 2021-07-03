@@ -13,6 +13,8 @@ const (
 	InPort
 	Process
 	MATCH
+	RuleSet
+	DomainTrie
 )
 
 type RuleType int
@@ -41,6 +43,10 @@ func (rt RuleType) String() string {
 		return "Process"
 	case MATCH:
 		return "Match"
+	case RuleSet:
+		return "RuleSet"
+	case DomainTrie:
+		return "DomainTrie"
 	default:
 		return "Unknown"
 	}

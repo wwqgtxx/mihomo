@@ -93,15 +93,16 @@ type Experimental struct{}
 
 // Config is clash config manager
 type Config struct {
-	General      *General
-	DNS          *DNS
-	Experimental *Experimental
-	Hosts        *trie.DomainTrie
-	Profile      *Profile
-	Rules        []C.Rule
-	Users        []auth.AuthUser
-	Proxies      map[string]C.Proxy
-	Providers    map[string]provider.ProxyProvider
+	General        *General
+	DNS            *DNS
+	Experimental   *Experimental
+	Hosts          *trie.DomainTrie
+	Profile        *Profile
+	Rules          []C.Rule
+	RulesProviders map[string]R.RuleProvider
+	Users          []auth.AuthUser
+	Proxies        map[string]C.Proxy
+	Providers      map[string]provider.ProxyProvider
 }
 
 type RawDNS struct {
@@ -150,6 +151,7 @@ type RawConfig struct {
 	HealthCheckLazyDefault bool         `yaml:"health-check-lazy-default"`
 	TouchAfterLazyPassNum  int          `yaml:"touch-after-lazy-pass-num"`
 
+	RuleProviders map[string]map[string]interface{} `yaml:"rule-providers"`
 	ProxyProvider map[string]map[string]interface{} `yaml:"proxy-providers"`
 	Hosts         map[string]string                 `yaml:"hosts"`
 	DNS           RawDNS                            `yaml:"dns"`
@@ -233,11 +235,12 @@ func ParseRawConfig(rawCfg *RawConfig) (*Config, error) {
 	config.Proxies = proxies
 	config.Providers = providers
 
-	rules, err := parseRules(rawCfg, proxies)
+	rules, ruleProviders, err := parseRules(rawCfg, proxies)
 	if err != nil {
 		return nil, err
 	}
 	config.Rules = rules
+	config.RulesProviders = ruleProviders
 
 	hosts, err := parseHosts(rawCfg)
 	if err != nil {
@@ -404,9 +407,27 @@ func parseProxies(cfg *RawConfig) (proxies map[string]C.Proxy, providersMap map[
 	return proxies, providersMap, nil
 }
 
-func parseRules(cfg *RawConfig, proxies map[string]C.Proxy) ([]C.Rule, error) {
-	rules := []C.Rule{}
+func parseRules(cfg *RawConfig, proxies map[string]C.Proxy) (rules []C.Rule, providersMap map[string]R.RuleProvider, err error) {
 	rulesConfig := cfg.Rule
+	providersMap = make(map[string]R.RuleProvider)
+	providersConfig := cfg.RuleProviders
+
+	// parse and initial providers
+	for name, mapping := range providersConfig {
+		rd, err := R.ParseRuleProvider(name, mapping)
+		if err != nil {
+			return nil, nil, fmt.Errorf("parse rule ruleProvider %s error: %w", name, err)
+		}
+
+		providersMap[name] = rd
+	}
+
+	for _, ruleProvider := range providersMap {
+		log.Infoln("Start initial ruleProvider %s", ruleProvider.Name())
+		if err := ruleProvider.Initial(); err != nil {
+			return nil, nil, fmt.Errorf("initial rule ruleProvider %s error: %w", ruleProvider.Name(), err)
+		}
+	}
 
 	// parse rules
 	for idx, line := range rulesConfig {
@@ -428,11 +449,11 @@ func parseRules(cfg *RawConfig, proxies map[string]C.Proxy) ([]C.Rule, error) {
 			target = rule[2]
 			params = rule[3:]
 		default:
-			return nil, fmt.Errorf("rules[%d] [%s] error: format invalid", idx, line)
+			return nil, nil, fmt.Errorf("rules[%d] [%s] error: format invalid", idx, line)
 		}
 
 		if _, ok := proxies[target]; !ok {
-			return nil, fmt.Errorf("rules[%d] [%s] error: proxy [%s] not found", idx, line, target)
+			return nil, nil, fmt.Errorf("rules[%d] [%s] error: proxy [%s] not found", idx, line, target)
 		}
 
 		rule = trimArr(rule)
@@ -440,13 +461,13 @@ func parseRules(cfg *RawConfig, proxies map[string]C.Proxy) ([]C.Rule, error) {
 
 		parsed, parseErr := R.ParseRule(rule[0], payload, target, params)
 		if parseErr != nil {
-			return nil, fmt.Errorf("rules[%d] [%s] error: %s", idx, line, parseErr.Error())
+			return nil, nil, fmt.Errorf("rules[%d] [%s] error: %s", idx, line, parseErr.Error())
 		}
 
 		rules = append(rules, parsed)
 	}
 
-	return rules, nil
+	return rules, providersMap, nil
 }
 
 func parseHosts(cfg *RawConfig) (*trie.DomainTrie, error) {

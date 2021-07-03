@@ -16,17 +16,19 @@ import (
 	C "github.com/Dreamacro/clash/constant"
 	"github.com/Dreamacro/clash/context"
 	"github.com/Dreamacro/clash/log"
+	R "github.com/Dreamacro/clash/rule"
 	"github.com/Dreamacro/clash/tunnel/statistic"
 )
 
 var (
-	tcpQueue  = channel.NewInfiniteChannel(make(chan C.ConnContext))
-	udpQueue  = channel.NewInfiniteChannel(make(chan *inbound.PacketAdapter))
-	natTable  = nat.New()
-	rules     []C.Rule
-	proxies   = make(map[string]C.Proxy)
-	providers map[string]provider.ProxyProvider
-	configMux sync.RWMutex
+	tcpQueue      = channel.NewInfiniteChannel(make(chan C.ConnContext))
+	udpQueue      = channel.NewInfiniteChannel(make(chan *inbound.PacketAdapter))
+	natTable      = nat.New()
+	rules         []C.Rule
+	ruleProviders map[string]R.RuleProvider
+	proxies       = make(map[string]C.Proxy)
+	providers     map[string]provider.ProxyProvider
+	configMux     sync.RWMutex
 
 	// Outbound Rule
 	mode = Rule
@@ -54,10 +56,16 @@ func Rules() []C.Rule {
 	return rules
 }
 
+// RuleProviders return all compatible providers
+func RuleProviders() map[string]R.RuleProvider {
+	return ruleProviders
+}
+
 // UpdateRules handle update rules
-func UpdateRules(newRules []C.Rule) {
+func UpdateRules(newRules []C.Rule, newProviders map[string]R.RuleProvider) {
 	configMux.Lock()
 	rules = newRules
+	ruleProviders = newProviders
 	configMux.Unlock()
 }
 
@@ -310,7 +318,7 @@ func match(metadata *C.Metadata) (C.Proxy, C.Rule, error) {
 		resolved = true
 	}
 
-	for _, rule := range rules {
+	checkResolved := func(rule C.Rule) {
 		if !resolved && shouldResolveIP(rule, metadata) {
 			ip, err := resolver.ResolveIP(metadata.Host)
 			if err != nil {
@@ -327,6 +335,33 @@ func match(metadata *C.Metadata) (C.Proxy, C.Rule, error) {
 			}
 			resolved = true
 		}
+	}
+
+	for _, rule := range rules {
+		if rule.RuleType() == C.RuleSet {
+			ruleProvider, ok := ruleProviders[rule.Payload()]
+			if !ok {
+				log.Warnln("%s RuleProvider is not exists", rule.Payload())
+				continue
+			}
+			adapter, ok := proxies[rule.Adapter()]
+			if !ok {
+				continue
+			}
+			if metadata.NetWork == C.UDP && !adapter.SupportUDP() {
+				continue
+			}
+
+			for _, subRule := range ruleProvider.Rules() {
+				checkResolved(subRule)
+				if subRule.Match(metadata) {
+					return adapter, rule, nil
+				}
+			}
+			continue
+		}
+
+		checkResolved(rule)
 
 		if rule.Match(metadata) {
 			adapter, ok := proxies[rule.Adapter()]

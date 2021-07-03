@@ -18,7 +18,7 @@ var (
 
 type parser = func([]byte) (interface{}, error)
 
-type fetcher struct {
+type Fetcher struct {
 	name      string
 	vehicle   Vehicle
 	updatedAt *time.Time
@@ -29,15 +29,23 @@ type fetcher struct {
 	onUpdate  func(interface{})
 }
 
-func (f *fetcher) Name() string {
+func (f *Fetcher) Name() string {
 	return f.name
 }
 
-func (f *fetcher) VehicleType() VehicleType {
+func (f *Fetcher) VehicleType() VehicleType {
 	return f.vehicle.Type()
 }
 
-func (f *fetcher) Initial() (interface{}, error) {
+func (f *Fetcher) UpdateAt() *time.Time {
+	return f.updatedAt
+}
+
+func (f *Fetcher) OnUpdate() func(interface{}) {
+	return f.onUpdate
+}
+
+func (f *Fetcher) Initial() (interface{}, error) {
 	var (
 		buf     []byte
 		err     error
@@ -92,7 +100,7 @@ func (f *fetcher) Initial() (interface{}, error) {
 	return proxies, nil
 }
 
-func (f *fetcher) Update() (interface{}, bool, error) {
+func (f *Fetcher) Update() (interface{}, bool, error) {
 	buf, err := f.vehicle.Read()
 	if err != nil {
 		return nil, false, err
@@ -122,14 +130,14 @@ func (f *fetcher) Update() (interface{}, bool, error) {
 	return proxies, false, nil
 }
 
-func (f *fetcher) Destroy() error {
+func (f *Fetcher) Destroy() error {
 	if f.ticker != nil {
 		f.done <- struct{}{}
 	}
 	return nil
 }
 
-func (f *fetcher) pullLoop() {
+func (f *Fetcher) pullLoop() {
 	for {
 		select {
 		case <-f.ticker.C:
@@ -167,13 +175,13 @@ func safeWrite(path string, buf []byte) error {
 	return ioutil.WriteFile(path, buf, fileMode)
 }
 
-func newFetcher(name string, interval time.Duration, vehicle Vehicle, parser parser, onUpdate func(interface{})) *fetcher {
+func NewFetcher(name string, interval time.Duration, vehicle Vehicle, parser parser, onUpdate func(interface{})) *Fetcher {
 	var ticker *time.Ticker
 	if interval != 0 {
 		ticker = time.NewTicker(interval)
 	}
 
-	return &fetcher{
+	return &Fetcher{
 		name:     name,
 		ticker:   ticker,
 		vehicle:  vehicle,

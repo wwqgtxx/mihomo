@@ -47,7 +47,6 @@ type WebsocketConfig struct {
 	TLS            bool
 	SkipCertVerify bool
 	ServerName     string
-	SessionCache   tls.ClientSessionCache
 	Ed             uint32
 }
 
@@ -258,7 +257,7 @@ func StreamWebsocketConn(conn net.Conn, c *WebsocketConfig, ed ...[]byte) (net.C
 		dialer.TLSClientConfig = &tls.Config{
 			ServerName:         c.Host,
 			InsecureSkipVerify: c.SkipCertVerify,
-			ClientSessionCache: c.SessionCache,
+			NextProtos:         []string{"http/1.1"},
 		}
 
 		if c.ServerName != "" {

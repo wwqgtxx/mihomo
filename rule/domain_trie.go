@@ -1,9 +1,9 @@
 package rules
 
 import (
-	"github.com/Dreamacro/clash/component/trie"
 	"strings"
 
+	"github.com/Dreamacro/clash/component/trie"
 	C "github.com/Dreamacro/clash/constant"
 )
 
@@ -11,6 +11,7 @@ type DomainTrie struct {
 	domain  string
 	adapter string
 	dt      *trie.DomainTrie
+	insertN int
 }
 
 func (d *DomainTrie) RuleType() C.RuleType {
@@ -36,13 +37,27 @@ func (d *DomainTrie) ShouldResolveIP() bool {
 	return false
 }
 
-func NewDomainTrie(domain string, adapter string) (*DomainTrie, error) {
+func (d *DomainTrie) Insert(domain string) error {
 	domain = strings.ToLower(domain)
+	err := d.dt.Insert(domain, "")
+	if err != nil {
+		return err
+	}
+	d.insertN++
+	return nil
+}
+
+func newEmptyDomainTrie() *DomainTrie {
 	dt := trie.New()
-	err := dt.Insert(domain, "")
 	return &DomainTrie{
-		domain:  domain,
-		adapter: adapter,
 		dt:      dt,
-	}, err
+		insertN: 0,
+	}
+}
+
+func NewDomainTrie(domain string, adapter string) (*DomainTrie, error) {
+	dt := newEmptyDomainTrie()
+	dt.adapter = adapter
+	err := dt.Insert(domain)
+	return dt, err
 }

@@ -77,6 +77,12 @@ func (rp *ruleSetProvider) Rules() []C.Rule {
 	return rp.rules
 }
 
+type RuleTree interface {
+	C.Rule
+	InsertN() int
+	Insert(string) error
+}
+
 func rulesParse(buf []byte, behavior string) (interface{}, error) {
 	schema := &RuleSchema{}
 
@@ -89,23 +95,31 @@ func rulesParse(buf []byte, behavior string) (interface{}, error) {
 	}
 
 	var rules []C.Rule
-	dt := newEmptyDomainTrie()
+	var rt RuleTree
 	for idx, str := range schema.Payload {
 		switch behavior {
 		case "domain":
-			err := dt.Insert(str)
+			if rt == nil {
+				rt = newEmptyDomainTrie()
+			}
+			err := rt.Insert(str)
 			if err != nil {
 				return nil, fmt.Errorf("rule %d error: %w", idx, err)
 			}
 			if rules == nil {
-				rules = []C.Rule{dt}
+				rules = []C.Rule{rt}
 			}
 		case "ipcidr":
-			parsed, err := NewIPCIDR(str, "")
+			if rt == nil {
+				rt = newEmptyIPCIDRTrie()
+			}
+			err := rt.Insert(str)
 			if err != nil {
 				return nil, fmt.Errorf("rule %d error: %w", idx, err)
 			}
-			rules = append(rules, parsed)
+			if rules == nil {
+				rules = []C.Rule{rt}
+			}
 		default: // classical
 			line := str
 
@@ -143,8 +157,10 @@ func rulesParse(buf []byte, behavior string) (interface{}, error) {
 func (rp *ruleSetProvider) setRules(rules []C.Rule) {
 	rp.rules = rules
 	rp.ruleCount = len(rp.rules)
-	if rp.ruleCount == 1 && rp.behavior == "domain" {
-		rp.ruleCount = rp.rules[0].(*DomainTrie).insertN
+	if rp.ruleCount == 1 && rp.behavior != "classical" {
+		if rt, ok := rp.rules[0].(RuleTree); ok {
+			rp.ruleCount = rt.InsertN()
+		}
 	}
 }
 

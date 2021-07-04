@@ -7,37 +7,41 @@ import (
 	C "github.com/Dreamacro/clash/constant"
 )
 
-type DomainTrie struct {
+type DomainTree struct {
 	domain  string
 	adapter string
 	dt      *trie.DomainTrie
 	insertN int
 }
 
-func (d *DomainTrie) RuleType() C.RuleType {
-	return C.DomainTrie
+func (d *DomainTree) InsertN() int {
+	return d.insertN
 }
 
-func (d *DomainTrie) Match(metadata *C.Metadata) bool {
+func (d *DomainTree) RuleType() C.RuleType {
+	return C.DomainTree
+}
+
+func (d *DomainTree) Match(metadata *C.Metadata) bool {
 	if metadata.AddrType != C.AtypDomainName {
 		return false
 	}
 	return d.dt.Search(metadata.Host) != nil
 }
 
-func (d *DomainTrie) Adapter() string {
+func (d *DomainTree) Adapter() string {
 	return d.adapter
 }
 
-func (d *DomainTrie) Payload() string {
+func (d *DomainTree) Payload() string {
 	return d.domain
 }
 
-func (d *DomainTrie) ShouldResolveIP() bool {
+func (d *DomainTree) ShouldResolveIP() bool {
 	return false
 }
 
-func (d *DomainTrie) Insert(domain string) error {
+func (d *DomainTree) Insert(domain string) error {
 	domain = strings.ToLower(domain)
 	err := d.dt.Insert(domain, "")
 	if err != nil {
@@ -47,17 +51,18 @@ func (d *DomainTrie) Insert(domain string) error {
 	return nil
 }
 
-func newEmptyDomainTrie() *DomainTrie {
+func newEmptyDomainTrie() *DomainTree {
 	dt := trie.New()
-	return &DomainTrie{
+	return &DomainTree{
 		dt:      dt,
 		insertN: 0,
 	}
 }
 
-func NewDomainTrie(domain string, adapter string) (*DomainTrie, error) {
+func NewDomainTrie(domain string, adapter string) (*DomainTree, error) {
 	dt := newEmptyDomainTrie()
 	dt.adapter = adapter
+	dt.domain = domain
 	err := dt.Insert(domain)
 	return dt, err
 }

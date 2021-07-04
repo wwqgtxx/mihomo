@@ -14,7 +14,8 @@ const (
 	Process
 	MATCH
 	RuleSet
-	DomainTrie
+	DomainTree
+	IpCidrTree
 )
 
 type RuleType int
@@ -45,8 +46,10 @@ func (rt RuleType) String() string {
 		return "Match"
 	case RuleSet:
 		return "RuleSet"
-	case DomainTrie:
-		return "DomainTrie"
+	case DomainTree:
+		return "DomainTree"
+	case IpCidrTree:
+		return "IpCidrTree"
 	default:
 		return "Unknown"
 	}

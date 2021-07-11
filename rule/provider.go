@@ -12,11 +12,12 @@ import (
 	"github.com/Dreamacro/clash/adapter/provider"
 	"github.com/Dreamacro/clash/common/structure"
 	C "github.com/Dreamacro/clash/constant"
+	providerTypes "github.com/Dreamacro/clash/constant/provider"
 )
 
 // RuleProvider interface
 type RuleProvider interface {
-	provider.Provider
+	providerTypes.Provider
 	Rules() []C.Rule
 }
 
@@ -69,8 +70,8 @@ func (rp *ruleSetProvider) Initial() error {
 	return nil
 }
 
-func (rp *ruleSetProvider) Type() provider.ProviderType {
-	return provider.Rule
+func (rp *ruleSetProvider) Type() providerTypes.ProviderType {
+	return providerTypes.Rule
 }
 
 func (rp *ruleSetProvider) Rules() []C.Rule {
@@ -168,7 +169,7 @@ func stopRuleProvider(rd *RuleSetProvider) {
 	rd.Fetcher.Destroy()
 }
 
-func NewRuleSetProvider(name string, interval time.Duration, vehicle provider.Vehicle, behavior string) *RuleSetProvider {
+func NewRuleSetProvider(name string, interval time.Duration, vehicle providerTypes.Vehicle, behavior string) *RuleSetProvider {
 
 	rp := &ruleSetProvider{
 		rules:    []C.Rule{},
@@ -208,7 +209,7 @@ func ParseRuleProvider(name string, mapping map[string]interface{}) (RuleProvide
 
 	path := C.Path.Resolve(schema.Path)
 
-	var vehicle provider.Vehicle
+	var vehicle providerTypes.Vehicle
 	switch schema.Type {
 	case "file":
 		vehicle = provider.NewFileVehicle(path)

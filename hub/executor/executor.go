@@ -17,6 +17,7 @@ import (
 	"github.com/Dreamacro/clash/component/trie"
 	"github.com/Dreamacro/clash/config"
 	C "github.com/Dreamacro/clash/constant"
+	providerTypes "github.com/Dreamacro/clash/constant/provider"
 	"github.com/Dreamacro/clash/dns"
 	P "github.com/Dreamacro/clash/listener"
 	authStore "github.com/Dreamacro/clash/listener/auth"
@@ -71,13 +72,13 @@ func ApplyConfig(cfg *config.Config, force bool) {
 	defer mux.Unlock()
 
 	updateUsers(cfg.Users)
-	updateGeneral(cfg.General, force)
 	updateProxies(cfg.Proxies, cfg.Providers)
 	updateRules(cfg.Rules, cfg.RulesProviders)
-	updateDNS(cfg.DNS)
 	updateHosts(cfg.Hosts)
-	updateExperimental(cfg)
 	updateProfile(cfg)
+	updateGeneral(cfg.General, force)
+	updateDNS(cfg.DNS)
+	updateExperimental(cfg)
 }
 
 func GetGeneral() *config.General {
@@ -164,7 +165,7 @@ func updateHosts(tree *trie.DomainTrie) {
 	resolver.DefaultHosts = tree
 }
 
-func updateProxies(proxies map[string]C.Proxy, providers map[string]provider.ProxyProvider) {
+func updateProxies(proxies map[string]C.Proxy, providers map[string]providerTypes.ProxyProvider) {
 	tunnel.UpdateProxies(proxies, providers)
 }
 

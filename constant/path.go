@@ -9,22 +9,20 @@ import (
 const Name = "clash"
 
 // Path is used to get the configuration path
-var Path *path
-
-type path struct {
-	homeDir    string
-	configFile string
-	extraMMDB  bool
-}
-
-func init() {
+var Path = func() *path {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		homeDir, _ = os.Getwd()
 	}
 
 	homeDir = P.Join(homeDir, ".config", Name)
-	Path = &path{homeDir: homeDir, configFile: "config.yaml"}
+	return &path{homeDir: homeDir, configFile: "config.yaml"}
+}()
+
+type path struct {
+	homeDir    string
+	configFile string
+	extraMMDB  bool
 }
 
 // SetHomeDir is used to set the configuration path

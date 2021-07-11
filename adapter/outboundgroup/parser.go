@@ -8,6 +8,7 @@ import (
 	"github.com/Dreamacro/clash/adapter/provider"
 	"github.com/Dreamacro/clash/common/structure"
 	C "github.com/Dreamacro/clash/constant"
+	types "github.com/Dreamacro/clash/constant/provider"
 )
 
 var (
@@ -29,7 +30,7 @@ type GroupCommonOption struct {
 	DisableUDP bool     `group:"disable-udp,omitempty"`
 }
 
-func ParseProxyGroup(config map[string]interface{}, proxyMap map[string]C.Proxy, providersMap map[string]provider.ProxyProvider) (C.ProxyAdapter, error) {
+func ParseProxyGroup(config map[string]interface{}, proxyMap map[string]C.Proxy, providersMap map[string]types.ProxyProvider) (C.ProxyAdapter, error) {
 	decoder := structure.NewDecoder(structure.Option{TagName: "group", WeaklyTypedInput: true})
 
 	groupOption := &GroupCommonOption{
@@ -45,7 +46,7 @@ func ParseProxyGroup(config map[string]interface{}, proxyMap map[string]C.Proxy,
 
 	groupName := groupOption.Name
 
-	providers := []provider.ProxyProvider{}
+	providers := []types.ProxyProvider{}
 
 	ignoreURLTest := false
 
@@ -148,15 +149,15 @@ func getProxies(mapping map[string]C.Proxy, list []string) ([]C.Proxy, error) {
 	return ps, nil
 }
 
-func getProviders(mapping map[string]provider.ProxyProvider, list []string) ([]provider.ProxyProvider, error) {
-	var ps []provider.ProxyProvider
+func getProviders(mapping map[string]types.ProxyProvider, list []string) ([]types.ProxyProvider, error) {
+	var ps []types.ProxyProvider
 	for _, name := range list {
 		p, ok := mapping[name]
 		if !ok {
 			return nil, fmt.Errorf("'%s' not found", name)
 		}
 
-		if p.VehicleType() == provider.Compatible {
+		if p.VehicleType() == types.Compatible {
 			return nil, fmt.Errorf("proxy group %s can't contains in `use`", name)
 		}
 		ps = append(ps, p)

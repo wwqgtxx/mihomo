@@ -4,13 +4,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"gopkg.in/yaml.v2"
+	"runtime"
+	"strings"
+	"time"
+
 	"github.com/Dreamacro/clash/adapter/provider"
 	"github.com/Dreamacro/clash/common/structure"
 	C "github.com/Dreamacro/clash/constant"
 	providerTypes "github.com/Dreamacro/clash/constant/provider"
-	"gopkg.in/yaml.v2"
-	"runtime"
-	"time"
 )
 
 // RuleProvider interface
@@ -30,7 +32,9 @@ type RuleSetProvider struct {
 
 type ruleSetProvider struct {
 	*provider.Fetcher
-	rules []C.Rule
+	rules     []C.Rule
+	behavior  string
+	ruleCount int
 }
 
 func (rp *ruleSetProvider) MarshalJSON() ([]byte, error) {
@@ -38,7 +42,8 @@ func (rp *ruleSetProvider) MarshalJSON() ([]byte, error) {
 		"name":        rp.Name(),
 		"type":        rp.Type().String(),
 		"vehicleType": rp.VehicleType().String(),
-		"rules":       rp.rules,
+		"behavior":    rp.behavior,
+		"ruleCount":   rp.ruleCount,
 		"updatedAt":   rp.UpdateAt(),
 	})
 }
@@ -73,6 +78,12 @@ func (rp *ruleSetProvider) Rules() []C.Rule {
 	return rp.rules
 }
 
+type RuleTree interface {
+	C.Rule
+	InsertN() int
+	Insert(string) error
+}
+
 func rulesParse(buf []byte, behavior string) (interface{}, error) {
 	schema := &RuleSchema{}
 
@@ -84,13 +95,57 @@ func rulesParse(buf []byte, behavior string) (interface{}, error) {
 		return nil, errors.New("file must have a `payload` field")
 	}
 
-	rules := []C.Rule{}
+	var rules []C.Rule
+	var rt RuleTree
 	for idx, str := range schema.Payload {
-		rule, err := parseProviderRule(str, behavior)
-		if err != nil {
-			return nil, fmt.Errorf("rule %d error: %w", idx, err)
+		switch behavior {
+		case "domain":
+			if rt == nil {
+				rt = newEmptyDomainTree()
+			}
+			err := rt.Insert(str)
+			if err != nil {
+				return nil, fmt.Errorf("rule %d error: %w", idx, err)
+			}
+			if rules == nil {
+				rules = []C.Rule{rt}
+			}
+		case "ipcidr":
+			if rt == nil {
+				rt = newEmptyIPCIDRTrie()
+			}
+			err := rt.Insert(str)
+			if err != nil {
+				return nil, fmt.Errorf("rule %d error: %w", idx, err)
+			}
+			if rules == nil {
+				rules = []C.Rule{rt}
+			}
+		default: // classical
+			line := str
+
+			var rule []string
+			var payload string
+			var params []string
+
+			rule = trimArr(strings.Split(line, ","))
+			switch l := len(rule); {
+			case l == 2:
+				payload = rule[1]
+			case l >= 3:
+				payload = rule[1]
+				params = rule[2:]
+			default:
+				return nil, fmt.Errorf("rules[%s] error: format invalid", line)
+			}
+			rule = trimArr(rule)
+			params = trimArr(params)
+			parsed, err := ParseRule(rule[0], payload, "", params)
+			if err != nil {
+				return nil, fmt.Errorf("rule %d error: %w", idx, err)
+			}
+			rules = append(rules, parsed)
 		}
-		rules = append(rules, rule)
 	}
 
 	if len(rules) == 0 {
@@ -102,6 +157,12 @@ func rulesParse(buf []byte, behavior string) (interface{}, error) {
 
 func (rp *ruleSetProvider) setRules(rules []C.Rule) {
 	rp.rules = rules
+	rp.ruleCount = len(rp.rules)
+	if rp.ruleCount == 1 && rp.behavior != "classical" {
+		if rt, ok := rp.rules[0].(RuleTree); ok {
+			rp.ruleCount = rt.InsertN()
+		}
+	}
 }
 
 func stopRuleProvider(rd *RuleSetProvider) {
@@ -110,21 +171,22 @@ func stopRuleProvider(rd *RuleSetProvider) {
 
 func NewRuleSetProvider(name string, interval time.Duration, vehicle providerTypes.Vehicle, behavior string) *RuleSetProvider {
 
-	rd := &ruleSetProvider{
-		rules: []C.Rule{},
+	rp := &ruleSetProvider{
+		rules:    []C.Rule{},
+		behavior: behavior,
 	}
 
 	onUpdate := func(elm interface{}) {
 		ret := elm.([]C.Rule)
-		rd.setRules(ret)
+		rp.setRules(ret)
 	}
 
-	parse := func(bytes []byte) (interface{}, error) { return rulesParse(bytes, behavior) }
+	parse := func(bytes []byte) (interface{}, error) { return rulesParse(bytes, rp.behavior) }
 
 	fetcher := provider.NewFetcher(name, interval, vehicle, parse, onUpdate)
-	rd.Fetcher = fetcher
+	rp.Fetcher = fetcher
 
-	wrapper := &RuleSetProvider{rd}
+	wrapper := &RuleSetProvider{rp}
 	runtime.SetFinalizer(wrapper, stopRuleProvider)
 	return wrapper
 }

@@ -66,7 +66,7 @@ func parseProviderRule(str string, behavior string) (C.Rule, error) {
 
 	switch behavior {
 	case "domain":
-		parsed, parseErr = NewDomainTrie(str, "")
+		parsed, parseErr = NewDomainTree(str, "")
 	case "ipcidr":
 		parsed, parseErr = NewIPCIDR(str, "")
 	default:

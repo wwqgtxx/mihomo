@@ -2,7 +2,6 @@ package dns
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -21,7 +20,6 @@ import (
 )
 
 var (
-	globalSessionCache  = tls.NewLRUClientSessionCache(64)
 	useRemoteDnsDefault = true
 )
 

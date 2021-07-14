@@ -3,7 +3,6 @@ package dns
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -81,7 +80,6 @@ func newDoHClient(url string, r *Resolver, useRemote bool) *dohClient {
 	return &dohClient{
 		url: url,
 		transport: &http.Transport{
-			TLSClientConfig:   &tls.Config{ClientSessionCache: globalSessionCache},
 			ForceAttemptHTTP2: true,
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 				if useRemote {

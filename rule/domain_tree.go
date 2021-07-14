@@ -51,7 +51,7 @@ func (d *DomainTree) Insert(domain string) error {
 	return nil
 }
 
-func newEmptyDomainTrie() *DomainTree {
+func newEmptyDomainTree() *DomainTree {
 	dt := trie.New()
 	return &DomainTree{
 		dt:      dt,
@@ -59,8 +59,8 @@ func newEmptyDomainTrie() *DomainTree {
 	}
 }
 
-func NewDomainTrie(domain string, adapter string) (*DomainTree, error) {
-	dt := newEmptyDomainTrie()
+func NewDomainTree(domain string, adapter string) (*DomainTree, error) {
+	dt := newEmptyDomainTree()
 	dt.adapter = adapter
 	dt.domain = domain
 	err := dt.Insert(domain)

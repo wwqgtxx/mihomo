@@ -101,7 +101,7 @@ func rulesParse(buf []byte, behavior string) (interface{}, error) {
 		switch behavior {
 		case "domain":
 			if rt == nil {
-				rt = newEmptyDomainTrie()
+				rt = newEmptyDomainTree()
 			}
 			err := rt.Insert(str)
 			if err != nil {

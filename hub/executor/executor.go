@@ -70,7 +70,6 @@ func ApplyConfig(cfg *config.Config, force bool) {
 	defer mux.Unlock()
 
 	updateUsers(cfg.Users)
-	updateDNS(cfg.DNS)
 	updateProxies(cfg.Proxies, cfg.Providers)
 	updateRules(cfg.Rules)
 	updateHosts(cfg.Hosts)

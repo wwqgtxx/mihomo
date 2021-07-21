@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/Dreamacro/clash/adapter/inbound"
-	adapters "github.com/Dreamacro/clash/adapter/inbound"
 	C "github.com/Dreamacro/clash/constant"
 	"github.com/Dreamacro/clash/listener/tun/dev"
 	"github.com/Dreamacro/clash/log"
@@ -107,7 +106,7 @@ func NewTunProxy(deviceURL string, tcpIn chan<- C.ConnContext, udpIn chan<- *inb
 		}
 
 		target := getAddr(ep.Info().(*stack.TransportEndpointInfo).ID)
-		tcpIn <- adapters.NewSocket(target, conn, C.TUN)
+		tcpIn <- inbound.NewSocket(target, conn, C.TUN)
 
 	})
 	ipstack.SetTransportProtocolHandler(tcp.ProtocolNumber, tcpFwd.HandlePacket)
@@ -151,7 +150,7 @@ func (t *tunAdapter) udpHandlePacket(id stack.TransportEndpointID, pkt *stack.Pa
 		s:       t.ipstack,
 		payload: pkt.Data().AsRange().ToOwnedView(),
 	}
-	t.udpInbound <- adapters.NewPacket(target, packet, C.TUN)
+	t.udpInbound <- inbound.NewPacket(target, packet, C.TUN)
 
 	return true
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -152,10 +153,15 @@ func Start(addr string) {
 
 	serverAddr = addr
 
-	log.Infoln("RESTful API listening at: %s", addr)
-	err := http.ListenAndServe(addr, C.GetECHandler())
+	l, err := net.Listen("tcp", addr)
 	if err != nil {
-		log.Errorln("External controller error: %s", err.Error())
+		log.Errorln("External controller listen error: %s", err)
+		return
+	}
+	serverAddr = l.Addr().String()
+	log.Infoln("RESTful API listening at: %s", serverAddr)
+	if err = http.Serve(l, C.GetECHandler()); err != nil {
+		log.Errorln("External controller serve error: %s", err)
 	}
 }
 

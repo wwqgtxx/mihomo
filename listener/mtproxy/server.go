@@ -78,7 +78,7 @@ func New(config string, in chan<- C.ConnContext) (*Listener, error) {
 		hl.listeners = append(hl.listeners, l)
 
 		go func() {
-			log.Infoln("MTProxy listening at: %s", addr)
+			log.Infoln("MTProxy listening at: %s", l.Addr().String())
 
 			for {
 				c, err := l.Accept()

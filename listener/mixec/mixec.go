@@ -10,6 +10,7 @@ import (
 	"github.com/Dreamacro/clash/listener/mtproxy"
 	"github.com/Dreamacro/clash/listener/socks"
 	"github.com/Dreamacro/clash/log"
+	"github.com/Dreamacro/clash/transport/socks4"
 	"github.com/Dreamacro/clash/transport/socks5"
 )
 
@@ -42,7 +43,7 @@ func New(config string, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.Packet
 		ml.listeners = append(ml.listeners, l)
 
 		go func() {
-			log.Infoln("MixEC(RESTful Api+socks5+MTProxy+ShadowSocksWS) proxy listening at: %s", addr)
+			log.Infoln("MixEC(RESTful Api+Socks+MTProxy+ShadowSocksWS) proxy listening at: %s", l.Addr().String())
 			for {
 				c, err := l.Accept()
 				if err != nil {
@@ -82,8 +83,10 @@ func handleECConn(conn net.Conn, cl ChanListener, in chan<- C.ConnContext) {
 	}
 
 	switch head[0] {
-	case socks5.Version: // 0x5
-		socks.HandleSocks(bufConn, in)
+	case socks4.Version: // 0x04
+		socks.HandleSocks4(bufConn, in)
+	case socks5.Version: // 0x05
+		socks.HandleSocks5(bufConn, in)
 		return
 	case mtproxy.FakeTLSFirstByte: // 0x16
 		if mtproxy.HandleFakeTLS(bufConn, in) {

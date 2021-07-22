@@ -121,7 +121,7 @@ func (l *Listener) HandleConn(conn net.Conn, in chan<- C.ConnContext) {
 	)
 	serverConn, err := serverProtocol.Handshake(conn)
 	if err != nil {
-		//logger.Warnw("Cannot perform client handshake", "error", err)
+		//log.Warnln("Cannot perform client handshake: %s", err)
 
 		return
 	}

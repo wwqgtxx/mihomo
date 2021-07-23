@@ -15,8 +15,6 @@ import (
 	"github.com/Dreamacro/clash/hub"
 	"github.com/Dreamacro/clash/hub/executor"
 	"github.com/Dreamacro/clash/log"
-
-	_ "net/http/pprof"
 )
 
 var (

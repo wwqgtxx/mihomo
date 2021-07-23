@@ -78,7 +78,7 @@ func New(config string, in chan<- C.ConnContext) (*Listener, error) {
 		hl.listeners = append(hl.listeners, l)
 
 		go func() {
-			log.Infoln("MTProxy listening at: %s", addr)
+			log.Infoln("MTProxy listening at: %s", l.Addr().String())
 
 			for {
 				c, err := l.Accept()
@@ -121,7 +121,7 @@ func (l *Listener) HandleConn(conn net.Conn, in chan<- C.ConnContext) {
 	)
 	serverConn, err := serverProtocol.Handshake(conn)
 	if err != nil {
-		//logger.Warnw("Cannot perform client handshake", "error", err)
+		//log.Warnln("Cannot perform client handshake: %s", err)
 
 		return
 	}

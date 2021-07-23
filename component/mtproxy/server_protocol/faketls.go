@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"encoding/binary"
+	//"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -26,7 +26,7 @@ const (
 
 var (
 	errBadDigest = errors.New("bad digest")
-	errBadTime   = errors.New("bad time")
+	//errBadTime   = errors.New("bad time")
 
 	FakeTLSStartBytes = []byte{
 		0x16,
@@ -103,13 +103,13 @@ func (c *fakeTLSServerProtocol) tlsHandshake(conn io.ReadWriter) error {
 		}
 	}
 
-	timestamp := int64(binary.LittleEndian.Uint32(digest[len(digest)-4:]))
-	createdAt := time.Unix(timestamp, 0)
-	timeDiff := time.Since(createdAt)
+	//timestamp := int64(binary.LittleEndian.Uint32(digest[len(digest)-4:]))
+	//createdAt := time.Unix(timestamp, 0)
+	//timeDiff := time.Since(createdAt)
 
-	if (timeDiff > TimeSkew || timeDiff < -TimeSkew) && timestamp > TimeFromBoot {
-		return errBadTime
-	}
+	//if (timeDiff > TimeSkew || timeDiff < -TimeSkew) && timestamp > TimeFromBoot {
+	//	return errBadTime
+	//}
 
 	serverHello := tlstypes.NewServerHello(clientHello)
 	serverHelloPacket := serverHello.WelcomePacket()

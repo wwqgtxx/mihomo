@@ -53,7 +53,7 @@ func New(config string, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.Packet
 		sl.listeners = append(sl.listeners, l)
 
 		go func() {
-			log.Infoln("ShadowSocks proxy listening at: %s", addr)
+			log.Infoln("ShadowSocks proxy listening at: %s", l.Addr().String())
 			for {
 				c, err := l.Accept()
 				if err != nil {

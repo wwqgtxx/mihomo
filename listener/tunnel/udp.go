@@ -38,7 +38,7 @@ func NewUdp(config string, in chan<- *inbound.PacketAdapter) (*UdpListener, erro
 				return
 			}
 			ul.listeners = append(ul.listeners, l)
-			log.Infoln("Udp tunnel %s <-> %s", addr, target)
+			log.Infoln("Udp tunnel %s <-> %s", l.LocalAddr().String(), target)
 			for {
 				buf := pool.Get(pool.RelayBufferSize)
 				n, remoteAddr, err := l.ReadFrom(buf)

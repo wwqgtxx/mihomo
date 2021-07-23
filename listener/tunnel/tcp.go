@@ -37,7 +37,7 @@ func New(config string, in chan<- C.ConnContext) (*Listener, error) {
 				return
 			}
 			tl.listeners = append(tl.listeners, l)
-			log.Infoln("TCP tunnel %s <-> %s", addr, target)
+			log.Infoln("TCP tunnel %s <-> %s", l.Addr().String(), target)
 			for {
 				c, err := l.Accept()
 				if err != nil {

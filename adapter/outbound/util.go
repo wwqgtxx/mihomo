@@ -44,7 +44,7 @@ func resolveUDPAddr(network, address string) (*net.UDPAddr, error) {
 		return nil, err
 	}
 
-	ip, err := resolver.ResolveIPWithResolver(host, nil)
+	ip, err := resolver.ResolveIPWithResolver(host, resolver.DialerResolver)
 	if err != nil {
 		return nil, err
 	}

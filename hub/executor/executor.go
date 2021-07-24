@@ -107,6 +107,7 @@ func GetGeneral() *config.General {
 		LogLevel:               log.Level(),
 		IPv6:                   !resolver.DisableIPv6,
 		UseRemoteDnsDefault:    dns.UseRemoteDnsDefault(),
+		UseSystemDnsDial:       dns.UseSystemDnsDial(),
 		HealthCheckLazyDefault: provider.HealthCheckLazyDefault(),
 		TouchAfterLazyPassNum:  provider.TouchAfterLazyPassNum(),
 	}
@@ -118,6 +119,7 @@ func updateExperimental(c *config.Config) {}
 
 func updateDNS(c *config.DNS) {
 	if !c.Enable {
+		resolver.DialerResolver = nil
 		resolver.DefaultResolver = nil
 		resolver.DefaultHostMapper = nil
 		dns.ReCreateServer("", nil, nil)
@@ -140,7 +142,7 @@ func updateDNS(c *config.DNS) {
 		Policy:  c.NameServerPolicy,
 	}
 
-	r := dns.NewResolver(cfg)
+	dr, r := dns.NewResolver(cfg)
 	m := dns.NewEnhancer(cfg)
 
 	// reuse cache of old host mapper
@@ -148,8 +150,13 @@ func updateDNS(c *config.DNS) {
 		m.PatchFrom(old.(*dns.ResolverEnhancer))
 	}
 
+	resolver.DialerResolver = dr
 	resolver.DefaultResolver = r
 	resolver.DefaultHostMapper = m
+
+	if dns.UseSystemDnsDial() {
+		resolver.DialerResolver = nil
+	}
 
 	if err := dns.ReCreateServer(c.Listen, r, m); err != nil {
 		log.Errorln("Start DNS server error: %s", err.Error())
@@ -178,6 +185,7 @@ func updateGeneral(general *config.General, force bool) {
 	tunnel.SetMode(general.Mode)
 	resolver.DisableIPv6 = !general.IPv6
 	dns.SetUseRemoteDnsDefault(general.UseRemoteDnsDefault)
+	dns.SetUseSystemDnsDial(general.UseSystemDnsDial)
 	provider.SetHealthCheckLazyDefault(general.HealthCheckLazyDefault)
 	provider.SetTouchAfterLazyPassNum(general.TouchAfterLazyPassNum)
 

@@ -15,6 +15,9 @@ var (
 	// DefaultResolver aim to resolve ip
 	DefaultResolver Resolver
 
+	// DialerResolver resolve ip only for outbound Dialer
+	DialerResolver Resolver
+
 	// DisableIPv6 means don't resolve ipv6 host
 	// default value is true
 	DisableIPv6 = true

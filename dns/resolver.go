@@ -21,6 +21,7 @@ import (
 
 var (
 	useRemoteDnsDefault = true
+	useSystemDnsDial    = false
 )
 
 func UseRemoteDnsDefault() bool {
@@ -29,6 +30,14 @@ func UseRemoteDnsDefault() bool {
 
 func SetUseRemoteDnsDefault(newUseRemoteDnsDefault bool) {
 	useRemoteDnsDefault = newUseRemoteDnsDefault
+}
+
+func UseSystemDnsDial() bool {
+	return useSystemDnsDial
+}
+
+func SetUseSystemDnsDial(newSystemDnsDial bool) {
+	useSystemDnsDial = newSystemDnsDial
 }
 
 type dnsClient interface {
@@ -332,7 +341,7 @@ type Config struct {
 	Policy         map[string]NameServer
 }
 
-func NewResolver(config Config) *Resolver {
+func NewResolver(config Config) (*Resolver, *Resolver) {
 	defaultResolver := &Resolver{
 		main:     transform(config.Default, nil),
 		lruCache: cache.NewLRUCache(cache.WithSize(4096), cache.WithStale(true)),
@@ -370,5 +379,5 @@ func NewResolver(config Config) *Resolver {
 		r.fallbackDomainFilters = fallbackDomainFilters
 	}
 
-	return r
+	return defaultResolver, r
 }

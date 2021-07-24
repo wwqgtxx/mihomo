@@ -42,6 +42,7 @@ type configSchema struct {
 	LogLevel               *log.LogLevel      `json:"log-level"`
 	IPv6                   *bool              `json:"ipv6"`
 	UseRemoteDnsDefault    *bool              `json:"use-remote-dns-default"`
+	UseSystemDnsDial       *bool              `json:"use-system-dns-dial"`
 	HealthCheckLazyDefault *bool              `json:"health-check-lazy-default"`
 	TouchAfterLazyPassNum  *int               `json:"touch-after-lazy-pass-num"`
 }
@@ -108,6 +109,10 @@ func patchConfigs(w http.ResponseWriter, r *http.Request) {
 
 	if general.UseRemoteDnsDefault != nil {
 		dns.SetUseRemoteDnsDefault(*general.UseRemoteDnsDefault)
+	}
+
+	if general.UseSystemDnsDial != nil {
+		dns.SetUseSystemDnsDial(*general.UseSystemDnsDial)
 	}
 
 	if general.HealthCheckLazyDefault != nil {

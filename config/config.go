@@ -34,6 +34,7 @@ type General struct {
 	IPv6                   bool         `json:"ipv6"`
 	Interface              string       `json:"-"`
 	UseRemoteDnsDefault    bool         `json:"use-remote-dns-default"`
+	UseSystemDnsDial       bool         `json:"use-system-dns-dial"`
 	HealthCheckLazyDefault bool         `json:"health-check-lazy-default"`
 	TouchAfterLazyPassNum  int          `json:"touch-after-lazy-pass-num"`
 }
@@ -149,6 +150,7 @@ type RawConfig struct {
 	Secret                 string       `yaml:"secret"`
 	Interface              string       `yaml:"interface-name"`
 	UseRemoteDnsDefault    bool         `yaml:"use-remote-dns-default"`
+	UseSystemDnsDial       bool         `yaml:"use-system-dns-dial"`
 	HealthCheckLazyDefault bool         `yaml:"health-check-lazy-default"`
 	TouchAfterLazyPassNum  int          `yaml:"touch-after-lazy-pass-num"`
 
@@ -182,6 +184,7 @@ func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 		Authentication:         []string{},
 		LogLevel:               log.INFO,
 		UseRemoteDnsDefault:    true,
+		UseSystemDnsDial:       false,
 		HealthCheckLazyDefault: true,
 		TouchAfterLazyPassNum:  0,
 		Hosts:                  map[string]string{},
@@ -198,7 +201,9 @@ func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 			},
 			DefaultNameserver: []string{
 				"114.114.114.114",
+				"223.5.5.5",
 				"8.8.8.8",
+				"1.0.0.1",
 			},
 			NameServer: []string{
 				"https://dns.google/dns-query",
@@ -297,6 +302,7 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 		IPv6:                   cfg.IPv6,
 		Interface:              cfg.Interface,
 		UseRemoteDnsDefault:    cfg.UseRemoteDnsDefault,
+		UseSystemDnsDial:       cfg.UseSystemDnsDial,
 		HealthCheckLazyDefault: cfg.HealthCheckLazyDefault,
 		TouchAfterLazyPassNum:  cfg.TouchAfterLazyPassNum,
 	}, nil
@@ -641,7 +647,7 @@ func parseDNS(cfg RawDNS, hosts *trie.DomainTrie, useRemoteDnsDefault bool) (*DN
 	if len(cfg.DefaultNameserver) == 0 {
 		return nil, errors.New("default nameserver should have at least one nameserver")
 	}
-	if dnsCfg.DefaultNameserver, err = parseNameServer(cfg.DefaultNameserver, useRemoteDnsDefault); err != nil {
+	if dnsCfg.DefaultNameserver, err = parseNameServer(cfg.DefaultNameserver, false); err != nil {
 		return nil, err
 	}
 	// check default nameserver is pure ip addr

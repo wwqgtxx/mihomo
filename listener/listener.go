@@ -88,7 +88,7 @@ func ReCreateHTTP(port int, tcpIn chan<- C.ConnContext) error {
 	addr := genAddr(bindAddress, port, allowLan)
 
 	if httpListener != nil {
-		if httpListener.Address() == addr {
+		if httpListener.RawAddress() == addr {
 			return nil
 		}
 		httpListener.Close()
@@ -119,7 +119,7 @@ func ReCreateSocks(port int, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.P
 	shouldUDPIgnore := false
 
 	if socksListener != nil {
-		if socksListener.Address() != addr {
+		if socksListener.RawAddress() != addr {
 			socksListener.Close()
 			socksListener = nil
 		} else {
@@ -128,7 +128,7 @@ func ReCreateSocks(port int, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.P
 	}
 
 	if socksUDPListener != nil {
-		if socksUDPListener.Address() != addr {
+		if socksUDPListener.RawAddress() != addr {
 			socksUDPListener.Close()
 			socksUDPListener = nil
 		} else {
@@ -202,7 +202,7 @@ func ReCreateRedir(port int, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.P
 	addr := genAddr(bindAddress, port, allowLan)
 
 	if redirListener != nil {
-		if redirListener.Address() == addr {
+		if redirListener.RawAddress() == addr {
 			return nil
 		}
 		redirListener.Close()
@@ -210,7 +210,7 @@ func ReCreateRedir(port int, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.P
 	}
 
 	if redirUDPListener != nil {
-		if redirUDPListener.Address() == addr {
+		if redirUDPListener.RawAddress() == addr {
 			return nil
 		}
 		redirUDPListener.Close()
@@ -299,7 +299,7 @@ func ReCreateTProxy(port int, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.
 	addr := genAddr(bindAddress, port, allowLan)
 
 	if tproxyListener != nil {
-		if tproxyListener.Address() == addr {
+		if tproxyListener.RawAddress() == addr {
 			return nil
 		}
 		tproxyListener.Close()
@@ -307,7 +307,7 @@ func ReCreateTProxy(port int, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.
 	}
 
 	if tproxyUDPListener != nil {
-		if tproxyUDPListener.Address() == addr {
+		if tproxyUDPListener.RawAddress() == addr {
 			return nil
 		}
 		tproxyUDPListener.Close()
@@ -343,7 +343,7 @@ func ReCreateMixed(port int, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.P
 	shouldUDPIgnore := false
 
 	if mixedListener != nil {
-		if mixedListener.Address() != addr {
+		if mixedListener.RawAddress() != addr {
 			mixedListener.Close()
 			mixedListener = nil
 		} else {
@@ -351,7 +351,7 @@ func ReCreateMixed(port int, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.P
 		}
 	}
 	if mixedUDPLister != nil {
-		if mixedUDPLister.Address() != addr {
+		if mixedUDPLister.RawAddress() != addr {
 			mixedUDPLister.Close()
 			mixedUDPLister = nil
 		} else {

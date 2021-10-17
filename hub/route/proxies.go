@@ -10,6 +10,7 @@ import (
 	"github.com/Dreamacro/clash/adapter"
 	"github.com/Dreamacro/clash/adapter/outboundgroup"
 	"github.com/Dreamacro/clash/component/profile/cachefile"
+	"github.com/Dreamacro/clash/component/profile/cachefileplain"
 	C "github.com/Dreamacro/clash/constant"
 	"github.com/Dreamacro/clash/tunnel"
 
@@ -93,6 +94,8 @@ func updateProxy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cachefile.Cache().SetSelected(proxy.Name(), req.Name)
+	cachefileplain.Cache().SetSelected(proxy.Name(), req.Name)
+
 	render.NoContent(w, r)
 }
 

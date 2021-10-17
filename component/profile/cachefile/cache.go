@@ -2,7 +2,7 @@ package cachefile
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/gob"
 	"os"
 	"sync"
 	"time"
@@ -150,7 +150,7 @@ func migrateCache() {
 		Selected: map[string]string{},
 	}
 	bufReader := bytes.NewBuffer(buf)
-	json.NewDecoder(bufReader).Decode(model)
+	gob.NewDecoder(bufReader).Decode(model)
 
 	// write to new cache file
 	db, err := bbolt.Open(C.Path.Cache(), fileMode, nil)

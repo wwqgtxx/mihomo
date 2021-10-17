@@ -13,6 +13,7 @@ import (
 	"github.com/Dreamacro/clash/component/iface"
 	"github.com/Dreamacro/clash/component/profile"
 	"github.com/Dreamacro/clash/component/profile/cachefile"
+	"github.com/Dreamacro/clash/component/profile/cachefileplain"
 	"github.com/Dreamacro/clash/component/resolver"
 	"github.com/Dreamacro/clash/component/trie"
 	"github.com/Dreamacro/clash/config"
@@ -264,11 +265,38 @@ func updateProfile(cfg *config.Config) {
 	profile.StoreSelected.Store(profileCfg.StoreSelected)
 	if profileCfg.StoreSelected {
 		patchSelectGroup(cfg.Proxies)
+		patchSelectGroupPlain(cfg.Proxies)
 	}
 }
 
 func patchSelectGroup(proxies map[string]C.Proxy) {
 	mapping := cachefile.Cache().SelectedMap()
+	if mapping == nil {
+		return
+	}
+
+	for name, proxy := range proxies {
+		outbound, ok := proxy.(*adapter.Proxy)
+		if !ok {
+			continue
+		}
+
+		selector, ok := outbound.ProxyAdapter.(*outboundgroup.Selector)
+		if !ok {
+			continue
+		}
+
+		selected, exist := mapping[name]
+		if !exist {
+			continue
+		}
+
+		selector.Set(selected)
+	}
+}
+
+func patchSelectGroupPlain(proxies map[string]C.Proxy) {
+	mapping := cachefileplain.Cache().SelectedMap()
 	if mapping == nil {
 		return
 	}

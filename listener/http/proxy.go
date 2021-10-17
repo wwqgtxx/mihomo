@@ -1,6 +1,7 @@
 package http
 
 import (
+	"fmt"
 	"net"
 	"net/http"
 	"strings"
@@ -43,11 +44,8 @@ func HandleConn(c net.Conn, in chan<- C.ConnContext, cache *cache.Cache) {
 
 		if trusted {
 			if request.Method == http.MethodConnect {
-				resp = responseWith(200)
-				resp.Status = "Connection established"
-				resp.ContentLength = -1
-
-				if resp.Write(conn) != nil {
+				// Manual writing to support CONNECT for http 1.0 (workaround for uplay client)
+				if _, err = fmt.Fprintf(conn, "HTTP/%d.%d %03d %s\r\n\r\n", request.ProtoMajor, request.ProtoMinor, http.StatusOK, "Connection established"); err != nil {
 					break // close connection
 				}
 
@@ -63,20 +61,20 @@ func HandleConn(c net.Conn, in chan<- C.ConnContext, cache *cache.Cache) {
 
 			request.RequestURI = ""
 
-			RemoveHopByHopHeaders(request.Header)
-			RemoveExtraHTTPHostPort(request)
+			removeHopByHopHeaders(request.Header)
+			removeExtraHTTPHostPort(request)
 
 			if request.URL.Scheme == "" || request.URL.Host == "" {
-				resp = responseWith(http.StatusBadRequest)
+				resp = responseWith(request, http.StatusBadRequest)
 			} else {
 				resp, err = client.Do(request)
 				if err != nil {
-					resp = responseWith(http.StatusBadGateway)
+					resp = responseWith(request, http.StatusBadGateway)
 				}
 			}
-		}
 
-		RemoveHopByHopHeaders(resp.Header)
+			removeHopByHopHeaders(resp.Header)
+		}
 
 		if keepAlive {
 			resp.Header.Set("Proxy-Connection", "keep-alive")
@@ -98,36 +96,36 @@ func HandleConn(c net.Conn, in chan<- C.ConnContext, cache *cache.Cache) {
 func authenticate(request *http.Request, cache *cache.Cache) *http.Response {
 	authenticator := authStore.Authenticator()
 	if authenticator != nil {
-		credential := ParseBasicProxyAuthorization(request)
+		credential := parseBasicProxyAuthorization(request)
 		if credential == "" {
-			resp := responseWith(http.StatusProxyAuthRequired)
+			resp := responseWith(request, http.StatusProxyAuthRequired)
 			resp.Header.Set("Proxy-Authenticate", "Basic")
 			return resp
 		}
 
 		var authed interface{}
 		if authed = cache.Get(credential); authed == nil {
-			user, pass, err := DecodeBasicProxyAuthorization(credential)
+			user, pass, err := decodeBasicProxyAuthorization(credential)
 			authed = err == nil && authenticator.Verify(user, pass)
 			cache.Put(credential, authed, time.Minute)
 		}
 		if !authed.(bool) {
 			log.Infoln("Auth failed from %s", request.RemoteAddr)
 
-			return responseWith(http.StatusForbidden)
+			return responseWith(request, http.StatusForbidden)
 		}
 	}
 
 	return nil
 }
 
-func responseWith(statusCode int) *http.Response {
+func responseWith(request *http.Request, statusCode int) *http.Response {
 	return &http.Response{
 		StatusCode: statusCode,
 		Status:     http.StatusText(statusCode),
-		Proto:      "HTTP/1.1",
-		ProtoMajor: 1,
-		ProtoMinor: 1,
+		Proto:      request.Proto,
+		ProtoMajor: request.ProtoMajor,
+		ProtoMinor: request.ProtoMinor,
 		Header:     http.Header{},
 	}
 }

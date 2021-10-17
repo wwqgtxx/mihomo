@@ -10,11 +10,12 @@ import (
 	"github.com/oschwald/geoip2-golang"
 )
 
-//go:embed Country.mmdb
-var EmbedMMDB []byte
-
-var mmdb *geoip2.Reader
-var once sync.Once
+var (
+	//go:embed Country.mmdb
+	EmbedMMDB []byte
+	mmdb      *geoip2.Reader
+	once      sync.Once
+)
 
 func LoadFromBytes(buffer []byte) {
 	once.Do(func() {

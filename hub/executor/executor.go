@@ -2,7 +2,6 @@ package executor
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"sync"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/Dreamacro/clash/adapter/provider"
 	"github.com/Dreamacro/clash/component/auth"
 	"github.com/Dreamacro/clash/component/dialer"
+	"github.com/Dreamacro/clash/component/iface"
 	"github.com/Dreamacro/clash/component/profile"
 	"github.com/Dreamacro/clash/component/profile/cachefile"
 	"github.com/Dreamacro/clash/component/resolver"
@@ -26,15 +26,13 @@ import (
 	"github.com/Dreamacro/clash/tunnel"
 )
 
-var (
-	mux sync.Mutex
-)
+var mux sync.Mutex
 
 func readConfig(path string) ([]byte, error) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return nil, err
 	}
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
@@ -134,9 +132,10 @@ func updateDNS(c *config.DNS) {
 		Pool:         c.FakeIPRange,
 		Hosts:        c.Hosts,
 		FallbackFilter: dns.FallbackFilter{
-			GeoIP:  c.FallbackFilter.GeoIP,
-			IPCIDR: c.FallbackFilter.IPCIDR,
-			Domain: c.FallbackFilter.Domain,
+			GeoIP:     c.FallbackFilter.GeoIP,
+			GeoIPCode: c.FallbackFilter.GeoIPCode,
+			IPCIDR:    c.FallbackFilter.IPCIDR,
+			Domain:    c.FallbackFilter.Domain,
 		},
 		Default: c.DefaultNameserver,
 		Policy:  c.NameServerPolicy,
@@ -190,12 +189,12 @@ func updateGeneral(general *config.General, force bool) {
 	provider.SetTouchAfterLazyPassNum(general.TouchAfterLazyPassNum)
 
 	if general.Interface != "" {
-		dialer.DialHook = dialer.DialerWithInterface(general.Interface)
-		dialer.ListenPacketHook = dialer.ListenPacketWithInterface(general.Interface)
+		dialer.DefaultOptions = []dialer.Option{dialer.WithInterface(general.Interface)}
 	} else {
-		dialer.DialHook = nil
-		dialer.ListenPacketHook = nil
+		dialer.DefaultOptions = nil
 	}
+
+	iface.FlushCache()
 
 	if !force {
 		return

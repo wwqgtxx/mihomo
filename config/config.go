@@ -22,7 +22,7 @@ import (
 	R "github.com/Dreamacro/clash/rule"
 	T "github.com/Dreamacro/clash/tunnel"
 
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 )
 
 // General config
@@ -80,14 +80,16 @@ type DNS struct {
 
 // FallbackFilter config
 type FallbackFilter struct {
-	GeoIP  bool         `yaml:"geoip"`
-	IPCIDR []*net.IPNet `yaml:"ipcidr"`
-	Domain []string     `yaml:"domain"`
+	GeoIP     bool         `yaml:"geoip"`
+	GeoIPCode string       `yaml:"geoip-code"`
+	IPCIDR    []*net.IPNet `yaml:"ipcidr"`
+	Domain    []string     `yaml:"domain"`
 }
 
 // Profile config
 type Profile struct {
 	StoreSelected bool `yaml:"store-selected"`
+	StoreFakeIP   bool `yaml:"store-fakeip"`
 }
 
 // Experimental config
@@ -123,9 +125,10 @@ type RawDNS struct {
 }
 
 type RawFallbackFilter struct {
-	GeoIP  bool     `yaml:"geoip"`
-	IPCIDR []string `yaml:"ipcidr"`
-	Domain []string `yaml:"domain"`
+	GeoIP     bool     `yaml:"geoip"`
+	GeoIPCode string   `yaml:"geoip-code"`
+	IPCIDR    []string `yaml:"ipcidr"`
+	Domain    []string `yaml:"domain"`
 }
 
 type RawConfig struct {
@@ -196,8 +199,9 @@ func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 			UseHosts:    true,
 			FakeIPRange: "198.18.0.1/16",
 			FallbackFilter: RawFallbackFilter{
-				GeoIP:  true,
-				IPCIDR: []string{},
+				GeoIP:     true,
+				GeoIPCode: "CN",
+				IPCIDR:    []string{},
 			},
 			DefaultNameserver: []string{
 				"114.114.114.114",
@@ -215,7 +219,7 @@ func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 		},
 	}
 
-	if err := yaml.Unmarshal(buf, &rawCfg); err != nil {
+	if err := yaml.Unmarshal(buf, rawCfg); err != nil {
 		return nil, err
 	}
 
@@ -254,7 +258,7 @@ func ParseRawConfig(rawCfg *RawConfig) (*Config, error) {
 	}
 	config.Hosts = hosts
 
-	dnsCfg, err := parseDNS(rawCfg.DNS, hosts, rawCfg.UseRemoteDnsDefault)
+	dnsCfg, err := parseDNS(rawCfg, hosts)
 	if err != nil {
 		return nil, err
 	}
@@ -566,6 +570,9 @@ func parseNameServer(servers []string, useRemoteDnsDefault bool) ([]dns.NameServ
 			clearURL := url.URL{Scheme: "https", Host: u.Host, Path: u.Path}
 			addr = clearURL.String()
 			dnsNetType = "https" // DNS over HTTPS
+		case "dhcp":
+			addr = u.Host
+			dnsNetType = "dhcp" // UDP from DHCP
 		default:
 			return nil, fmt.Errorf("DNS NameServer[%d] unsupport scheme: %s", idx, u.Scheme)
 		}
@@ -617,7 +624,8 @@ func parseFallbackIPCIDR(ips []string) ([]*net.IPNet, error) {
 	return ipNets, nil
 }
 
-func parseDNS(cfg RawDNS, hosts *trie.DomainTrie, useRemoteDnsDefault bool) (*DNS, error) {
+func parseDNS(rawCfg *RawConfig, hosts *trie.DomainTrie) (*DNS, error) {
+	cfg := rawCfg.DNS
 	if cfg.Enable && len(cfg.NameServer) == 0 {
 		return nil, fmt.Errorf("if DNS configuration is turned on, NameServer cannot be empty")
 	}
@@ -632,15 +640,15 @@ func parseDNS(cfg RawDNS, hosts *trie.DomainTrie, useRemoteDnsDefault bool) (*DN
 		},
 	}
 	var err error
-	if dnsCfg.NameServer, err = parseNameServer(cfg.NameServer, useRemoteDnsDefault); err != nil {
+	if dnsCfg.NameServer, err = parseNameServer(cfg.NameServer, rawCfg.UseRemoteDnsDefault); err != nil {
 		return nil, err
 	}
 
-	if dnsCfg.Fallback, err = parseNameServer(cfg.Fallback, useRemoteDnsDefault); err != nil {
+	if dnsCfg.Fallback, err = parseNameServer(cfg.Fallback, rawCfg.UseRemoteDnsDefault); err != nil {
 		return nil, err
 	}
 
-	if dnsCfg.NameServerPolicy, err = parseNameServerPolicy(cfg.NameServerPolicy, useRemoteDnsDefault); err != nil {
+	if dnsCfg.NameServerPolicy, err = parseNameServerPolicy(cfg.NameServerPolicy, rawCfg.UseRemoteDnsDefault); err != nil {
 		return nil, err
 	}
 
@@ -673,7 +681,12 @@ func parseDNS(cfg RawDNS, hosts *trie.DomainTrie, useRemoteDnsDefault bool) (*DN
 			}
 		}
 
-		pool, err := fakeip.New(ipnet, 1000, host)
+		pool, err := fakeip.New(fakeip.Options{
+			IPNet:       ipnet,
+			Size:        1000,
+			Host:        host,
+			Persistence: rawCfg.Profile.StoreFakeIP,
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -682,6 +695,7 @@ func parseDNS(cfg RawDNS, hosts *trie.DomainTrie, useRemoteDnsDefault bool) (*DN
 	}
 
 	dnsCfg.FallbackFilter.GeoIP = cfg.FallbackFilter.GeoIP
+	dnsCfg.FallbackFilter.GeoIPCode = cfg.FallbackFilter.GeoIPCode
 	if fallbackip, err := parseFallbackIPCIDR(cfg.FallbackFilter.IPCIDR); err == nil {
 		dnsCfg.FallbackFilter.IPCIDR = fallbackip
 	}

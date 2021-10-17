@@ -1,15 +1,18 @@
-name: Go
-on: [push, pull_request]
+name: Release
+on: [push]
 jobs:
-
   build:
-    name: Build
     runs-on: ubuntu-latest
     steps:
+      - name: Get latest go version
+        id: version
+        run: |
+          echo ::set-output name=go_version::$(curl -s https://raw.githubusercontent.com/actions/go-versions/main/versions-manifest.json | grep -oE '"version": "[0-9]{1}.[0-9]{1,}(.[0-9]{1,})?"' | head -1 | cut -d':' -f2 | sed 's/ //g; s/"//g')
+
       - name: Setup Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.17
+          go-version: ${{ steps.version.outputs.go_version }}
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2
@@ -22,12 +25,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      - name: Get dependencies, run test and static check
+      - name: Get dependencies, run test
         run: |
           go test ./...
-          go vet ./...
-          go install honnef.co/go/tools/cmd/staticcheck@latest
-          staticcheck -- $(go list ./...)
 
       - name: Update Country.mmdb
         run: |

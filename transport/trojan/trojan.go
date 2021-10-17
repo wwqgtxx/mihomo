@@ -1,7 +1,6 @@
 package trojan
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"crypto/tls"
 	"encoding/binary"
@@ -9,9 +8,12 @@ import (
 	"errors"
 	"io"
 	"net"
+	"net/http"
 	"sync"
 
+	"github.com/Dreamacro/clash/common/pool"
 	"github.com/Dreamacro/clash/transport/socks5"
+	"github.com/Dreamacro/clash/transport/vmess"
 )
 
 const (
@@ -22,8 +24,6 @@ const (
 var (
 	defaultALPN = []string{"h2", "http/1.1"}
 	crlf        = []byte{'\r', '\n'}
-
-	bufPool = sync.Pool{New: func() interface{} { return &bytes.Buffer{} }}
 )
 
 type Command = byte
@@ -38,6 +38,13 @@ type Option struct {
 	ALPN           []string
 	ServerName     string
 	SkipCertVerify bool
+}
+
+type WebsocketOption struct {
+	Host    string
+	Port    string
+	Path    string
+	Headers http.Header
 }
 
 type Trojan struct {
@@ -66,10 +73,32 @@ func (t *Trojan) StreamConn(conn net.Conn) (net.Conn, error) {
 	return tlsConn, nil
 }
 
+func (t *Trojan) StreamWebsocketConn(conn net.Conn, wsOptions *WebsocketOption) (net.Conn, error) {
+	alpn := defaultALPN
+	if len(t.option.ALPN) != 0 {
+		alpn = t.option.ALPN
+	}
+
+	tlsConfig := &tls.Config{
+		NextProtos:         alpn,
+		MinVersion:         tls.VersionTLS12,
+		InsecureSkipVerify: t.option.SkipCertVerify,
+		ServerName:         t.option.ServerName,
+	}
+
+	return vmess.StreamWebsocketConn(conn, &vmess.WebsocketConfig{
+		Host:      wsOptions.Host,
+		Port:      wsOptions.Port,
+		Path:      wsOptions.Path,
+		Headers:   wsOptions.Headers,
+		TLS:       true,
+		TLSConfig: tlsConfig,
+	})
+}
+
 func (t *Trojan) WriteHeader(w io.Writer, command Command, socks5Addr []byte) error {
-	buf := bufPool.Get().(*bytes.Buffer)
-	defer bufPool.Put(buf)
-	defer buf.Reset()
+	buf := pool.GetBuffer()
+	defer pool.PutBuffer(buf)
 
 	buf.Write(t.hexPassword)
 	buf.Write(crlf)
@@ -89,9 +118,8 @@ func (t *Trojan) PacketConn(conn net.Conn) net.PacketConn {
 }
 
 func writePacket(w io.Writer, socks5Addr, payload []byte) (int, error) {
-	buf := bufPool.Get().(*bytes.Buffer)
-	defer bufPool.Put(buf)
-	defer buf.Reset()
+	buf := pool.GetBuffer()
+	defer pool.PutBuffer(buf)
 
 	buf.Write(socks5Addr)
 	binary.Write(buf, binary.BigEndian, uint16(len(payload)))

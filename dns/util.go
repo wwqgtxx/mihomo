@@ -13,14 +13,12 @@ import (
 	D "github.com/miekg/dns"
 )
 
-var (
-	// EnhancedModeMapping is a mapping for EnhancedMode enum
-	EnhancedModeMapping = map[string]EnhancedMode{
-		NORMAL.String():  NORMAL,
-		FAKEIP.String():  FAKEIP,
-		MAPPING.String(): MAPPING,
-	}
-)
+// EnhancedModeMapping is a mapping for EnhancedMode enum
+var EnhancedModeMapping = map[string]EnhancedMode{
+	NORMAL.String():  NORMAL,
+	FAKEIP.String():  FAKEIP,
+	MAPPING.String(): MAPPING,
+}
 
 const (
 	NORMAL EnhancedMode = iota
@@ -117,8 +115,12 @@ func isIPRequest(q D.Question) bool {
 func transform(servers []NameServer, resolver *Resolver) []dnsClient {
 	ret := []dnsClient{}
 	for _, s := range servers {
-		if s.Net == "https" {
+		switch s.Net {
+		case "https":
 			ret = append(ret, newDoHClient(s.Addr, resolver, s.UseRemote))
+			continue
+		case "dhcp":
+			ret = append(ret, newDHCPClient(s.Addr))
 			continue
 		}
 
@@ -136,6 +138,7 @@ func transform(servers []NameServer, resolver *Resolver) []dnsClient {
 			},
 			port:      port,
 			host:      host,
+			iface:     s.Interface,
 			r:         resolver,
 			useRemote: s.UseRemote,
 		})

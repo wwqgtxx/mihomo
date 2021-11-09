@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/Dreamacro/clash/adapter"
 
+	"github.com/Dreamacro/clash/adapter/outbound"
 	"github.com/Dreamacro/clash/adapter/provider"
 	"github.com/Dreamacro/clash/common/structure"
 	C "github.com/Dreamacro/clash/constant"
@@ -20,6 +21,7 @@ var (
 )
 
 type GroupCommonOption struct {
+	outbound.BasicOption
 	Name       string   `group:"name"`
 	Type       string   `group:"type"`
 	Proxies    []string `group:"proxies,omitempty"`

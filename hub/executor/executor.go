@@ -189,11 +189,7 @@ func updateGeneral(general *config.General, force bool) {
 	provider.SetHealthCheckLazyDefault(general.HealthCheckLazyDefault)
 	provider.SetTouchAfterLazyPassNum(general.TouchAfterLazyPassNum)
 
-	if general.Interface != "" {
-		dialer.DefaultOptions = []dialer.Option{dialer.WithInterface(general.Interface)}
-	} else {
-		dialer.DefaultOptions = nil
-	}
+	dialer.DefaultInterface.Store(general.Interface)
 
 	iface.FlushCache()
 

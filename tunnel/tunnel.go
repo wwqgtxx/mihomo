@@ -108,8 +108,8 @@ func processUDP() {
 
 func process() {
 	numUDPWorkers := 4
-	if runtime.NumCPU() > numUDPWorkers {
-		numUDPWorkers = runtime.NumCPU()
+	if num := runtime.GOMAXPROCS(0); num > numUDPWorkers {
+		numUDPWorkers = num
 	}
 	for i := 0; i < numUDPWorkers; i++ {
 		go processUDP()
@@ -143,8 +143,10 @@ func preHandleMetadata(metadata *C.Metadata) error {
 		if exist {
 			metadata.Host = host
 			metadata.AddrType = C.AtypDomainName
+			metadata.DNSMode = C.DNSMapping
 			if resolver.FakeIPEnabled() {
 				metadata.DstIP = nil
+				metadata.DNSMode = C.DNSFakeIP
 			} else if node := resolver.DefaultHosts.Search(host); node != nil {
 				// redir-host should lookup the hosts
 				metadata.DstIP = node.Data.(net.IP)
@@ -229,7 +231,7 @@ func handleUDPConn(packet *inbound.PacketAdapter) {
 
 		ctx, cancel := context.WithTimeout(context.Background(), C.DefaultUDPTimeout)
 		defer cancel()
-		rawPc, err := proxy.ListenPacketContext(ctx, metadata)
+		rawPc, err := proxy.ListenPacketContext(ctx, metadata.Pure())
 		if err != nil {
 			if rule == nil {
 				log.Warnln("[%s][UDP] dial %s to %s error: %s", metadata.Type.String(), proxy.Name(), metadata.RemoteAddress(), err.Error())
@@ -281,7 +283,7 @@ func handleTCPConn(connCtx C.ConnContext) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), C.DefaultTCPTimeout)
 	defer cancel()
-	remoteConn, err := proxy.DialContext(ctx, metadata)
+	remoteConn, err := proxy.DialContext(ctx, metadata.Pure())
 	if err != nil {
 		if rule == nil {
 			log.Warnln("[%s][TCP] dial %s to %s error: %s", metadata.Type.String(), proxy.Name(), metadata.RemoteAddress(), err.Error())

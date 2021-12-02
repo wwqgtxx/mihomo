@@ -77,6 +77,7 @@ func ApplyConfig(cfg *config.Config, force bool) {
 	updateProfile(cfg)
 	updateGeneral(cfg.General, force)
 	updateDNS(cfg.DNS)
+	updateTun(cfg.Tun)
 	updateExperimental(cfg)
 }
 
@@ -93,6 +94,7 @@ func GetGeneral() *config.General {
 			SocksPort:         ports.SocksPort,
 			RedirPort:         ports.RedirPort,
 			MixedPort:         ports.MixedPort,
+			Tun:               P.Tun(),
 			MixECConfig:       ports.MixECConfig,
 			TProxyPort:        ports.TProxyPort,
 			ShadowSocksConfig: ports.ShadowSocksConfig,
@@ -101,6 +103,7 @@ func GetGeneral() *config.General {
 			MTProxyConfig:     ports.MTProxyConfig,
 			Authentication:    authenticator,
 			AllowLan:          P.AllowLan(),
+			BindAddress:       P.BindAddress(),
 		},
 		Mode:                   tunnel.Mode(),
 		LogLevel:               log.Level(),
@@ -180,6 +183,18 @@ func updateRules(rules []C.Rule, providers map[string]R.RuleProvider) {
 	tunnel.UpdateRules(rules, providers)
 }
 
+func updateTun(tun *config.Tun) {
+	if tun == nil {
+		return
+	}
+	tcpIn := tunnel.TCPIn()
+	udpIn := tunnel.UDPIn()
+
+	if err := P.ReCreateTun(*tun, tcpIn, udpIn); err != nil {
+		log.Errorln("Start Tun interface error: %s", err.Error())
+	}
+}
+
 func updateGeneral(general *config.General, force bool) {
 	log.SetLevel(general.LogLevel)
 	tunnel.SetMode(general.Mode)
@@ -190,6 +205,7 @@ func updateGeneral(general *config.General, force bool) {
 	provider.SetTouchAfterLazyPassNum(general.TouchAfterLazyPassNum)
 
 	dialer.DefaultInterface.Store(general.Interface)
+	dialer.GeneralInterface.Store(general.Interface)
 
 	iface.FlushCache()
 
@@ -220,6 +236,7 @@ func updateGeneral(general *config.General, force bool) {
 
 	if err := P.ReCreateTProxy(general.TProxyPort, tcpIn, udpIn); err != nil {
 		log.Errorln("Start TProxy server error: %s", err.Error())
+		general.TProxyPort = 0
 	}
 
 	if err := P.ReCreateMixed(general.MixedPort, tcpIn, udpIn); err != nil {
@@ -315,4 +332,8 @@ func patchSelectGroupPlain(proxies map[string]C.Proxy) {
 
 		selector.Set(selected)
 	}
+}
+
+func CleanUp() {
+	P.CleanUp()
 }

@@ -25,6 +25,7 @@ const (
 	TCPTUN
 	UDPTUN
 	MTPROXY
+	TUN
 	DNS
 )
 
@@ -65,6 +66,8 @@ func (t Type) String() string {
 		return "UdpTun"
 	case MTPROXY:
 		return "MTProxy"
+	case TUN:
+		return "TUN"
 	case DNS:
 		return "DNS"
 	default:

@@ -5,6 +5,7 @@ import "go.uber.org/atomic"
 var (
 	DefaultOptions   []Option
 	DefaultInterface = atomic.NewString("")
+	GeneralInterface = atomic.NewString("")
 )
 
 type option struct {

@@ -32,6 +32,7 @@ type configSchema struct {
 	RedirPort              *int               `json:"redir-port"`
 	TProxyPort             *int               `json:"tproxy-port"`
 	MixedPort              *int               `json:"mixed-port"`
+	Tun                    *config.Tun        `json:"tun"`
 	MixECConfig            *string            `json:"mixec-config"`
 	ShadowSocksConfig      *string            `json:"ss-config"`
 	TcptunConfig           *string            `json:"tcptun-config"`
@@ -60,7 +61,15 @@ func pointerOrDefault(p *int, def int) int {
 	return def
 }
 
-func pointerOrDefault_string(p *string, def string) string {
+func pointerOrDefaultString(p *string, def string) string {
+	if p != nil {
+		return *p
+	}
+
+	return def
+}
+
+func pointerOrDefaultTun(p *config.Tun, def config.Tun) config.Tun {
 	if p != nil {
 		return *p
 	}
@@ -94,10 +103,11 @@ func patchConfigs(w http.ResponseWriter, r *http.Request) {
 	_ = P.ReCreateRedir(pointerOrDefault(general.RedirPort, ports.RedirPort), tcpIn, udpIn)
 	_ = P.ReCreateTProxy(pointerOrDefault(general.TProxyPort, ports.TProxyPort), tcpIn, udpIn)
 	_ = P.ReCreateMixed(pointerOrDefault(general.MixedPort, ports.MixedPort), tcpIn, udpIn)
-	_ = P.ReCreateMixEC(pointerOrDefault_string(general.MixECConfig, ports.MixECConfig), tcpIn, udpIn)
-	_ = P.ReCreateShadowSocks(pointerOrDefault_string(general.ShadowSocksConfig, ports.ShadowSocksConfig), tcpIn, udpIn)
-	_ = P.ReCreateTcpTun(pointerOrDefault_string(general.TcptunConfig, ports.TcpTunConfig), tcpIn, udpIn)
-	_ = P.ReCreateUdpTun(pointerOrDefault_string(general.UdptunConfig, ports.UdpTunConfig), tcpIn, udpIn)
+	_ = P.ReCreateTun(pointerOrDefaultTun(general.Tun, P.Tun()), tcpIn, udpIn)
+	_ = P.ReCreateMixEC(pointerOrDefaultString(general.MixECConfig, ports.MixECConfig), tcpIn, udpIn)
+	_ = P.ReCreateShadowSocks(pointerOrDefaultString(general.ShadowSocksConfig, ports.ShadowSocksConfig), tcpIn, udpIn)
+	_ = P.ReCreateTcpTun(pointerOrDefaultString(general.TcptunConfig, ports.TcpTunConfig), tcpIn, udpIn)
+	_ = P.ReCreateUdpTun(pointerOrDefaultString(general.UdptunConfig, ports.UdpTunConfig), tcpIn, udpIn)
 
 	if general.Mode != nil {
 		tunnel.SetMode(*general.Mode)

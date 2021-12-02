@@ -49,3 +49,7 @@ func Parse(options ...Option) error {
 	executor.ApplyConfig(cfg, true)
 	return nil
 }
+
+func CleanUp() {
+	executor.CleanUp()
+}

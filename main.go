@@ -109,4 +109,10 @@ func main() {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	<-sigCh
+
+	// clean up
+	log.Warnln("Clash clean up")
+	hub.CleanUp()
+
+	log.Warnln("Clash shutting down")
 }

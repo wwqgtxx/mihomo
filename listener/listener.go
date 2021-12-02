@@ -3,10 +3,14 @@ package proxy
 import (
 	"fmt"
 	"net"
+	"runtime"
 	"strconv"
 	"sync"
 
 	"github.com/Dreamacro/clash/adapter/inbound"
+	"github.com/Dreamacro/clash/component/dialer"
+	"github.com/Dreamacro/clash/component/iface"
+	"github.com/Dreamacro/clash/config"
 	C "github.com/Dreamacro/clash/constant"
 	"github.com/Dreamacro/clash/listener/http"
 	"github.com/Dreamacro/clash/listener/mixec"
@@ -16,6 +20,9 @@ import (
 	"github.com/Dreamacro/clash/listener/shadowsocks"
 	"github.com/Dreamacro/clash/listener/socks"
 	"github.com/Dreamacro/clash/listener/tproxy"
+	"github.com/Dreamacro/clash/listener/tun"
+	"github.com/Dreamacro/clash/listener/tun/dev"
+	"github.com/Dreamacro/clash/listener/tun/ipstack"
 	"github.com/Dreamacro/clash/listener/tunnel"
 	"github.com/Dreamacro/clash/log"
 )
@@ -33,6 +40,7 @@ var (
 	tproxyUDPListener   *tproxy.UDPListener
 	mixedListener       *mixed.Listener
 	mixedUDPLister      *socks.UDPListener
+	tunAdapter          ipstack.TunAdapter
 	mixECListener       *mixec.Listener
 	shadowSocksListener *shadowsocks.Listener
 	tcpTunListener      *tunnel.Listener
@@ -45,6 +53,7 @@ var (
 	redirMux  sync.Mutex
 	tproxyMux sync.Mutex
 	mixedMux  sync.Mutex
+	tunMux    sync.Mutex
 	mixECMux  sync.Mutex
 	ssMux     sync.Mutex
 	tcpTunMux sync.Mutex
@@ -63,6 +72,12 @@ type Ports struct {
 	TcpTunConfig      string `json:"tcptun-config"`
 	UdpTunConfig      string `json:"udptun-config"`
 	MTProxyConfig     string `json:"mtproxy-config"`
+}
+
+func Tun() config.Tun {
+	return config.Tun{
+		Enable: tunAdapter != nil,
+	}
 }
 
 func AllowLan() bool {
@@ -383,6 +398,53 @@ func ReCreateMixed(port int, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.P
 	return nil
 }
 
+func ReCreateTun(conf config.Tun, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.PacketAdapter) error {
+	tunMux.Lock()
+	defer tunMux.Unlock()
+
+	if tunAdapter != nil {
+		tunAdapter.Close()
+		tunAdapter = nil
+	}
+
+	generalInterface := dialer.GeneralInterface.Load()
+	defaultInterface := dialer.DefaultInterface.Load()
+	if !conf.Enable {
+		if defaultInterface != generalInterface {
+			log.Infoln("Use interface name: %s", generalInterface)
+			dialer.DefaultInterface.Store(generalInterface)
+			iface.FlushCache()
+		}
+		return nil
+	}
+
+	targetInterface := generalInterface
+	if generalInterface == "" {
+		autoDetectInterfaceName, err := dev.GetAutoDetectInterface()
+		if err == nil {
+			if autoDetectInterfaceName != "" && autoDetectInterfaceName != "<nil>" {
+				targetInterface = autoDetectInterfaceName
+			} else {
+				log.Debugln("Auto detect interface name is empty.")
+			}
+		} else {
+			log.Debugln("Can not find auto detect interface. %s", err.Error())
+		}
+	}
+	if dialer.DefaultInterface.Load() != targetInterface {
+		log.Infoln("Use interface name: %s", targetInterface)
+
+		dialer.DefaultInterface.Store(targetInterface)
+
+		iface.FlushCache()
+	}
+
+	var err error
+	tunAdapter, err = tun.New(conf, tcpIn, udpIn)
+
+	return err
+}
+
 func ReCreateMixEC(config string, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.PacketAdapter) error {
 	mixECMux.Lock()
 	defer mixECMux.Unlock()
@@ -511,4 +573,13 @@ func genAddr(host string, port int, allowLan bool) string {
 	}
 
 	return fmt.Sprintf("127.0.0.1:%d", port)
+}
+
+// CleanUp clean up something
+func CleanUp() {
+	if runtime.GOOS == "windows" {
+		if tunAdapter != nil {
+			tunAdapter.Close()
+		}
+	}
 }

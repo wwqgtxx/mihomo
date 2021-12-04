@@ -95,7 +95,11 @@ type Profile struct {
 
 // Tun config
 type Tun struct {
-	Enable bool `yaml:"enable" json:"enable"`
+	Enable              bool     `yaml:"enable" json:"enable"`
+	Stack               string   `yaml:"stack" json:"stack"`
+	DnsHijack           []string `yaml:"dns-hijack" json:"dns-hijack"`
+	AutoRoute           bool     `yaml:"auto-route" json:"auto-route"`
+	AutoDetectInterface bool     `yaml:"auto-detect-interface" json:"auto-detect-interface"`
 }
 
 // Experimental config
@@ -104,7 +108,6 @@ type Experimental struct{}
 // Config is clash config manager
 type Config struct {
 	General        *General
-	Tun            *Tun
 	DNS            *DNS
 	Experimental   *Experimental
 	Hosts          *trie.DomainTrie
@@ -203,7 +206,11 @@ func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 		Proxy:                  []map[string]interface{}{},
 		ProxyGroup:             []map[string]interface{}{},
 		Tun: Tun{
-			Enable: false,
+			Enable:              false,
+			Stack:               "gvisor",
+			DnsHijack:           []string{"0.0.0.0:53"},
+			AutoDetectInterface: true,
+			AutoRoute:           true,
 		},
 		DNS: RawDNS{
 			Enable:      true,
@@ -223,6 +230,11 @@ func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 			NameServer: []string{
 				"https://8.8.8.8/dns-query",
 				"https://1.0.0.1/dns-query",
+			},
+			FakeIPFilter: []string{
+				"dns.msftnsci.com",
+				"www.msftnsci.com",
+				"www.msftconnecttest.com",
 			},
 		},
 		Profile: Profile{

@@ -77,7 +77,7 @@ func ApplyConfig(cfg *config.Config, force bool) {
 	updateProfile(cfg)
 	updateGeneral(cfg.General, force)
 	updateDNS(cfg.DNS)
-	updateTun(cfg.Tun)
+	updateTun(cfg.General)
 	updateExperimental(cfg)
 }
 
@@ -183,14 +183,14 @@ func updateRules(rules []C.Rule, providers map[string]R.RuleProvider) {
 	tunnel.UpdateRules(rules, providers)
 }
 
-func updateTun(tun *config.Tun) {
-	if tun == nil {
+func updateTun(general *config.General) {
+	if general == nil {
 		return
 	}
 	tcpIn := tunnel.TCPIn()
 	udpIn := tunnel.UDPIn()
 
-	if err := P.ReCreateTun(*tun, tcpIn, udpIn); err != nil {
+	if err := P.ReCreateTun(general.Tun, tcpIn, udpIn); err != nil {
 		log.Errorln("Start Tun interface error: %s", err.Error())
 	}
 }

@@ -18,7 +18,7 @@ func New(conf config.Tun, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.Pack
 	tunAddress := C.TunAddress
 	var tunAdapter ipstack.TunAdapter
 
-	device, err := dev.OpenTunDevice(tunAddress, true)
+	device, err := dev.OpenTunDevice(tunAddress, conf.AutoRoute)
 	if err != nil {
 		return nil, fmt.Errorf("can't open tun: %v", err)
 	}
@@ -29,7 +29,7 @@ func New(conf config.Tun, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.Pack
 		return nil, errors.New("unable to get device mtu")
 	}
 
-	tunAdapter, err = gvisor.NewAdapter(device, tunAddress, tcpIn, udpIn)
+	tunAdapter, err = gvisor.NewAdapter(device, tunAddress, conf, tcpIn, udpIn)
 
 	if err != nil {
 		_ = device.Close()

@@ -59,6 +59,8 @@ var (
 	tcpTunMux sync.Mutex
 	udpTunMux sync.Mutex
 	mtpMux    sync.Mutex
+
+	tunConfig config.Tun
 )
 
 type Ports struct {
@@ -75,8 +77,15 @@ type Ports struct {
 }
 
 func Tun() config.Tun {
+	if tunAdapter == nil {
+		return tunConfig
+	}
 	return config.Tun{
-		Enable: tunAdapter != nil,
+		Enable:              true,
+		Stack:               tunAdapter.Stack(),
+		DnsHijack:           tunAdapter.DnsHijack(),
+		AutoRoute:           tunAdapter.AutoRoute(),
+		AutoDetectInterface: tunAdapter.AutoDetectInterface(),
 	}
 }
 
@@ -402,6 +411,8 @@ func ReCreateTun(conf config.Tun, tcpIn chan<- C.ConnContext, udpIn chan<- *inbo
 	tunMux.Lock()
 	defer tunMux.Unlock()
 
+	tunConfig = conf
+
 	if tunAdapter != nil {
 		tunAdapter.Close()
 		tunAdapter = nil
@@ -419,7 +430,7 @@ func ReCreateTun(conf config.Tun, tcpIn chan<- C.ConnContext, udpIn chan<- *inbo
 	}
 
 	targetInterface := generalInterface
-	if generalInterface == "" {
+	if generalInterface == "" && conf.AutoDetectInterface {
 		autoDetectInterfaceName, err := dev.GetAutoDetectInterface()
 		if err == nil {
 			if autoDetectInterfaceName != "" && autoDetectInterfaceName != "<nil>" {

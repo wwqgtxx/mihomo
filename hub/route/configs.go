@@ -32,7 +32,7 @@ type configSchema struct {
 	RedirPort              *int               `json:"redir-port"`
 	TProxyPort             *int               `json:"tproxy-port"`
 	MixedPort              *int               `json:"mixed-port"`
-	Tun                    *config.Tun        `json:"tun"`
+	Tun                    *tunSchema         `json:"tun"`
 	MixECConfig            *string            `json:"mixec-config"`
 	ShadowSocksConfig      *string            `json:"ss-config"`
 	TcptunConfig           *string            `json:"tcptun-config"`
@@ -46,6 +46,14 @@ type configSchema struct {
 	UseSystemDnsDial       *bool              `json:"use-system-dns-dial"`
 	HealthCheckLazyDefault *bool              `json:"health-check-lazy-default"`
 	TouchAfterLazyPassNum  *int               `json:"touch-after-lazy-pass-num"`
+}
+
+type tunSchema struct {
+	Enable              bool      `yaml:"enable" json:"enable"`
+	Stack               *string   `yaml:"stack" json:"stack"`
+	DnsHijack           *[]string `yaml:"dns-hijack" json:"dns-hijack"`
+	AutoRoute           *bool     `yaml:"auto-route" json:"auto-route"`
+	AutoDetectInterface *bool     `yaml:"auto-detect-interface" json:"auto-detect-interface"`
 }
 
 func getConfigs(w http.ResponseWriter, r *http.Request) {
@@ -69,11 +77,22 @@ func pointerOrDefaultString(p *string, def string) string {
 	return def
 }
 
-func pointerOrDefaultTun(p *config.Tun, def config.Tun) config.Tun {
+func pointerOrDefaultTun(p *tunSchema, def config.Tun) config.Tun {
 	if p != nil {
-		return *p
+		def.Enable = p.Enable
+		if p.Stack != nil {
+			def.Stack = *p.Stack
+		}
+		if p.DnsHijack != nil {
+			def.DnsHijack = *p.DnsHijack
+		}
+		if p.AutoRoute != nil {
+			def.AutoRoute = *p.AutoRoute
+		}
+		if p.AutoDetectInterface != nil {
+			def.AutoDetectInterface = *p.AutoDetectInterface
+		}
 	}
-
 	return def
 }
 

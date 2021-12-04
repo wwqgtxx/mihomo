@@ -4,6 +4,7 @@ package ipstack
 type TunAdapter interface {
 	Close()
 	Stack() string
-	DNSListen() string
+	DnsHijack() []string
 	AutoRoute() bool
+	AutoDetectInterface() bool
 }

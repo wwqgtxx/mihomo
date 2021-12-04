@@ -11,6 +11,7 @@ import (
 	"github.com/Dreamacro/clash/adapter/inbound"
 	"github.com/Dreamacro/clash/common/pool"
 	"github.com/Dreamacro/clash/component/resolver"
+	"github.com/Dreamacro/clash/config"
 	C "github.com/Dreamacro/clash/constant"
 	"github.com/Dreamacro/clash/dns"
 	"github.com/Dreamacro/clash/listener/tun/dev"
@@ -33,32 +34,36 @@ import (
 const nicID tcpip.NICID = 1
 
 type gvisorAdapter struct {
-	device    dev.TunDevice
-	ipstack   *stack.Stack
-	dnsserver *DNSServer
-	udpIn     chan<- *inbound.PacketAdapter
+	device  dev.TunDevice
+	ipstack *stack.Stack
+	udpIn   chan<- *inbound.PacketAdapter
 
-	stackName string
-	autoRoute bool
 	linkCache *channel.Endpoint
 	wg        sync.WaitGroup // wait for goroutines to stop
+
+	dnsServers []*DNSServer
+
+	stackName          string
+	autoRoute          bool
+	autoRouteInterface bool
 
 	writeHandle *channel.NotificationHandle
 }
 
 // GvisorAdapter create GvisorAdapter
-func NewAdapter(device dev.TunDevice, tunAddress string, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.PacketAdapter) (ipstack.TunAdapter, error) {
+func NewAdapter(device dev.TunDevice, tunAddress string, conf config.Tun, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.PacketAdapter) (ipstack.TunAdapter, error) {
 	ipstack := stack.New(stack.Options{
 		NetworkProtocols:   []stack.NetworkProtocolFactory{ipv4.NewProtocol, ipv6.NewProtocol},
 		TransportProtocols: []stack.TransportProtocolFactory{tcp.NewProtocol, udp.NewProtocol},
 	})
 
 	adapter := &gvisorAdapter{
-		device:    device,
-		ipstack:   ipstack,
-		udpIn:     udpIn,
-		stackName: "gvisor",
-		autoRoute: true,
+		device:             device,
+		ipstack:            ipstack,
+		udpIn:              udpIn,
+		stackName:          "gvisor",
+		autoRoute:          conf.AutoRoute,
+		autoRouteInterface: conf.AutoDetectInterface,
 	}
 
 	linkEP, err := adapter.AsLinkEndpoint()
@@ -112,7 +117,7 @@ func NewAdapter(device dev.TunDevice, tunAddress string, tcpIn chan<- C.ConnCont
 	ipstack.SetTransportProtocolHandler(udp.ProtocolNumber, adapter.udpHandlePacket)
 
 	if resolver.DefaultResolver != nil {
-		err = adapter.ReCreateDNSServer(resolver.DefaultResolver.(*dns.Resolver), resolver.DefaultHostMapper.(*dns.ResolverEnhancer), C.TunDnsListen)
+		err = adapter.ReCreateDNSServer(resolver.DefaultResolver.(*dns.Resolver), resolver.DefaultHostMapper.(*dns.ResolverEnhancer), conf.DnsHijack)
 		if err != nil {
 			return nil, err
 		}
@@ -129,11 +134,13 @@ func (t *gvisorAdapter) AutoRoute() bool {
 	return t.autoRoute
 }
 
+func (t *gvisorAdapter) AutoDetectInterface() bool {
+	return t.autoRouteInterface
+}
+
 // Close close the TunAdapter
 func (t *gvisorAdapter) Close() {
-	if t.dnsserver != nil {
-		t.dnsserver.Stop()
-	}
+	t.StopAllDNSServer()
 	if t.ipstack != nil {
 		t.ipstack.Close()
 	}

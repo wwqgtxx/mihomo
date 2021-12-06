@@ -23,6 +23,14 @@ func (ps *Process) RuleType() C.RuleType {
 }
 
 func (ps *Process) Match(metadata *C.Metadata) bool {
+	if metadata.Process != "" {
+		return strings.EqualFold(metadata.Process, ps.process)
+	}
+
+	if metadata.Type == C.TPROXY || metadata.Type == C.DNS {
+		return false
+	}
+
 	key := fmt.Sprintf("%s:%s:%s", metadata.NetWork.String(), metadata.SrcIP.String(), metadata.SrcPort)
 	cached, hit := processCache.Get(key)
 	if !hit {
@@ -41,6 +49,8 @@ func (ps *Process) Match(metadata *C.Metadata) bool {
 
 		cached = name
 	}
+
+	metadata.Process = cached.(string)
 
 	return strings.EqualFold(cached.(string), ps.process)
 }

@@ -91,6 +91,7 @@ type Metadata struct {
 	InPort   string  `json:"inboundPort"`
 	AddrType int     `json:"-"`
 	Host     string  `json:"host"`
+	Process  string  `json:"process"`
 	DNSMode  DNSMode `json:"dnsMode"`
 }
 

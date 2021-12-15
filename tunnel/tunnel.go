@@ -38,7 +38,16 @@ var (
 	udpTimeout = 60 * time.Second
 
 	preProcessCacheFinder, _ = R.NewProcess("", "")
+	preResolveProcessName    = false
 )
+
+func PreResolveProcessName() bool {
+	return preResolveProcessName
+}
+
+func SetPreResolveProcessName(b bool) {
+	preResolveProcessName = b
+}
 
 func init() {
 	go process()
@@ -158,8 +167,10 @@ func preHandleMetadata(metadata *C.Metadata) error {
 		}
 	}
 
-	// preset process name and cache it
-	preProcessCacheFinder.Match(metadata)
+	if preResolveProcessName {
+		// preset process name and cache it
+		preProcessCacheFinder.Match(metadata)
+	}
 
 	return nil
 }

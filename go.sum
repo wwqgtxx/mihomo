@@ -135,3 +135,5 @@ gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c h1:dUUwHk2QECo/6vqA44rthZ8ie
 gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
 gvisor.dev/gvisor v0.0.0-20211104052249-2de3450f76d6 h1:ZqN8yQG1UONNe/u1LJvvTg80BDevYvaRgmWPBlCT+0g=
 gvisor.dev/gvisor v0.0.0-20211104052249-2de3450f76d6/go.mod h1:btyTBPTxT8AFMvW7yctFJ2nPCEDWZLpmKQEZ0gG+bbQ=
+gvisor.dev/gvisor v0.0.0-20211214225704-fb4fed4724e4 h1:cX8EoOvq7v1D7o60vFqyglZ5XWOdWufPpkH09O80Sng=
+gvisor.dev/gvisor v0.0.0-20211214225704-fb4fed4724e4/go.mod h1:Pd3Ini/+F15mWIiBZQM0YFeIYsPYl1cV2PCdoFJVVYU=

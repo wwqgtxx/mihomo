@@ -46,6 +46,7 @@ type configSchema struct {
 	UseSystemDnsDial       *bool              `json:"use-system-dns-dial"`
 	HealthCheckLazyDefault *bool              `json:"health-check-lazy-default"`
 	TouchAfterLazyPassNum  *int               `json:"touch-after-lazy-pass-num"`
+	PreResolveProcessName  *bool              `json:"pre-resolve-process-name"`
 }
 
 type tunSchema struct {
@@ -150,6 +151,10 @@ func patchConfigs(w http.ResponseWriter, r *http.Request) {
 
 	if general.TouchAfterLazyPassNum != nil {
 		provider.SetTouchAfterLazyPassNum(*general.TouchAfterLazyPassNum)
+	}
+
+	if general.PreResolveProcessName != nil {
+		tunnel.SetPreResolveProcessName(*general.PreResolveProcessName)
 	}
 
 	if general.IPv6 != nil {

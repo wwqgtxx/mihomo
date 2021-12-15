@@ -112,6 +112,7 @@ func GetGeneral() *config.General {
 		UseSystemDnsDial:       dns.UseSystemDnsDial(),
 		HealthCheckLazyDefault: provider.HealthCheckLazyDefault(),
 		TouchAfterLazyPassNum:  provider.TouchAfterLazyPassNum(),
+		PreResolveProcessName:  tunnel.PreResolveProcessName(),
 	}
 
 	return general
@@ -203,6 +204,7 @@ func updateGeneral(general *config.General, force bool) {
 	dns.SetUseSystemDnsDial(general.UseSystemDnsDial)
 	provider.SetHealthCheckLazyDefault(general.HealthCheckLazyDefault)
 	provider.SetTouchAfterLazyPassNum(general.TouchAfterLazyPassNum)
+	tunnel.SetPreResolveProcessName(general.PreResolveProcessName)
 
 	dialer.DefaultInterface.Store(general.Interface)
 	dialer.GeneralInterface.Store(general.Interface)

@@ -37,6 +37,7 @@ type General struct {
 	UseSystemDnsDial       bool         `json:"use-system-dns-dial"`
 	HealthCheckLazyDefault bool         `json:"health-check-lazy-default"`
 	TouchAfterLazyPassNum  int          `json:"touch-after-lazy-pass-num"`
+	PreResolveProcessName  bool         `json:"pre-resolve-process-name"`
 }
 
 // Inbound
@@ -166,6 +167,7 @@ type RawConfig struct {
 	UseSystemDnsDial       bool         `yaml:"use-system-dns-dial"`
 	HealthCheckLazyDefault bool         `yaml:"health-check-lazy-default"`
 	TouchAfterLazyPassNum  int          `yaml:"touch-after-lazy-pass-num"`
+	PreResolveProcessName  bool         `yaml:"pre-resolve-process-name"`
 
 	RuleProviders map[string]map[string]interface{} `yaml:"rule-providers"`
 	ProxyProvider map[string]map[string]interface{} `yaml:"proxy-providers"`
@@ -201,6 +203,7 @@ func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 		UseSystemDnsDial:       false,
 		HealthCheckLazyDefault: true,
 		TouchAfterLazyPassNum:  0,
+		PreResolveProcessName:  false,
 		Hosts:                  map[string]string{},
 		Rule:                   []string{},
 		Proxy:                  []map[string]interface{}{},
@@ -333,6 +336,7 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 		UseSystemDnsDial:       cfg.UseSystemDnsDial,
 		HealthCheckLazyDefault: cfg.HealthCheckLazyDefault,
 		TouchAfterLazyPassNum:  cfg.TouchAfterLazyPassNum,
+		PreResolveProcessName:  cfg.PreResolveProcessName,
 	}, nil
 }
 

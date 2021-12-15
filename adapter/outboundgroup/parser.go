@@ -62,8 +62,12 @@ func ParseProxyGroup(config map[string]interface{}, proxyMap map[string]C.Proxy,
 			return nil, err
 		}
 
-		// if Use not empty, drop health check options
-		if len(groupOption.Use) != 0 {
+		if _, ok := providersMap[groupName]; ok {
+			return nil, errDuplicateProvider
+		}
+
+		// select don't need health check
+		if groupOption.Type == "select" || groupOption.Type == "relay" {
 			hc := provider.NewHealthCheck(ps, "", 0, true, groupOption.Type)
 			pd, err := provider.NewCompatibleProvider(groupName, ps, hc)
 			if err != nil {
@@ -71,36 +75,21 @@ func ParseProxyGroup(config map[string]interface{}, proxyMap map[string]C.Proxy,
 			}
 
 			providers = append(providers, pd)
+			providersMap[groupName] = pd
 		} else {
-			if _, ok := providersMap[groupName]; ok {
-				return nil, errDuplicateProvider
+			if groupOption.URL == "" || groupOption.Interval == 0 {
+				return nil, errMissHealthCheck
 			}
 
-			// select don't need health check
-			if groupOption.Type == "select" || groupOption.Type == "relay" {
-				hc := provider.NewHealthCheck(ps, "", 0, true, groupOption.Type)
-				pd, err := provider.NewCompatibleProvider(groupName, ps, hc)
-				if err != nil {
-					return nil, err
-				}
-
-				providers = append(providers, pd)
-				providersMap[groupName] = pd
-			} else {
-				if groupOption.URL == "" || groupOption.Interval == 0 {
-					return nil, errMissHealthCheck
-				}
-
-				ignoreURLTest = true
-				hc := provider.NewHealthCheck(ps, groupOption.URL, uint(groupOption.Interval), groupOption.Lazy, groupOption.Type)
-				pd, err := provider.NewCompatibleProvider(groupName, ps, hc)
-				if err != nil {
-					return nil, err
-				}
-
-				providers = append(providers, pd)
-				providersMap[groupName] = pd
+			ignoreURLTest = true
+			hc := provider.NewHealthCheck(ps, groupOption.URL, uint(groupOption.Interval), groupOption.Lazy, groupOption.Type)
+			pd, err := provider.NewCompatibleProvider(groupName, ps, hc)
+			if err != nil {
+				return nil, err
 			}
+
+			providers = append(providers, pd)
+			providersMap[groupName] = pd
 		}
 	}
 

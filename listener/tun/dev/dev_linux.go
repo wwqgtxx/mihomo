@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"unsafe"
@@ -54,6 +55,12 @@ func OpenTunDevice(tunAddress string, autoRoute bool) (TunDevice, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		err = t.configInterface()
+		if err != nil {
+			return nil, err
+		}
+
 		if autoRoute {
 			SetLinuxAutoRoute()
 		}
@@ -155,6 +162,74 @@ func (t *tunLinux) openDeviceByName(name string) (TunDevice, error) {
 	}
 
 	return t, nil
+}
+
+func (t *tunLinux) configInterface() error {
+	var ifr [ifReqSize]byte
+	nameBytes := []byte(t.name)
+	if len(nameBytes) >= unix.IFNAMSIZ {
+		return errors.New("interface name too long")
+	}
+
+	copy(ifr[:], nameBytes)
+
+	fd, _, errno := syscall.Syscall(unix.SYS_SOCKET, unix.AF_INET, unix.SOCK_STREAM, 0)
+	if errno != 0 {
+		return errno
+	}
+
+	// set addr for tun
+	var ip []byte
+	for _, num := range strings.Split(t.tunAddress, ".") {
+		value, err := strconv.Atoi(num)
+		if err != nil {
+			return err
+		}
+		ip = append(ip, byte(value))
+	}
+
+	*(*uint16)(unsafe.Pointer(&ifr[unix.IFNAMSIZ])) = uint16(unix.AF_INET)
+
+	copy(ifr[unix.IFNAMSIZ+4:], ip)
+
+	_, _, errno = unix.Syscall(
+		unix.SYS_IOCTL,
+		fd,
+		uintptr(unix.SIOCSIFADDR),
+		uintptr(unsafe.Pointer(&ifr[0])))
+	if errno != 0 {
+		return errno
+	}
+
+	// set netmask for tun
+	netmask := []byte{255, 255, 255, 0}
+	copy(ifr[unix.IFNAMSIZ+4:], netmask)
+
+	_, _, errno = unix.Syscall(
+		unix.SYS_IOCTL,
+		fd,
+		uintptr(unix.SIOCSIFNETMASK),
+		uintptr(unsafe.Pointer(&ifr[0])))
+	if errno != 0 {
+		return errno
+	}
+
+	// interface up
+	_, _, errno = syscall.Syscall(unix.SYS_IOCTL, fd, uintptr(unix.SIOCSIFFLAGS), uintptr(unsafe.Pointer(&ifr[0])))
+
+	var flags = uint16(unix.IFF_UP | unix.IFF_TUN | unix.IFF_MULTICAST | unix.IFF_RUNNING | unix.IFF_NOARP)
+	*(*uint16)(unsafe.Pointer(&ifr[unix.IFNAMSIZ])) = flags
+
+	_, _, errno = syscall.Syscall(
+		unix.SYS_IOCTL,
+		fd,
+		uintptr(unix.SIOCSIFFLAGS),
+		uintptr(unsafe.Pointer(&ifr[0])))
+	if errno != 0 {
+		return errno
+	}
+
+	return nil
 }
 
 func (t *tunLinux) openDeviceByFd(fd int) (TunDevice, error) {

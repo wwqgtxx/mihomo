@@ -9,7 +9,6 @@ import (
 	C "github.com/Dreamacro/clash/constant"
 	"github.com/Dreamacro/clash/listener/http"
 	"github.com/Dreamacro/clash/listener/socks"
-	"github.com/Dreamacro/clash/log"
 	"github.com/Dreamacro/clash/transport/socks4"
 	"github.com/Dreamacro/clash/transport/socks5"
 )
@@ -49,8 +48,6 @@ func New(addr string, in chan<- C.ConnContext) (*Listener, error) {
 		cache:    cache.New(30 * time.Second),
 	}
 	go func() {
-		log.Infoln("Mixed(http+socks5) proxy listening at: %s", addr)
-
 		for {
 			c, err := ml.listener.Accept()
 			if err != nil {

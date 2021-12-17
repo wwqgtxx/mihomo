@@ -58,7 +58,7 @@ type ecHandler struct {
 }
 
 func (h ecHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/" {
+	if r.URL.Path == "/" && websocket.IsWebSocketUpgrade(r) {
 		ws, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			return

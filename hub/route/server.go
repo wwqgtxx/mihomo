@@ -72,10 +72,12 @@ func Init(secret string) {
 	})
 
 	r.Use(cors.Handler)
+	r.NotFound(closeTcpHandle)
+	r.MethodNotAllowed(closeTcpHandle)
 	r.Group(func(r chi.Router) {
 		r.Use(authentication)
 
-		r.Get("/", hello)
+		//r.Get("/", hello)
 		r.Get("/logs", getLogs)
 		r.Get("/traffic", traffic)
 		r.Get("/version", version)
@@ -313,4 +315,16 @@ func getLogs(w http.ResponseWriter, r *http.Request) {
 
 func version(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, render.M{"version": C.Version, "premium": true})
+}
+
+func closeTcpHandle(writer http.ResponseWriter, request *http.Request) {
+	h, ok := writer.(http.Hijacker)
+	if !ok {
+		return
+	}
+	netConn, _, err := h.Hijack()
+	if err != nil {
+		return
+	}
+	_ = netConn.Close()
 }

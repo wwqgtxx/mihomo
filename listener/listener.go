@@ -105,37 +105,49 @@ func SetBindAddress(host string) {
 	bindAddress = host
 }
 
-func ReCreateHTTP(port int, tcpIn chan<- C.ConnContext) error {
+func ReCreateHTTP(port int, tcpIn chan<- C.ConnContext) {
 	httpMux.Lock()
 	defer httpMux.Unlock()
+
+	var err error
+	defer func() {
+		if err != nil {
+			log.Errorln("Start HTTP server error: %s", err.Error())
+		}
+	}()
 
 	addr := genAddr(bindAddress, port, allowLan)
 
 	if httpListener != nil {
 		if httpListener.RawAddress() == addr {
-			return nil
+			return
 		}
 		httpListener.Close()
 		httpListener = nil
 	}
 
 	if portIsZero(addr) {
-		return nil
+		return
 	}
 
-	var err error
 	httpListener, err = http.New(addr, tcpIn)
 	if err != nil {
-		return err
+		return
 	}
 
 	log.Infoln("HTTP proxy listening at: %s", httpListener.Address())
-	return nil
 }
 
-func ReCreateSocks(port int, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.PacketAdapter) error {
+func ReCreateSocks(port int, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.PacketAdapter) {
 	socksMux.Lock()
 	defer socksMux.Unlock()
+
+	var err error
+	defer func() {
+		if err != nil {
+			log.Errorln("Start SOCKS server error: %s", err.Error())
+		}
+	}()
 
 	addr := genAddr(bindAddress, port, allowLan)
 
@@ -161,34 +173,86 @@ func ReCreateSocks(port int, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.P
 	}
 
 	if shouldTCPIgnore && shouldUDPIgnore {
-		return nil
+		return
 	}
 
 	if portIsZero(addr) {
-		return nil
+		return
 	}
 
 	tcpListener, err := socks.New(addr, tcpIn)
 	if err != nil {
-		return err
+		return
 	}
 
 	udpListener, err := socks.NewUDP(addr, udpIn)
 	if err != nil {
 		tcpListener.Close()
-		return err
+		return
 	}
 
 	socksListener = tcpListener
 	socksUDPListener = udpListener
 
 	log.Infoln("SOCKS proxy listening at: %s", socksListener.Address())
-	return nil
 }
 
-func ReCreateShadowSocks(shadowSocksConfig string, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.PacketAdapter) error {
+func ReCreateRedir(port int, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.PacketAdapter) {
+	redirMux.Lock()
+	defer redirMux.Unlock()
+
+	var err error
+	defer func() {
+		if err != nil {
+			log.Errorln("Start Redir server error: %s", err.Error())
+		}
+	}()
+
+	addr := genAddr(bindAddress, port, allowLan)
+
+	if redirListener != nil {
+		if redirListener.RawAddress() == addr {
+			return
+		}
+		redirListener.Close()
+		redirListener = nil
+	}
+
+	if redirUDPListener != nil {
+		if redirUDPListener.RawAddress() == addr {
+			return
+		}
+		redirUDPListener.Close()
+		redirUDPListener = nil
+	}
+
+	if portIsZero(addr) {
+		return
+	}
+
+	redirListener, err = redir.New(addr, tcpIn)
+	if err != nil {
+		return
+	}
+
+	redirUDPListener, err = tproxy.NewUDP(addr, udpIn)
+	if err != nil {
+		log.Warnln("Failed to start Redir UDP Listener: %s", err)
+	}
+
+	log.Infoln("Redirect proxy listening at: %s", redirListener.Address())
+}
+
+func ReCreateShadowSocks(shadowSocksConfig string, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.PacketAdapter) {
 	ssMux.Lock()
 	defer ssMux.Unlock()
+
+	var err error
+	defer func() {
+		if err != nil {
+			log.Errorln("Start ShadowSocks server error: %s", err.Error())
+		}
+	}()
 
 	shouldIgnore := false
 
@@ -202,68 +266,34 @@ func ReCreateShadowSocks(shadowSocksConfig string, tcpIn chan<- C.ConnContext, u
 	}
 
 	if shouldIgnore {
-		return nil
+		return
 	}
 
 	if len(shadowSocksConfig) == 0 {
-		return nil
+		return
 	}
 
 	listener, err := shadowsocks.New(shadowSocksConfig, tcpIn, udpIn)
 	if err != nil {
-		return err
+		return
 	}
 
 	shadowSocksListener = listener
 
-	return nil
+	return
 }
 
-func ReCreateRedir(port int, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.PacketAdapter) error {
-	redirMux.Lock()
-	defer redirMux.Unlock()
-
-	addr := genAddr(bindAddress, port, allowLan)
-
-	if redirListener != nil {
-		if redirListener.RawAddress() == addr {
-			return nil
-		}
-		redirListener.Close()
-		redirListener = nil
-	}
-
-	if redirUDPListener != nil {
-		if redirUDPListener.RawAddress() == addr {
-			return nil
-		}
-		redirUDPListener.Close()
-		redirUDPListener = nil
-	}
-
-	if portIsZero(addr) {
-		return nil
-	}
-
-	var err error
-	redirListener, err = redir.New(addr, tcpIn)
-	if err != nil {
-		return err
-	}
-
-	redirUDPListener, err = tproxy.NewUDP(addr, udpIn)
-	if err != nil {
-		log.Warnln("Failed to start Redir UDP Listener: %s", err)
-	}
-
-	log.Infoln("Redirect proxy listening at: %s", redirListener.Address())
-	return nil
-}
-
-func ReCreateTcpTun(config string, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.PacketAdapter) error {
+func ReCreateTcpTun(config string, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.PacketAdapter) {
 	tcpTunMux.Lock()
 	defer tcpTunMux.Unlock()
 	shouldIgnore := false
+
+	var err error
+	defer func() {
+		if err != nil {
+			log.Errorln("Start TcpTun server error: %s", err.Error())
+		}
+	}()
 
 	if tcpTunListener != nil {
 		if tcpTunListener.Config() != config {
@@ -275,23 +305,30 @@ func ReCreateTcpTun(config string, tcpIn chan<- C.ConnContext, udpIn chan<- *inb
 	}
 
 	if shouldIgnore {
-		return nil
+		return
 	}
 
 	tcpListener, err := tunnel.New(config, tcpIn)
 	if err != nil {
-		return err
+		return
 	}
 
 	tcpTunListener = tcpListener
 
-	return nil
+	return
 }
 
-func ReCreateUdpTun(config string, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.PacketAdapter) error {
+func ReCreateUdpTun(config string, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.PacketAdapter) {
 	udpTunMux.Lock()
 	defer udpTunMux.Unlock()
 	shouldIgnore := false
+
+	var err error
+	defer func() {
+		if err != nil {
+			log.Errorln("Start UdpTun server error: %s", err.Error())
+		}
+	}()
 
 	if udpTunListener != nil {
 		if udpTunListener.Config() != config {
@@ -303,28 +340,35 @@ func ReCreateUdpTun(config string, tcpIn chan<- C.ConnContext, udpIn chan<- *inb
 	}
 
 	if shouldIgnore {
-		return nil
+		return
 	}
 
 	udpListener, err := tunnel.NewUdp(config, udpIn)
 	if err != nil {
-		return err
+		return
 	}
 
 	udpTunListener = udpListener
 
-	return nil
+	return
 }
 
-func ReCreateTProxy(port int, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.PacketAdapter) error {
+func ReCreateTProxy(port int, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.PacketAdapter) {
 	tproxyMux.Lock()
 	defer tproxyMux.Unlock()
+
+	var err error
+	defer func() {
+		if err != nil {
+			log.Errorln("Start TProxy server error: %s", err.Error())
+		}
+	}()
 
 	addr := genAddr(bindAddress, port, allowLan)
 
 	if tproxyListener != nil {
 		if tproxyListener.RawAddress() == addr {
-			return nil
+			return
 		}
 		tproxyListener.Close()
 		tproxyListener = nil
@@ -332,20 +376,19 @@ func ReCreateTProxy(port int, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.
 
 	if tproxyUDPListener != nil {
 		if tproxyUDPListener.RawAddress() == addr {
-			return nil
+			return
 		}
 		tproxyUDPListener.Close()
 		tproxyUDPListener = nil
 	}
 
 	if portIsZero(addr) {
-		return nil
+		return
 	}
 
-	var err error
 	tproxyListener, err = tproxy.New(addr, tcpIn)
 	if err != nil {
-		return err
+		return
 	}
 
 	tproxyUDPListener, err = tproxy.NewUDP(addr, udpIn)
@@ -354,12 +397,18 @@ func ReCreateTProxy(port int, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.
 	}
 
 	log.Infoln("TProxy server listening at: %s", tproxyListener.Address())
-	return nil
 }
 
-func ReCreateMixed(port int, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.PacketAdapter) error {
+func ReCreateMixed(port int, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.PacketAdapter) {
 	mixedMux.Lock()
 	defer mixedMux.Unlock()
+
+	var err error
+	defer func() {
+		if err != nil {
+			log.Errorln("Start Mixed(http+socks) server error: %s", err.Error())
+		}
+	}()
 
 	addr := genAddr(bindAddress, port, allowLan)
 
@@ -384,32 +433,37 @@ func ReCreateMixed(port int, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.P
 	}
 
 	if shouldTCPIgnore && shouldUDPIgnore {
-		return nil
+		return
 	}
 
 	if portIsZero(addr) {
-		return nil
+		return
 	}
 
-	var err error
 	mixedListener, err = mixed.New(addr, tcpIn)
 	if err != nil {
-		return err
+		return
 	}
 
 	mixedUDPLister, err = socks.NewUDP(addr, udpIn)
 	if err != nil {
 		mixedListener.Close()
-		return err
+		return
 	}
 
 	log.Infoln("Mixed(http+socks) proxy listening at: %s", mixedListener.Address())
-	return nil
 }
 
-func ReCreateTun(conf config.Tun, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.PacketAdapter) error {
+func ReCreateTun(conf config.Tun, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.PacketAdapter) {
 	tunMux.Lock()
 	defer tunMux.Unlock()
+
+	var err error
+	defer func() {
+		if err != nil {
+			log.Errorln("Start Tun interface error: %s", err.Error())
+		}
+	}()
 
 	tunConfig = conf
 
@@ -426,7 +480,7 @@ func ReCreateTun(conf config.Tun, tcpIn chan<- C.ConnContext, udpIn chan<- *inbo
 			dialer.DefaultInterface.Store(generalInterface)
 			iface.FlushCache()
 		}
-		return nil
+		return
 	}
 
 	targetInterface := generalInterface
@@ -450,15 +504,21 @@ func ReCreateTun(conf config.Tun, tcpIn chan<- C.ConnContext, udpIn chan<- *inbo
 		iface.FlushCache()
 	}
 
-	var err error
 	tunAdapter, err = tun.New(conf, tcpIn, udpIn)
 
-	return err
+	return
 }
 
-func ReCreateMixEC(config string, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.PacketAdapter) error {
+func ReCreateMixEC(config string, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.PacketAdapter) {
 	mixECMux.Lock()
 	defer mixECMux.Unlock()
+
+	var err error
+	defer func() {
+		if err != nil {
+			log.Errorln("Start MixEC(RESTful Api and socks5) server error: %s", err.Error())
+		}
+	}()
 
 	shouldIgnore := false
 
@@ -472,22 +532,28 @@ func ReCreateMixEC(config string, tcpIn chan<- C.ConnContext, udpIn chan<- *inbo
 	}
 
 	if shouldIgnore {
-		return nil
+		return
 	}
 
-	var err error
 	listener, err := mixec.New(config, tcpIn, udpIn)
 	if err != nil {
-		return err
+		return
 	}
 	mixECListener = listener
 
-	return nil
+	return
 }
 
-func ReCreateMTProxy(config string, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.PacketAdapter) error {
+func ReCreateMTProxy(config string, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.PacketAdapter) {
 	mtpMux.Lock()
 	defer mtpMux.Unlock()
+
+	var err error
+	defer func() {
+		if err != nil {
+			log.Errorln("Start MTProxy server error: %s", err.Error())
+		}
+	}()
 
 	shouldIgnore := false
 
@@ -501,17 +567,17 @@ func ReCreateMTProxy(config string, tcpIn chan<- C.ConnContext, udpIn chan<- *in
 	}
 
 	if shouldIgnore {
-		return nil
+		return
 	}
 
 	mtp, err := mtproxy.New(config, tcpIn)
 	if err != nil {
-		return err
+		return
 	}
 
 	mtpListener = mtp
 
-	return nil
+	return
 }
 
 // GetPorts return the ports of proxy servers

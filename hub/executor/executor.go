@@ -162,14 +162,7 @@ func updateDNS(c *config.DNS) {
 		resolver.DialerResolver = nil
 	}
 
-	if err := dns.ReCreateServer(c.Listen, r, m); err != nil {
-		log.Errorln("Start DNS server error: %s", err.Error())
-		return
-	}
-
-	if c.Listen != "" {
-		log.Infoln("DNS server listening at: %s", c.Listen)
-	}
+	dns.ReCreateServer(c.Listen, r, m)
 }
 
 func updateHosts(tree *trie.DomainTrie) {
@@ -190,10 +183,7 @@ func updateTun(general *config.General) {
 	}
 	tcpIn := tunnel.TCPIn()
 	udpIn := tunnel.UDPIn()
-
-	if err := P.ReCreateTun(general.Tun, tcpIn, udpIn); err != nil {
-		log.Errorln("Start Tun interface error: %s", err.Error())
-	}
+	P.ReCreateTun(general.Tun, tcpIn, udpIn)
 }
 
 func updateGeneral(general *config.General, force bool) {
@@ -224,46 +214,16 @@ func updateGeneral(general *config.General, force bool) {
 	tcpIn := tunnel.TCPIn()
 	udpIn := tunnel.UDPIn()
 
-	if err := P.ReCreateHTTP(general.Port, tcpIn); err != nil {
-		log.Errorln("Start HTTP server error: %s", err.Error())
-	}
-
-	if err := P.ReCreateSocks(general.SocksPort, tcpIn, udpIn); err != nil {
-		log.Errorln("Start SOCKS server error: %s", err.Error())
-	}
-
-	if err := P.ReCreateRedir(general.RedirPort, tcpIn, udpIn); err != nil {
-		log.Errorln("Start Redir server error: %s", err.Error())
-	}
-
-	if err := P.ReCreateTProxy(general.TProxyPort, tcpIn, udpIn); err != nil {
-		log.Errorln("Start TProxy server error: %s", err.Error())
-		general.TProxyPort = 0
-	}
-
-	if err := P.ReCreateMixed(general.MixedPort, tcpIn, udpIn); err != nil {
-		log.Errorln("Start Mixed(http and socks) server error: %s", err.Error())
-	}
-
-	if err := P.ReCreateMixEC(general.MixECConfig, tcpIn, udpIn); err != nil {
-		log.Errorln("Start MixEC(RESTful Api and socks5) server error: %s", err.Error())
-	}
-
-	if err := P.ReCreateShadowSocks(general.ShadowSocksConfig, tcpIn, udpIn); err != nil {
-		log.Errorln("Start ShadowSocks server error: %s", err.Error())
-	}
-
-	if err := P.ReCreateTcpTun(general.TcpTunConfig, tcpIn, udpIn); err != nil {
-		log.Errorln("Start TcpTun server error: %s", err.Error())
-	}
-
-	if err := P.ReCreateUdpTun(general.UdpTunConfig, tcpIn, udpIn); err != nil {
-		log.Errorln("Start UdpTun server error: %s", err.Error())
-	}
-
-	if err := P.ReCreateMTProxy(general.MTProxyConfig, tcpIn, udpIn); err != nil {
-		log.Errorln("Start MTProxy server error: %s", err.Error())
-	}
+	P.ReCreateHTTP(general.Port, tcpIn)
+	P.ReCreateSocks(general.SocksPort, tcpIn, udpIn)
+	P.ReCreateRedir(general.RedirPort, tcpIn, udpIn)
+	P.ReCreateTProxy(general.TProxyPort, tcpIn, udpIn)
+	P.ReCreateMixed(general.MixedPort, tcpIn, udpIn)
+	P.ReCreateMixEC(general.MixECConfig, tcpIn, udpIn)
+	P.ReCreateShadowSocks(general.ShadowSocksConfig, tcpIn, udpIn)
+	P.ReCreateTcpTun(general.TcpTunConfig, tcpIn, udpIn)
+	P.ReCreateUdpTun(general.UdpTunConfig, tcpIn, udpIn)
+	P.ReCreateMTProxy(general.MTProxyConfig, tcpIn, udpIn)
 }
 
 func updateUsers(users []auth.AuthUser) {

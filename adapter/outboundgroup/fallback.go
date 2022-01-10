@@ -14,6 +14,7 @@ import (
 type Fallback struct {
 	*outbound.Base
 	disableUDP bool
+	filter     string
 	single     *singledo.Single
 	providers  []provider.ProxyProvider
 }
@@ -74,7 +75,7 @@ func (f *Fallback) Unwrap(metadata *C.Metadata) C.Proxy {
 
 func (f *Fallback) proxies(touch bool) []C.Proxy {
 	elm, _, _ := f.single.Do(func() (interface{}, error) {
-		return getProvidersProxies(f.providers, touch), nil
+		return getProvidersProxies(f.providers, touch, f.filter), nil
 	})
 
 	return elm.([]C.Proxy)
@@ -102,5 +103,6 @@ func NewFallback(option *GroupCommonOption, providers []provider.ProxyProvider) 
 		single:     singledo.NewSingle(defaultGetProxiesDuration),
 		providers:  providers,
 		disableUDP: option.DisableUDP,
+		filter:     option.Filter,
 	}
 }

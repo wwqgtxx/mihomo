@@ -24,6 +24,7 @@ type strategyFn = func(proxies []C.Proxy, metadata *C.Metadata) C.Proxy
 type LoadBalance struct {
 	*outbound.Base
 	disableUDP bool
+	filter     string
 	single     *singledo.Single
 	providers  []provider.ProxyProvider
 	strategyFn strategyFn
@@ -168,7 +169,7 @@ func (lb *LoadBalance) Unwrap(metadata *C.Metadata) C.Proxy {
 
 func (lb *LoadBalance) proxies(touch bool) []C.Proxy {
 	elm, _, _ := lb.single.Do(func() (interface{}, error) {
-		return getProvidersProxies(lb.providers, touch), nil
+		return getProvidersProxies(lb.providers, touch, lb.filter), nil
 	})
 
 	return elm.([]C.Proxy)
@@ -209,5 +210,6 @@ func NewLoadBalance(option *GroupCommonOption, providers []provider.ProxyProvide
 		providers:  providers,
 		strategyFn: strategyFn,
 		disableUDP: option.DisableUDP,
+		filter:     option.Filter,
 	}, nil
 }

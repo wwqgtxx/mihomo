@@ -25,6 +25,7 @@ type URLTest struct {
 	tolerance  uint16
 	disableUDP bool
 	fastNode   C.Proxy
+	filter     string
 	single     *singledo.Single
 	fastSingle *singledo.Single
 	providers  []provider.ProxyProvider
@@ -59,7 +60,7 @@ func (u *URLTest) Unwrap(metadata *C.Metadata) C.Proxy {
 
 func (u *URLTest) proxies(touch bool) []C.Proxy {
 	elm, _, _ := u.single.Do(func() (interface{}, error) {
-		return getProvidersProxies(u.providers, touch), nil
+		return getProvidersProxies(u.providers, touch, u.filter), nil
 	})
 
 	return elm.([]C.Proxy)
@@ -146,6 +147,7 @@ func NewURLTest(option *GroupCommonOption, providers []provider.ProxyProvider, o
 		fastSingle: singledo.NewSingle(time.Second * 10),
 		providers:  providers,
 		disableUDP: option.DisableUDP,
+		filter:     option.Filter,
 	}
 
 	for _, option := range options {

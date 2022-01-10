@@ -5,6 +5,7 @@ type TunAdapter interface {
 	Close()
 	Stack() string
 	DnsHijack() []string
-	AutoRoute() bool
 	AutoDetectInterface() bool
+	AutoRoute() bool
+	AutoRouteCidr() []string
 }

@@ -19,11 +19,11 @@ func New(conf config.Tun, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.Pack
 	tunAddress := C.TunAddress
 	var tunAdapter ipstack.TunAdapter
 
-	device, err := dev.OpenTunDevice(tunAddress, conf.AutoRoute)
+	device, err := dev.OpenTunDevice(tunAddress, conf.AutoRoute, conf.AutoRouteCidr)
 	if err != nil {
 		for i := 1; i < 3; i++ {
 			time.Sleep(time.Second * 1)
-			device, err = dev.OpenTunDevice(tunAddress, conf.AutoRoute)
+			device, err = dev.OpenTunDevice(tunAddress, conf.AutoRoute, conf.AutoRouteCidr)
 			if err == nil {
 				break
 			}

@@ -84,8 +84,9 @@ func Tun() config.Tun {
 		Enable:              true,
 		Stack:               tunAdapter.Stack(),
 		DnsHijack:           tunAdapter.DnsHijack(),
-		AutoRoute:           tunAdapter.AutoRoute(),
 		AutoDetectInterface: tunAdapter.AutoDetectInterface(),
+		AutoRoute:           tunAdapter.AutoRoute(),
+		AutoRouteCidr:       tunAdapter.AutoRouteCidr(),
 	}
 }
 

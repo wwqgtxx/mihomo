@@ -8,7 +8,7 @@ import (
 	"runtime"
 )
 
-func OpenTunDevice(tunAddress string, autoRute bool) (TunDevice, error) {
+func OpenTunDevice(tunAddress string, autoRute bool, autoRouteCidr []string) (TunDevice, error) {
 	return nil, errors.New("Unsupported platform " + runtime.GOOS + "/" + runtime.GOARCH)
 }
 

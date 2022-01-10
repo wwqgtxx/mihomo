@@ -56,6 +56,8 @@ type tunDarwin struct {
 	tunFile    *os.File
 	errors     chan error
 
+	autoRouteCidr []string
+
 	closed   bool
 	stopOnce sync.Once
 }
@@ -112,7 +114,7 @@ type in6Aliasreq struct {
 var sockaddrCtlSize uintptr = 32
 
 // OpenTunDevice return a TunDevice according a URL
-func OpenTunDevice(tunAddress string, autoRoute bool) (TunDevice, error) {
+func OpenTunDevice(tunAddress string, autoRoute bool, autoRouteCidr []string) (TunDevice, error) {
 	name := "utun"
 	mtu := 9000
 
@@ -170,24 +172,25 @@ func OpenTunDevice(tunAddress string, autoRoute bool) (TunDevice, error) {
 		return nil, err
 	}
 
-	tun, err := CreateTUNFromFile(os.NewFile(uintptr(fd), ""), mtu, tunAddress, autoRoute)
+	tun, err := CreateTUNFromFile(os.NewFile(uintptr(fd), ""), mtu, tunAddress, autoRoute, autoRouteCidr)
 	if err != nil {
 		return nil, err
 	}
 
 	if autoRoute {
-		SetLinuxAutoRoute()
+		SetLinuxAutoRoute(autoRouteCidr)
 	}
 
 	return tun, nil
 }
 
-func CreateTUNFromFile(file *os.File, mtu int, tunAddress string, autoRoute bool) (TunDevice, error) {
+func CreateTUNFromFile(file *os.File, mtu int, tunAddress string, autoRoute bool, autoRouteCidr []string) (TunDevice, error) {
 	tun := &tunDarwin{
-		tunFile:    file,
-		tunAddress: tunAddress,
-		autoRoute:  autoRoute,
-		errors:     make(chan error, 5),
+		tunFile:       file,
+		tunAddress:    tunAddress,
+		autoRoute:     autoRoute,
+		autoRouteCidr: autoRouteCidr,
+		errors:        make(chan error, 5),
 	}
 
 	name, err := tun.getName()
@@ -280,7 +283,7 @@ func (t *tunDarwin) IsClose() bool {
 func (t *tunDarwin) Close() error {
 	t.stopOnce.Do(func() {
 		if t.autoRoute {
-			RemoveLinuxAutoRoute()
+			RemoveLinuxAutoRoute(t.autoRouteCidr)
 		}
 		t.closed = true
 		t.tunFile.Close()

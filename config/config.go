@@ -99,8 +99,9 @@ type Tun struct {
 	Enable              bool     `yaml:"enable" json:"enable"`
 	Stack               string   `yaml:"stack" json:"stack"`
 	DnsHijack           []string `yaml:"dns-hijack" json:"dns-hijack"`
-	AutoRoute           bool     `yaml:"auto-route" json:"auto-route"`
 	AutoDetectInterface bool     `yaml:"auto-detect-interface" json:"auto-detect-interface"`
+	AutoRoute           bool     `yaml:"auto-route" json:"auto-route"`
+	AutoRouteCidr       []string `yaml:"auto-route-cidr" json:"auto-route-cidr"`
 }
 
 // Experimental config
@@ -211,9 +212,10 @@ func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 		Tun: Tun{
 			Enable:              false,
 			Stack:               "gvisor",
-			DnsHijack:           []string{"0.0.0.0:53"},
+			DnsHijack:           []string{C.TunDnsListen},
 			AutoDetectInterface: true,
 			AutoRoute:           true,
+			AutoRouteCidr:       C.TunAutoRouteCidr,
 		},
 		DNS: RawDNS{
 			Enable:      true,

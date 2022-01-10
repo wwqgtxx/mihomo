@@ -41,7 +41,7 @@ type tunWindows struct {
 }
 
 // OpenTunDevice return a TunDevice according a URL
-func OpenTunDevice(tunAddress string, autoRoute bool) (TunDevice, error) {
+func OpenTunDevice(tunAddress string, autoRoute bool, autoRouteCidr []string) (TunDevice, error) {
 
 	requestedGUID, err := windows.GUIDFromString("{330EAEF8-7578-5DF2-D97B-8DADC0EA85CB}")
 	if err == nil {
@@ -54,7 +54,7 @@ func OpenTunDevice(tunAddress string, autoRoute bool) (TunDevice, error) {
 	interfaceName := "ClashR"
 	mtu := 9000
 
-	tun, err := CreateTUN(interfaceName, mtu, tunAddress, autoRoute)
+	tun, err := CreateTUN(interfaceName, mtu, tunAddress, autoRoute, autoRouteCidr)
 	if err != nil {
 		return nil, err
 	}
@@ -66,15 +66,16 @@ func OpenTunDevice(tunAddress string, autoRoute bool) (TunDevice, error) {
 // CreateTUN creates a Wintun interface with the given name. Should a Wintun
 // interface with the same name exist, it is reused.
 //
-func CreateTUN(ifname string, mtu int, tunAddress string, autoRoute bool) (TunDevice, error) {
-	return CreateTUNWithRequestedGUID(ifname, WintunStaticRequestedGUID, mtu, tunAddress, autoRoute)
+func CreateTUN(ifname string, mtu int, tunAddress string, autoRoute bool, autoRouteCidr []string) (TunDevice, error) {
+	return CreateTUNWithRequestedGUID(ifname, WintunStaticRequestedGUID, mtu, tunAddress, autoRoute, autoRouteCidr)
 }
 
 //
 // CreateTUNWithRequestedGUID creates a Wintun interface with the given name and
 // a requested GUID. Should a Wintun interface with the same name exist, it is reused.
 //
-func CreateTUNWithRequestedGUID(ifname string, requestedGUID *windows.GUID, mtu int, tunAddress string, autoRoute bool) (TunDevice, error) {
+func CreateTUNWithRequestedGUID(ifname string, requestedGUID *windows.GUID, mtu int,
+	tunAddress string, autoRoute bool, autoRouteCidr []string) (TunDevice, error) {
 	wt, err := wintun.CreateAdapter(ifname, WintunTunnelType, requestedGUID)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating interface: %w", err)
@@ -95,7 +96,7 @@ func CreateTUNWithRequestedGUID(ifname string, requestedGUID *windows.GUID, mtu 
 	}
 
 	// config tun ip
-	err = tun.configureInterface()
+	err = tun.configureInterface(autoRouteCidr)
 	if err != nil {
 		tun.wt.Close()
 		return nil, fmt.Errorf("error configure interface: %w", err)
@@ -130,7 +131,7 @@ func (tun *tunWindows) URL() string {
 	return fmt.Sprintf("dev://%s", tun.Name())
 }
 
-func (tun *tunWindows) configureInterface() error {
+func (tun *tunWindows) configureInterface(autoRouteCidr []string) error {
 	retryOnFailure := wintun.StartedAtBoot()
 	tryTimes := 0
 startOver:
@@ -186,18 +187,9 @@ startOver:
 	foundDefault6 := false
 
 	if tun.autoRoute {
-		allowedIPs := []*wintun.IPCidr{
-			//wintun.ParseIPCidr("0.0.0.0/0"),
-			wintun.ParseIPCidr("1.0.0.0/8"),
-			wintun.ParseIPCidr("2.0.0.0/7"),
-			wintun.ParseIPCidr("4.0.0.0/6"),
-			wintun.ParseIPCidr("8.0.0.0/5"),
-			wintun.ParseIPCidr("16.0.0.0/4"),
-			wintun.ParseIPCidr("32.0.0.0/3"),
-			wintun.ParseIPCidr("64.0.0.0/2"),
-			wintun.ParseIPCidr("128.0.0.0/1"),
-			wintun.ParseIPCidr("224.0.0.0/4"),
-			wintun.ParseIPCidr("255.255.255.255/32"),
+		var allowedIPs []*wintun.IPCidr
+		for _, ipCidr := range autoRouteCidr {
+			allowedIPs = append(allowedIPs, wintun.ParseIPCidr(ipCidr))
 		}
 
 		estimatedRouteCount := len(allowedIPs)

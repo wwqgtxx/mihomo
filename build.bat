@@ -14,4 +14,10 @@ go build -o bin/clashr-windows-amd64.exe
 set GOARCH=386
 set GOOS=windows
 go build -o bin/clashr-windows-386.exe
+set GOARCH=amd64
+set GOOS=darwin
+go build -o bin/clashr-darwin-amd64
+set GOARCH=arm64
+set GOOS=darwin
+go build -o bin/clashr-darwin-arm64
 pause

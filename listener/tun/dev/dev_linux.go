@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	C "github.com/Dreamacro/clash/constant"
 	"net/url"
 	"os"
 	"os/exec"
@@ -32,20 +33,23 @@ type tunLinux struct {
 	tunFile    *os.File
 	mtu        int
 
+	autoRouteCidr []string
+
 	closed   bool
 	stopOnce sync.Once
 }
 
 // OpenTunDevice return a TunDevice according a URL
-func OpenTunDevice(tunAddress string, autoRoute bool) (TunDevice, error) {
-	deviceURL, _ := url.Parse("dev://clash0")
+func OpenTunDevice(tunAddress string, autoRoute bool, autoRouteCidr []string) (TunDevice, error) {
+	deviceURL, _ := url.Parse(fmt.Sprintf("dev://%s", C.TunDevName))
 	mtu, _ := strconv.ParseInt(deviceURL.Query().Get("mtu"), 0, 32)
 
 	t := &tunLinux{
-		url:        deviceURL.String(),
-		mtu:        int(mtu),
-		tunAddress: tunAddress,
-		autoRoute:  autoRoute,
+		url:           deviceURL.String(),
+		mtu:           int(mtu),
+		tunAddress:    tunAddress,
+		autoRoute:     autoRoute,
+		autoRouteCidr: autoRouteCidr,
 	}
 	switch deviceURL.Scheme {
 	case "dev":
@@ -62,7 +66,7 @@ func OpenTunDevice(tunAddress string, autoRoute bool) (TunDevice, error) {
 		}
 
 		if autoRoute {
-			SetLinuxAutoRoute()
+			SetLinuxAutoRoute(autoRouteCidr)
 		}
 		return dev, nil
 	case "fd":
@@ -76,7 +80,7 @@ func OpenTunDevice(tunAddress string, autoRoute bool) (TunDevice, error) {
 			return nil, err
 		}
 		if autoRoute {
-			SetLinuxAutoRoute()
+			SetLinuxAutoRoute(autoRouteCidr)
 		}
 		return dev, nil
 	}
@@ -106,7 +110,7 @@ func (t *tunLinux) IsClose() bool {
 func (t *tunLinux) Close() error {
 	t.stopOnce.Do(func() {
 		if t.autoRoute {
-			RemoveLinuxAutoRoute()
+			RemoveLinuxAutoRoute(t.autoRouteCidr)
 		}
 		t.closed = true
 		t.tunFile.Close()

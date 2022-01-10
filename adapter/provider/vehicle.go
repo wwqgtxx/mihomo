@@ -65,6 +65,8 @@ func (h *HTTPVehicle) Read() ([]byte, error) {
 		req.SetBasicAuth(user.Username(), password)
 	}
 
+	req.Header.Set("user-agent", "clash")
+
 	req = req.WithContext(ctx)
 
 	transport := &http.Transport{

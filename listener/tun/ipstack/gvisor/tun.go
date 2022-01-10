@@ -43,9 +43,10 @@ type gvisorAdapter struct {
 
 	dnsServers []*DNSServer
 
-	stackName          string
-	autoRoute          bool
-	autoRouteInterface bool
+	stackName           string
+	autoDetectInterface bool
+	autoRoute           bool
+	autoRouteCidr       []string
 
 	writeHandle *channel.NotificationHandle
 }
@@ -58,12 +59,13 @@ func NewAdapter(device dev.TunDevice, tunAddress string, conf config.Tun, tcpIn 
 	})
 
 	adapter := &gvisorAdapter{
-		device:             device,
-		ipstack:            ipstack,
-		udpIn:              udpIn,
-		stackName:          "gvisor",
-		autoRoute:          conf.AutoRoute,
-		autoRouteInterface: conf.AutoDetectInterface,
+		device:              device,
+		ipstack:             ipstack,
+		udpIn:               udpIn,
+		stackName:           "gvisor",
+		autoDetectInterface: conf.AutoDetectInterface,
+		autoRoute:           conf.AutoRoute,
+		autoRouteCidr:       conf.AutoRouteCidr,
 	}
 
 	linkEP, err := adapter.AsLinkEndpoint()
@@ -130,12 +132,16 @@ func (t *gvisorAdapter) Stack() string {
 	return t.stackName
 }
 
+func (t *gvisorAdapter) AutoDetectInterface() bool {
+	return t.autoDetectInterface
+}
+
 func (t *gvisorAdapter) AutoRoute() bool {
 	return t.autoRoute
 }
 
-func (t *gvisorAdapter) AutoDetectInterface() bool {
-	return t.autoRouteInterface
+func (t *gvisorAdapter) AutoRouteCidr() []string {
+	return t.autoRouteCidr
 }
 
 // Close close the TunAdapter

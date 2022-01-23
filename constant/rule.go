@@ -12,6 +12,8 @@ const (
 	DstPort
 	InPort
 	Process
+	Network
+	Type_
 	MATCH
 	RuleSet
 	DomainTree
@@ -43,6 +45,10 @@ func (rt RuleType) String() string {
 		return "DstPort"
 	case InPort:
 		return "InPort"
+	case Network:
+		return "Network"
+	case Type_:
+		return "Type"
 	case Process:
 		return "Process"
 	case MATCH:

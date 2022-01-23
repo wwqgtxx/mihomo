@@ -2,6 +2,7 @@ package rules
 
 import (
 	"strconv"
+	"strings"
 
 	C "github.com/Dreamacro/clash/constant"
 )
@@ -10,6 +11,8 @@ type Port struct {
 	adapter  string
 	port     string
 	ruleType C.RuleType
+	portL    int
+	portR    int
 }
 
 func (p *Port) RuleType() C.RuleType {
@@ -17,13 +20,18 @@ func (p *Port) RuleType() C.RuleType {
 }
 
 func (p *Port) Match(metadata *C.Metadata) bool {
+	targetPort := metadata.DstPort
 	switch p.ruleType {
 	case C.InPort:
-		return metadata.InPort == p.port
+		targetPort = metadata.InPort
 	case C.SrcPort:
-		return metadata.SrcPort == p.port
+		targetPort = metadata.SrcPort
 	}
-	return metadata.DstPort == p.port
+	port, err := strconv.Atoi(targetPort)
+	if err != nil {
+		return false
+	}
+	return port >= p.portL && port <= p.portR
 }
 
 func (p *Port) Adapter() string {
@@ -39,13 +47,31 @@ func (p *Port) ShouldResolveIP() bool {
 }
 
 func NewPort(port string, adapter string, ruleType C.RuleType) (*Port, error) {
-	_, err := strconv.Atoi(port)
-	if err != nil {
-		return nil, errPayload
-	}
-	return &Port{
+	p := &Port{
 		adapter:  adapter,
 		port:     port,
 		ruleType: ruleType,
-	}, nil
+	}
+	var err error
+	portS := strings.Split(port, "-")
+	switch len(portS) {
+	case 1:
+		p.portL, err = strconv.Atoi(port)
+		if err != nil {
+			return nil, err
+		}
+		p.portR = p.portL
+	case 2:
+		p.portL, err = strconv.Atoi(portS[0])
+		if err != nil {
+			return nil, err
+		}
+		p.portR, err = strconv.Atoi(portS[1])
+		if err != nil {
+			return nil, err
+		}
+	default:
+		return nil, errPayload
+	}
+	return p, nil
 }

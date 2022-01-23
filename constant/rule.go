@@ -16,6 +16,9 @@ const (
 	RuleSet
 	DomainTree
 	IpCidrTree
+	AND
+	OR
+	NOT
 )
 
 type RuleType int
@@ -50,6 +53,12 @@ func (rt RuleType) String() string {
 		return "DomainTree"
 	case IpCidrTree:
 		return "IpCidrTree"
+	case AND:
+		return "AND"
+	case OR:
+		return "OR"
+	case NOT:
+		return "NOT"
 	default:
 		return "Unknown"
 	}

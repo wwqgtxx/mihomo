@@ -129,14 +129,19 @@ func rulesParse(buf []byte, behavior string) (interface{}, error) {
 			var params []string
 
 			rule = trimArr(strings.Split(line, ","))
-			switch l := len(rule); {
-			case l == 2:
-				payload = rule[1]
-			case l >= 3:
-				payload = rule[1]
-				params = rule[2:]
-			default:
-				return nil, fmt.Errorf("rules[%s] error: format invalid", line)
+			ruleName := rule[0]
+			if ruleName == "NOT" || ruleName == "OR" || ruleName == "AND" {
+				payload = strings.Join(rule[1:len(rule)-1], ",")
+			} else {
+				switch l := len(rule); {
+				case l == 2:
+					payload = rule[1]
+				case l >= 3:
+					payload = rule[1]
+					params = rule[2:]
+				default:
+					return nil, fmt.Errorf("rules[%s] error: format invalid", line)
+				}
 			}
 			rule = trimArr(rule)
 			params = trimArr(params)

@@ -480,18 +480,24 @@ func parseRules(cfg *RawConfig, proxies map[string]C.Proxy) (rules []C.Rule, pro
 			params  = []string{}
 		)
 
-		switch l := len(rule); {
-		case l == 2:
-			target = rule[1]
-		case l == 3:
-			payload = rule[1]
-			target = rule[2]
-		case l >= 4:
-			payload = rule[1]
-			target = rule[2]
-			params = rule[3:]
-		default:
-			return nil, nil, fmt.Errorf("rules[%d] [%s] error: format invalid", idx, line)
+		ruleName := rule[0]
+		if ruleName == "NOT" || ruleName == "OR" || ruleName == "AND" {
+			payload = strings.Join(rule[1:len(rule)-1], ",")
+			target = rule[len(rule)-1]
+		} else {
+			switch l := len(rule); {
+			case l == 2:
+				target = rule[1]
+			case l == 3:
+				payload = rule[1]
+				target = rule[2]
+			case l >= 4:
+				payload = rule[1]
+				target = rule[2]
+				params = rule[3:]
+			default:
+				return nil, nil, fmt.Errorf("rules[%d] [%s] error: format invalid", idx, line)
+			}
 		}
 
 		if _, ok := proxies[target]; !ok {

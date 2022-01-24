@@ -27,6 +27,9 @@ func (p *Port) Match(metadata *C.Metadata) bool {
 	case C.SrcPort:
 		targetPort = metadata.SrcPort
 	}
+	if p.portL == p.portR {
+		return p.port == targetPort
+	}
 	port, err := strconv.Atoi(targetPort)
 	if err != nil {
 		return false

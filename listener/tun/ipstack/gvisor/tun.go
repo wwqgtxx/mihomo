@@ -41,7 +41,7 @@ type gvisorAdapter struct {
 	linkCache *channel.Endpoint
 	wg        sync.WaitGroup // wait for goroutines to stop
 
-	dnsServers []*DNSServer
+	dnsServer *DNSServer
 
 	stackName           string
 	autoDetectInterface bool
@@ -51,7 +51,7 @@ type gvisorAdapter struct {
 	writeHandle *channel.NotificationHandle
 }
 
-// GvisorAdapter create GvisorAdapter
+// NewAdapter create GvisorAdapter
 func NewAdapter(device dev.TunDevice, tunAddress string, conf config.Tun, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.PacketAdapter) (ipstack.TunAdapter, error) {
 	ipstack := stack.New(stack.Options{
 		NetworkProtocols:   []stack.NetworkProtocolFactory{ipv4.NewProtocol, ipv6.NewProtocol},
@@ -144,9 +144,9 @@ func (t *gvisorAdapter) AutoRouteCidr() []string {
 	return t.autoRouteCidr
 }
 
-// Close close the TunAdapter
+// Close the TunAdapter
 func (t *gvisorAdapter) Close() {
-	t.StopAllDNSServer()
+	t.StopDNSServer()
 	if t.ipstack != nil {
 		t.ipstack.Close()
 	}
@@ -181,7 +181,7 @@ func (t *gvisorAdapter) udpHandlePacket(id stack.TransportEndpointID, pkt *stack
 	return true
 }
 
-// Wait wait goroutines to exit
+// Wait goroutines to exit
 func (t *gvisorAdapter) Wait() {
 	t.wg.Wait()
 }

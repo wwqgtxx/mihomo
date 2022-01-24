@@ -279,7 +279,7 @@ func hijackTcpDns(dnsArr []net.TCPAddr, s *stack.Stack, serverIn *dns.Server) ([
 		}
 
 		if err != nil {
-			log.Errorln("can not listen on tun: %v, hijack tcp[%s] failed", err, dnsAddr)
+			log.Errorln("can not listen on tun: %v, hijack tcp[%s] failed", err, dnsAddr.String())
 		} else {
 			tcpListeners[i] = tcpListener
 			server := &D.Server{Listener: &ListenerWrap{

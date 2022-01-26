@@ -60,6 +60,16 @@ func NewAND(payload string, adapter string) (*Logic, error) {
 	return logic, nil
 }
 
+type Range struct {
+	start int
+	end   int
+	index int
+}
+
+func (r Range) containRange(preStart, preEnd int) bool {
+	return preStart < r.start && preEnd > r.end
+}
+
 func (logic *Logic) payloadToRule(subPayload string) (C.Rule, error) {
 	splitStr := strings.SplitN(subPayload, ",", 2)
 	tp := splitStr[0]
@@ -72,101 +82,87 @@ func (logic *Logic) payloadToRule(subPayload string) (C.Rule, error) {
 	return ParseRule(tp, param[0], "", param[1:])
 }
 
-func (logic *Logic) parsePayload(payload string) error {
-	type Range struct {
-		start int
-		end   int
-		index int
+func (logic *Logic) format(payload string) ([]Range, error) {
+	stack := S.NewStack()
+	num := 0
+	subRanges := make([]Range, 0)
+	for i, c := range payload {
+		if c == '(' {
+			sr := Range{
+				start: i,
+				index: num,
+			}
+
+			num++
+			stack.Push(sr)
+		} else if c == ')' {
+			sr := stack.Pop().(Range)
+			sr.end = i
+			subRanges = append(subRanges, sr)
+		}
 	}
 
+	if stack.Len() != 0 {
+		return nil, fmt.Errorf("format error is missing )")
+	}
+
+	sortResult := make([]Range, len(subRanges))
+	for _, sr := range subRanges {
+		sortResult[sr.index] = sr
+	}
+
+	return sortResult, nil
+}
+
+func (logic *Logic) findSubRuleRange(payload string, ruleRanges []Range) []Range {
+	payloadLen := len(payload)
+	subRuleRange := make([]Range, 0)
+	for _, rr := range ruleRanges {
+		if rr.start == 0 && rr.end == payloadLen-1 {
+			// 最大范围跳过
+			continue
+		}
+
+		containInSub := false
+		for _, r := range subRuleRange {
+			if rr.containRange(r.start, r.end) {
+				// The subRuleRange contains a range of rr, which is the next level node of the tree
+				containInSub = true
+				break
+			}
+		}
+
+		if !containInSub {
+			subRuleRange = append(subRuleRange, rr)
+		}
+	}
+
+	return subRuleRange
+}
+
+func (logic *Logic) parsePayload(payload string) error {
 	regex, err := regexp.Compile("\\(.*\\)")
 	if err != nil {
 		return err
 	}
 
 	if regex.MatchString(payload) {
-		stack := S.NewStack()
-		num := 0
-		subRanges := make([]Range, 0)
-		for i, c := range payload {
-			if c == '(' {
-				sr := Range{
-					start: i,
-					index: num,
-				}
-
-				num++
-				stack.Push(sr)
-			} else if c == ')' {
-				sr := stack.Pop().(Range)
-				sr.end = i
-				subRanges = append(subRanges, sr)
-			}
-		}
-
-		if stack.Len() != 0 {
-			return fmt.Errorf("format error is missing )")
-		}
-
-		sortResult := make([]Range, len(subRanges))
-		for _, sr := range subRanges {
-			sortResult[sr.index] = sr
-		}
-		subRanges = sortResult
-
+		subAllRanges, err := logic.format(payload)
 		if err != nil {
 			return err
 		}
-		rules := make([]C.Rule, 0, len(subRanges))
+		rules := make([]C.Rule, 0, len(subAllRanges))
 
-		if len(subRanges) == 1 {
-			subPayload := payload[subRanges[0].start+1 : subRanges[0].end-1]
+		subRanges := logic.findSubRuleRange(payload, subAllRanges)
+		for _, subRange := range subRanges {
+			subPayload := payload[subRange.start+1 : subRange.end]
+
 			rule, err := logic.payloadToRule(subPayload)
 			if err != nil {
 				return err
 			}
 
 			rules = append(rules, rule)
-		} else {
-			preStart := subRanges[0].start
-			preEnd := subRanges[0].end
-			for _, sr := range subRanges[1:] {
-				if preStart < sr.start && preEnd > sr.end && sr.start-preStart > 1 {
-					str := ""
-					if preStart+1 <= sr.start-1 {
-						str = strings.TrimSpace(payload[preStart+1 : sr.start-1])
-					}
-
-					if str == "AND" || str == "OR" || str == "NOT" {
-						subPayload := payload[preStart+1 : preEnd]
-						rule, err := logic.payloadToRule(subPayload)
-						if err != nil {
-							return err
-						}
-
-						rules = append(rules, rule)
-						preStart = sr.start
-						preEnd = sr.end
-					}
-
-					continue
-				}
-
-				preStart = sr.start
-				preEnd = sr.end
-
-				subPayload := payload[sr.start+1 : sr.end]
-				rule, err := logic.payloadToRule(subPayload)
-				if err != nil {
-					return err
-				}
-
-				rules = append(rules, rule)
-			}
-		}
-
-		if len(rules) < 1 {
-			return fmt.Errorf("the parsed rule is empty")
 		}
 
 		logic.rules = rules

@@ -13,7 +13,6 @@ import (
 
 	"sync/atomic"
 	"time"
-	_ "unsafe"
 
 	"github.com/Dreamacro/clash/listener/tun/dev/wintun"
 	"golang.org/x/sys/windows"
@@ -34,12 +33,6 @@ type rateJuggler struct {
 
 var WintunTunnelType = "ClashR"
 var WintunStaticRequestedGUID *windows.GUID
-
-//go:linkname procyield runtime.procyield
-func procyield(cycles uint32)
-
-//go:linkname nanotime runtime.nanotime
-func nanotime() int64
 
 func (tun *tunWindows) Close() error {
 	var err error

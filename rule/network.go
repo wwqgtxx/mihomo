@@ -48,3 +48,7 @@ func (n *Network) Payload() string {
 func (n *Network) ShouldResolveIP() bool {
 	return false
 }
+
+func (n *Network) ShouldFindProcess() bool {
+	return false
+}

@@ -47,22 +47,26 @@ func NewType(network, adapter string) (*Type, error) {
 	return ntType, nil
 }
 
-func (n *Type) RuleType() C.RuleType {
+func (t *Type) RuleType() C.RuleType {
 	return C.Type_
 }
 
-func (n *Type) Match(metadata *C.Metadata) bool {
-	return n.type_ == metadata.Type
+func (t *Type) Match(metadata *C.Metadata) bool {
+	return t.type_ == metadata.Type
 }
 
-func (n *Type) Adapter() string {
-	return n.adapter
+func (t *Type) Adapter() string {
+	return t.adapter
 }
 
-func (n *Type) Payload() string {
-	return n.type_.String()
+func (t *Type) Payload() string {
+	return t.type_.String()
 }
 
-func (n *Type) ShouldResolveIP() bool {
+func (t *Type) ShouldResolveIP() bool {
+	return false
+}
+
+func (t *Type) ShouldFindProcess() bool {
 	return false
 }

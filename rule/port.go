@@ -49,6 +49,10 @@ func (p *Port) ShouldResolveIP() bool {
 	return false
 }
 
+func (p *Port) ShouldFindProcess() bool {
+	return false
+}
+
 func NewPort(port string, adapter string, ruleType C.RuleType) (*Port, error) {
 	p := &Port{
 		adapter:  adapter,

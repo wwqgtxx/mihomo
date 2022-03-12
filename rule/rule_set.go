@@ -14,6 +14,7 @@ func (r *RuleSet) RuleType() C.RuleType {
 }
 
 func (r *RuleSet) Match(metadata *C.Metadata) bool {
+	// parse in rule.go
 	return false
 }
 
@@ -26,6 +27,10 @@ func (r *RuleSet) Payload() string {
 }
 
 func (r *RuleSet) ShouldResolveIP() bool {
+	return false
+}
+
+func (r *RuleSet) ShouldFindProcess() bool {
 	return false
 }
 

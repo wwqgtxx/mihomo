@@ -81,18 +81,19 @@ func (t Type) MarshalJSON() ([]byte, error) {
 
 // Metadata is used to store connection address
 type Metadata struct {
-	NetWork  NetWork `json:"network"`
-	Type     Type    `json:"type"`
-	SrcIP    net.IP  `json:"sourceIP"`
-	DstIP    net.IP  `json:"destinationIP"`
-	SrcPort  string  `json:"sourcePort"`
-	DstPort  string  `json:"destinationPort"`
-	InIP     net.IP  `json:"inboundIP"`
-	InPort   string  `json:"inboundPort"`
-	AddrType int     `json:"-"`
-	Host     string  `json:"host"`
-	Process  string  `json:"process"`
-	DNSMode  DNSMode `json:"dnsMode"`
+	NetWork     NetWork `json:"network"`
+	Type        Type    `json:"type"`
+	SrcIP       net.IP  `json:"sourceIP"`
+	DstIP       net.IP  `json:"destinationIP"`
+	SrcPort     string  `json:"sourcePort"`
+	DstPort     string  `json:"destinationPort"`
+	InIP        net.IP  `json:"inboundIP"`
+	InPort      string  `json:"inboundPort"`
+	AddrType    int     `json:"-"`
+	Host        string  `json:"host"`
+	DNSMode     DNSMode `json:"dnsMode"`
+	Process     string  `json:"process"`
+	ProcessPath string  `json:"processPath"`
 }
 
 func (m *Metadata) RemoteAddress() string {

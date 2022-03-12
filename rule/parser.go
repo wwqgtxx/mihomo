@@ -42,7 +42,9 @@ func ParseRule(tp, payload, target string, params []string) (C.Rule, error) {
 	case "IN-PORT":
 		parsed, parseErr = NewPort(payload, target, C.InPort)
 	case "PROCESS-NAME":
-		parsed, parseErr = NewProcess(payload, target)
+		parsed, parseErr = NewProcess(payload, target, true)
+	case "PROCESS-PATH":
+		parsed, parseErr = NewProcess(payload, target, false)
 	case "NETWORK":
 		parsed, parseErr = NewNetwork(payload, target)
 	case "TYPE":
@@ -50,7 +52,9 @@ func ParseRule(tp, payload, target string, params []string) (C.Rule, error) {
 	case "MATCH":
 		parsed = NewMatch(target)
 	case "RULE-SET":
-		if target == "" { // don't allow use RULE-SET in a Rule Providers' classical config file
+		if target == "" {
+			// don't allow use RULE-SET in a Rule Providers' classical config file
+			// and also don't allow use RULE-SET in NOT/AND/OR logic
 			parseErr = fmt.Errorf("unsupported rule type %s", tp)
 			break
 		}

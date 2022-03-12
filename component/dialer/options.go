@@ -3,9 +3,10 @@ package dialer
 import "go.uber.org/atomic"
 
 var (
-	DefaultOptions   []Option
-	DefaultInterface = atomic.NewString("")
-	GeneralInterface = atomic.NewString("")
+	DefaultOptions     []Option
+	DefaultInterface   = atomic.NewString("")
+	GeneralInterface   = atomic.NewString("")
+	DefaultRoutingMark = atomic.NewInt32(0)
 )
 
 type option struct {

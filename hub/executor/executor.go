@@ -198,6 +198,7 @@ func updateGeneral(general *config.General, force bool) {
 
 	dialer.DefaultInterface.Store(general.Interface)
 	dialer.GeneralInterface.Store(general.Interface)
+	dialer.DefaultRoutingMark.Store(int32(general.RoutingMark))
 
 	iface.FlushCache()
 

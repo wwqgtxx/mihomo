@@ -10,11 +10,12 @@ import (
 )
 
 type Logic struct {
-	payload  string
-	adapter  string
-	ruleType C.RuleType
-	rules    []C.Rule
-	needIP   bool
+	payload     string
+	adapter     string
+	ruleType    C.RuleType
+	rules       []C.Rule
+	needIP      bool
+	needProcess bool
 }
 
 func NewNOT(payload string, adapter string) (*Logic, error) {
@@ -23,7 +24,8 @@ func NewNOT(payload string, adapter string) (*Logic, error) {
 	if err != nil {
 		return nil, err
 	}
-	logic.needIP = !logic.rules[0].ShouldResolveIP()
+	logic.needIP = logic.rules[0].ShouldResolveIP()
+	logic.needProcess = logic.rules[0].ShouldFindProcess()
 	return logic, nil
 }
 
@@ -37,7 +39,9 @@ func NewOR(payload string, adapter string) (*Logic, error) {
 	for _, rule := range logic.rules {
 		if rule.ShouldResolveIP() {
 			logic.needIP = true
-			break
+		}
+		if rule.ShouldFindProcess() {
+			logic.needProcess = true
 		}
 	}
 
@@ -53,7 +57,9 @@ func NewAND(payload string, adapter string) (*Logic, error) {
 	for _, rule := range logic.rules {
 		if rule.ShouldResolveIP() {
 			logic.needIP = true
-			break
+		}
+		if rule.ShouldFindProcess() {
+			logic.needProcess = true
 		}
 	}
 
@@ -207,4 +213,8 @@ func (logic *Logic) Payload() string {
 
 func (logic *Logic) ShouldResolveIP() bool {
 	return logic.needIP
+}
+
+func (logic *Logic) ShouldFindProcess() bool {
+	return logic.needProcess
 }

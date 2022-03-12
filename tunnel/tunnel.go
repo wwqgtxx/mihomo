@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"path/filepath"
 	"runtime"
+	"strconv"
 	"sync"
 	"time"
 
@@ -12,6 +14,7 @@ import (
 	"github.com/Dreamacro/clash/common/channel"
 	"github.com/Dreamacro/clash/component/mmdb"
 	"github.com/Dreamacro/clash/component/nat"
+	P "github.com/Dreamacro/clash/component/process"
 	"github.com/Dreamacro/clash/component/resolver"
 	C "github.com/Dreamacro/clash/constant"
 	"github.com/Dreamacro/clash/constant/provider"
@@ -37,8 +40,7 @@ var (
 	// default timeout for UDP session
 	udpTimeout = 60 * time.Second
 
-	preProcessCacheFinder, _ = R.NewProcess("", "")
-	preResolveProcessName    = false
+	preResolveProcessName = false
 )
 
 func PreResolveProcessName() bool {
@@ -165,11 +167,6 @@ func preHandleMetadata(metadata *C.Metadata) error {
 		} else if resolver.IsFakeIP(metadata.DstIP) && !C.TunBroadcastAddr.Equal(metadata.DstIP) {
 			return fmt.Errorf("fake DNS record %s missing", metadata.DstIP)
 		}
-	}
-
-	if preResolveProcessName {
-		// preset process name and cache it
-		preProcessCacheFinder.Match(metadata)
 	}
 
 	return nil
@@ -334,6 +331,7 @@ func match(metadata *C.Metadata) (C.Proxy, C.Rule, error) {
 	defer configMux.RUnlock()
 
 	var resolved bool
+	var processFound bool
 
 	if node := resolver.DefaultHosts.Search(metadata.Host); node != nil {
 		ip := node.Data.(net.IP)
@@ -385,6 +383,22 @@ func match(metadata *C.Metadata) (C.Proxy, C.Rule, error) {
 		}
 
 		checkResolved(rule)
+
+		if !processFound && (rule.ShouldFindProcess() || preResolveProcessName) {
+			processFound = true
+
+			srcPort, err := strconv.Atoi(metadata.SrcPort)
+			if err == nil {
+				path, err := P.FindProcessName(metadata.NetWork.String(), metadata.SrcIP, srcPort)
+				if err != nil {
+					log.Debugln("[Process] find process %s: %v", metadata.String(), err)
+				} else {
+					log.Debugln("[Process] %s from process %s", metadata.String(), path)
+					metadata.ProcessPath = path
+					metadata.Process = filepath.Base(path)
+				}
+			}
+		}
 
 		if rule.Match(metadata) {
 			adapter, ok := proxies[rule.Adapter()]

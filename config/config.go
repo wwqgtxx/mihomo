@@ -33,6 +33,7 @@ type General struct {
 	LogLevel               log.LogLevel `json:"log-level"`
 	IPv6                   bool         `json:"ipv6"`
 	Interface              string       `json:"-"`
+	RoutingMark            int          `json:"-"`
 	UseRemoteDnsDefault    bool         `json:"use-remote-dns-default"`
 	UseSystemDnsDial       bool         `json:"use-system-dns-dial"`
 	HealthCheckLazyDefault bool         `json:"health-check-lazy-default"`
@@ -164,6 +165,7 @@ type RawConfig struct {
 	ExternalUI             string       `yaml:"external-ui"`
 	Secret                 string       `yaml:"secret"`
 	Interface              string       `yaml:"interface-name"`
+	RoutingMark            int          `yaml:"routing-mark"`
 	UseRemoteDnsDefault    bool         `yaml:"use-remote-dns-default"`
 	UseSystemDnsDial       bool         `yaml:"use-system-dns-dial"`
 	HealthCheckLazyDefault bool         `yaml:"health-check-lazy-default"`
@@ -334,6 +336,7 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 		LogLevel:               cfg.LogLevel,
 		IPv6:                   cfg.IPv6,
 		Interface:              cfg.Interface,
+		RoutingMark:            cfg.RoutingMark,
 		UseRemoteDnsDefault:    cfg.UseRemoteDnsDefault,
 		UseSystemDnsDial:       cfg.UseSystemDnsDial,
 		HealthCheckLazyDefault: cfg.HealthCheckLazyDefault,

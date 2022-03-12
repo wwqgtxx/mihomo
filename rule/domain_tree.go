@@ -41,6 +41,10 @@ func (d *DomainTree) ShouldResolveIP() bool {
 	return false
 }
 
+func (d *DomainTree) ShouldFindProcess() bool {
+	return false
+}
+
 func (d *DomainTree) Insert(domain string) error {
 	domain = strings.ToLower(domain)
 	err := d.dt.Insert(domain, "")

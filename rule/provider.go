@@ -38,7 +38,7 @@ type ruleSetProvider struct {
 }
 
 func (rp *ruleSetProvider) MarshalJSON() ([]byte, error) {
-	return json.Marshal(map[string]interface{}{
+	return json.Marshal(map[string]any{
 		"name":        rp.Name(),
 		"type":        rp.Type().String(),
 		"vehicleType": rp.VehicleType().String(),
@@ -84,7 +84,7 @@ type RuleTree interface {
 	Insert(string) error
 }
 
-func rulesParse(buf []byte, behavior string) (interface{}, error) {
+func rulesParse(buf []byte, behavior string) (any, error) {
 	schema := &RuleSchema{}
 
 	if err := yaml.Unmarshal(buf, schema); err != nil {
@@ -181,12 +181,12 @@ func NewRuleSetProvider(name string, interval time.Duration, vehicle providerTyp
 		behavior: behavior,
 	}
 
-	onUpdate := func(elm interface{}) {
+	onUpdate := func(elm any) {
 		ret := elm.([]C.Rule)
 		rp.setRules(ret)
 	}
 
-	parse := func(bytes []byte) (interface{}, error) { return rulesParse(bytes, rp.behavior) }
+	parse := func(bytes []byte) (any, error) { return rulesParse(bytes, rp.behavior) }
 
 	fetcher := provider.NewFetcher(name, interval, vehicle, parse, onUpdate)
 	rp.Fetcher = fetcher
@@ -204,7 +204,7 @@ type ruleProviderSchema struct {
 	Interval int    `provider:"interval,omitempty"`
 }
 
-func ParseRuleProvider(name string, mapping map[string]interface{}) (RuleProvider, error) {
+func ParseRuleProvider(name string, mapping map[string]any) (RuleProvider, error) {
 	decoder := structure.NewDecoder(structure.Option{TagName: "provider", WeaklyTypedInput: true})
 
 	schema := &ruleProviderSchema{}

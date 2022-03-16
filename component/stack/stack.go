@@ -11,7 +11,7 @@ type (
 		lock   *sync.RWMutex
 	}
 	node struct {
-		value interface{}
+		value any
 		prev  *node
 	}
 )
@@ -27,7 +27,7 @@ func (stack *Stack) Len() int {
 }
 
 // Peek View the top item on the stack
-func (stack *Stack) Peek() interface{} {
+func (stack *Stack) Peek() any {
 	if stack.length == 0 {
 		return nil
 	}
@@ -35,7 +35,7 @@ func (stack *Stack) Peek() interface{} {
 }
 
 // Pop the top item of the stack and return it
-func (stack *Stack) Pop() interface{} {
+func (stack *Stack) Pop() any {
 	stack.lock.Lock()
 	defer stack.lock.Unlock()
 	if stack.length == 0 {
@@ -48,7 +48,7 @@ func (stack *Stack) Pop() interface{} {
 }
 
 // Push a value onto the top of the stack
-func (stack *Stack) Push(value interface{}) {
+func (stack *Stack) Push(value any) {
 	stack.lock.Lock()
 	defer stack.lock.Unlock()
 	n := &node{value, stack.top}

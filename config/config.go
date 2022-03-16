@@ -172,16 +172,16 @@ type RawConfig struct {
 	TouchAfterLazyPassNum  int          `yaml:"touch-after-lazy-pass-num"`
 	PreResolveProcessName  bool         `yaml:"pre-resolve-process-name"`
 
-	RuleProviders map[string]map[string]interface{} `yaml:"rule-providers"`
-	ProxyProvider map[string]map[string]interface{} `yaml:"proxy-providers"`
-	Hosts         map[string]string                 `yaml:"hosts"`
-	DNS           RawDNS                            `yaml:"dns"`
-	Tun           Tun                               `yaml:"tun"`
-	Experimental  Experimental                      `yaml:"experimental"`
-	Profile       Profile                           `yaml:"profile"`
-	Proxy         []map[string]interface{}          `yaml:"proxies"`
-	ProxyGroup    []map[string]interface{}          `yaml:"proxy-groups"`
-	Rule          []string                          `yaml:"rules"`
+	RuleProviders map[string]map[string]any `yaml:"rule-providers"`
+	ProxyProvider map[string]map[string]any `yaml:"proxy-providers"`
+	Hosts         map[string]string         `yaml:"hosts"`
+	DNS           RawDNS                    `yaml:"dns"`
+	Tun           Tun                       `yaml:"tun"`
+	Experimental  Experimental              `yaml:"experimental"`
+	Profile       Profile                   `yaml:"profile"`
+	Proxy         []map[string]any          `yaml:"proxies"`
+	ProxyGroup    []map[string]any          `yaml:"proxy-groups"`
+	Rule          []string                  `yaml:"rules"`
 }
 
 // Parse config
@@ -209,8 +209,8 @@ func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 		PreResolveProcessName:  false,
 		Hosts:                  map[string]string{},
 		Rule:                   []string{},
-		Proxy:                  []map[string]interface{}{},
-		ProxyGroup:             []map[string]interface{}{},
+		Proxy:                  []map[string]any{},
+		ProxyGroup:             []map[string]any{},
 		Tun: Tun{
 			Enable:              false,
 			Stack:               "gvisor",

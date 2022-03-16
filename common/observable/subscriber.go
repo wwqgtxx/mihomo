@@ -6,14 +6,14 @@ import (
 	"github.com/Dreamacro/clash/common/channel"
 )
 
-type Subscription <-chan interface{}
+type Subscription <-chan any
 
 type Subscriber struct {
-	buffer *channel.InfiniteChannel[interface{}]
+	buffer *channel.InfiniteChannel[any]
 	once   sync.Once
 }
 
-func (s *Subscriber) Emit(item interface{}) {
+func (s *Subscriber) Emit(item any) {
 	s.buffer.In() <- item
 }
 
@@ -29,7 +29,7 @@ func (s *Subscriber) Close() {
 
 func newSubscriber() *Subscriber {
 	sub := &Subscriber{
-		buffer: channel.NewInfiniteChannel[interface{}](),
+		buffer: channel.NewInfiniteChannel[any](),
 	}
 	return sub
 }

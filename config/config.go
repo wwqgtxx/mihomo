@@ -749,11 +749,10 @@ func parseDNS(rawCfg *RawConfig, hosts *trie.DomainTrie) (*DNS, error) {
 }
 
 func parseAuthentication(rawRecords []string) []auth.AuthUser {
-	users := make([]auth.AuthUser, 0)
+	users := []auth.AuthUser{}
 	for _, line := range rawRecords {
-		userData := strings.SplitN(line, ":", 2)
-		if len(userData) == 2 {
-			users = append(users, auth.AuthUser{User: userData[0], Pass: userData[1]})
+		if user, pass, found := strings.Cut(line, ":"); found {
+			users = append(users, auth.AuthUser{User: user, Pass: pass})
 		}
 	}
 	return users

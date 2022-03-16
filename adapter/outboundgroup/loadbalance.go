@@ -32,7 +32,7 @@ type LoadBalance struct {
 
 var errStrategy = errors.New("unsupported strategy")
 
-func parseStrategy(config map[string]interface{}) string {
+func parseStrategy(config map[string]any) string {
 	if elm, ok := config["strategy"]; ok {
 		if strategy, ok := elm.(string); ok {
 			return strategy
@@ -168,7 +168,7 @@ func (lb *LoadBalance) Unwrap(metadata *C.Metadata) C.Proxy {
 }
 
 func (lb *LoadBalance) proxies(touch bool) []C.Proxy {
-	elm, _, _ := lb.single.Do(func() (interface{}, error) {
+	elm, _, _ := lb.single.Do(func() (any, error) {
 		return getProvidersProxies(lb.providers, touch, lb.filter), nil
 	})
 
@@ -181,7 +181,7 @@ func (lb *LoadBalance) MarshalJSON() ([]byte, error) {
 	for _, proxy := range lb.proxies(false) {
 		all = append(all, proxy.Name())
 	}
-	return json.Marshal(map[string]interface{}{
+	return json.Marshal(map[string]any{
 		"type": lb.Type().String(),
 		"all":  all,
 	})

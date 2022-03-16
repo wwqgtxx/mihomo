@@ -1,100 +1,73 @@
 package channel
 
 import (
-	"reflect"
-
 	"github.com/Dreamacro/clash/common/ring_queue"
 )
 
 // InfiniteChannel implements the Channel interface with an infinite buffer between the input and the output.
-type InfiniteChannel struct {
-	rvIn, rvOut reflect.Value
-	in, out     interface{}
-	length      chan int
-	rvLength    reflect.Value
-	buffer      *ring_queue.Queue
+type InfiniteChannel[T any] struct {
+	input  chan T
+	output chan T
+	length chan int
+	buffer *ring_queue.Queue[T]
 }
 
-func NewInfiniteChannel(chanExample interface{}) *InfiniteChannel {
-	if chanExample == nil {
-		chanExample = new(chan interface{})
+func NewInfiniteChannel[T any]() *InfiniteChannel[T] {
+	ch := &InfiniteChannel[T]{
+		input:  make(chan T),
+		output: make(chan T),
+		length: make(chan int),
+		buffer: ring_queue.New[T](),
 	}
-
-	rv := reflect.ValueOf(chanExample)
-	if rk := rv.Kind(); rk != reflect.Chan {
-		panic("expecting type: 'chan ...'  instead got: " + rk.String())
-	}
-
-	ch := &InfiniteChannel{}
-	ch.rvIn = reflect.MakeChan(rv.Type(), 0)
-	ch.rvOut = reflect.MakeChan(rv.Type(), 0)
-	ch.in = ch.rvIn.Interface()
-	ch.out = ch.rvOut.Interface()
-	ch.length = make(chan int)
-	ch.rvLength = reflect.ValueOf(ch.length)
-	ch.buffer = ring_queue.New()
 
 	go ch.infiniteBuffer()
 
 	return ch
 }
 
-func (ch *InfiniteChannel) In() interface{} {
-	return ch.in
+func (ch *InfiniteChannel[T]) In() chan T {
+	return ch.input
 }
 
-func (ch *InfiniteChannel) Out() interface{} {
-	return ch.out
+func (ch *InfiniteChannel[T]) Out() chan T {
+	return ch.output
 }
 
-func (ch *InfiniteChannel) Len() int {
+func (ch *InfiniteChannel[T]) Len() int {
 	return <-ch.length
 }
 
-func (ch *InfiniteChannel) Close() {
-	ch.rvIn.Close()
+func (ch *InfiniteChannel[T]) Close() {
+	close(ch.input)
 }
 
-func (ch *InfiniteChannel) infiniteBuffer() {
-	var input, output reflect.Value
-	var next interface{}
+func (ch *InfiniteChannel[T]) infiniteBuffer() {
+	var input, output chan T
+	var next T
+	input = ch.input
 
-	input = ch.rvIn
-
-	selectCase := make([]reflect.SelectCase, 3)
-
-	for input.IsValid() || output.IsValid() {
-		selectCase[0].Dir = reflect.SelectRecv
-		selectCase[0].Chan = input
-		selectCase[1].Dir = reflect.SelectSend
-		selectCase[1].Chan = output
-		selectCase[1].Send = reflect.ValueOf(next)
-		selectCase[2].Dir = reflect.SelectSend
-		selectCase[2].Chan = ch.rvLength
-		selectCase[2].Send = reflect.ValueOf(ch.buffer.Length())
-
-		chosen, recv, recvOk := reflect.Select(selectCase)
-		switch chosen {
-		case 0:
-			if recvOk {
-				ch.buffer.Add(recv.Interface())
+	for input != nil || output != nil {
+		select {
+		case elem, open := <-input:
+			if open {
+				ch.buffer.Add(elem)
 			} else {
-				input = reflect.Value{}
+				input = nil
 			}
-		case 1:
+		case output <- next:
 			ch.buffer.Remove()
-		case 2:
+		case ch.length <- ch.buffer.Length():
 		}
 
 		if ch.buffer.Length() > 0 {
-			output = ch.rvOut
+			output = ch.output
 			next = ch.buffer.Peek()
 		} else {
-			output = reflect.Value{}
-			next = nil
+			output = nil
+			//next = nil
 		}
 	}
 
-	ch.rvOut.Close()
-	ch.rvLength.Close()
+	close(ch.output)
+	close(ch.length)
 }

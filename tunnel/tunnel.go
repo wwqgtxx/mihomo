@@ -25,8 +25,8 @@ import (
 )
 
 var (
-	tcpQueue      = channel.NewInfiniteChannel(make(chan C.ConnContext))
-	udpQueue      = channel.NewInfiniteChannel(make(chan *inbound.PacketAdapter))
+	tcpQueue      = channel.NewInfiniteChannel[C.ConnContext]()
+	udpQueue      = channel.NewInfiniteChannel[*inbound.PacketAdapter]()
 	natTable      = nat.New()
 	rules         []C.Rule
 	ruleProviders map[string]R.RuleProvider
@@ -57,12 +57,12 @@ func init() {
 
 // TCPIn return fan-in queue
 func TCPIn() chan<- C.ConnContext {
-	return tcpQueue.In().(chan C.ConnContext)
+	return tcpQueue.In()
 }
 
 // UDPIn return fan-in udp queue
 func UDPIn() chan<- *inbound.PacketAdapter {
-	return udpQueue.In().(chan *inbound.PacketAdapter)
+	return udpQueue.In()
 }
 
 // Rules return all rules
@@ -113,7 +113,7 @@ func SetMode(m TunnelMode) {
 
 // processUDP starts a loop to handle udp packet
 func processUDP() {
-	queue := udpQueue.Out().(chan *inbound.PacketAdapter)
+	queue := udpQueue.Out()
 	for conn := range queue {
 		handleUDPConn(conn)
 	}
@@ -128,7 +128,7 @@ func process() {
 		go processUDP()
 	}
 
-	queue := tcpQueue.Out().(chan C.ConnContext)
+	queue := tcpQueue.Out()
 	for conn := range queue {
 		go handleTCPConn(conn)
 	}

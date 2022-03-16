@@ -1,6 +1,6 @@
 package ring_queue
 
-// copy from github.com/eapache/queue
+// modify from github.com/eapache/queue
 
 /*
 Package queue provides a fast, ring-buffer queue based on the version suggested by Dariusz Górecki.
@@ -15,27 +15,27 @@ The queue implemented here is as fast as it is for an additional reason: it is *
 const minQueueLen = 16
 
 // Queue represents a single instance of the queue data structure.
-type Queue struct {
-	buf               []interface{}
+type Queue[T any] struct {
+	buf               []any
 	head, tail, count int
 }
 
 // New constructs and returns a new Queue.
-func New() *Queue {
-	return &Queue{
-		buf: make([]interface{}, minQueueLen),
+func New[T any]() *Queue[T] {
+	return &Queue[T]{
+		buf: make([]any, minQueueLen),
 	}
 }
 
 // Length returns the number of elements currently stored in the queue.
-func (q *Queue) Length() int {
+func (q *Queue[T]) Length() int {
 	return q.count
 }
 
 // resizes the queue to fit exactly twice its current contents
 // this can result in shrinking if the queue is less than half-full
-func (q *Queue) resize() {
-	newBuf := make([]interface{}, q.count<<1)
+func (q *Queue[T]) resize() {
+	newBuf := make([]any, q.count<<1)
 
 	if q.tail > q.head {
 		copy(newBuf, q.buf[q.head:q.tail])
@@ -50,7 +50,7 @@ func (q *Queue) resize() {
 }
 
 // Add puts an element on the end of the queue.
-func (q *Queue) Add(elem interface{}) {
+func (q *Queue[T]) Add(elem T) {
 	if q.count == len(q.buf) {
 		q.resize()
 	}
@@ -63,18 +63,18 @@ func (q *Queue) Add(elem interface{}) {
 
 // Peek returns the element at the head of the queue. This call panics
 // if the queue is empty.
-func (q *Queue) Peek() interface{} {
+func (q *Queue[T]) Peek() T {
 	if q.count <= 0 {
 		panic("queue: Peek() called on empty queue")
 	}
-	return q.buf[q.head]
+	return q.buf[q.head].(T)
 }
 
 // Get returns the element at index i in the queue. If the index is
 // invalid, the call will panic. This method accepts both positive and
 // negative index values. Index 0 refers to the first element, and
 // index -1 refers to the last.
-func (q *Queue) Get(i int) interface{} {
+func (q *Queue[T]) Get(i int) T {
 	// If indexing backwards, convert to positive index.
 	if i < 0 {
 		i += q.count
@@ -83,12 +83,12 @@ func (q *Queue) Get(i int) interface{} {
 		panic("queue: Get() called with index out of range")
 	}
 	// bitwise modulus
-	return q.buf[(q.head+i)&(len(q.buf)-1)]
+	return q.buf[(q.head+i)&(len(q.buf)-1)].(T)
 }
 
 // Remove removes and returns the element from the front of the queue. If the
 // queue is empty, the call will panic.
-func (q *Queue) Remove() interface{} {
+func (q *Queue[T]) Remove() T {
 	if q.count <= 0 {
 		panic("queue: Remove() called on empty queue")
 	}
@@ -101,5 +101,5 @@ func (q *Queue) Remove() interface{} {
 	if len(q.buf) > minQueueLen && (q.count<<2) == len(q.buf) {
 		q.resize()
 	}
-	return ret
+	return ret.(T)
 }

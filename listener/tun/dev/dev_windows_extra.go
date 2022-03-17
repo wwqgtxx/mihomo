@@ -374,6 +374,10 @@ func getAutoDetectInterfaceByFamily(family winipcfg.AddressFamily) (string, erro
 		for gatewayAddress := iface.FirstGatewayAddress; gatewayAddress != nil; gatewayAddress = gatewayAddress.Next {
 			nextHop := gatewayAddress.Address.IP()
 
+			if nextHop.Equal(C.ZeroTierFakeGatewayIp) {
+				continue
+			}
+
 			var ipnet net.IPNet
 			if family == windows.AF_INET {
 				ipnet = net.IPNet{IP: net.IPv4zero, Mask: net.CIDRMask(0, 32)}

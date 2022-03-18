@@ -361,6 +361,14 @@ func getAutoDetectInterfaceByFamily(family winipcfg.AddressFamily) (string, erro
 	if err != nil {
 		return "", fmt.Errorf("get ethernet interface failure. %w", err)
 	}
+
+	type MetricIfName struct {
+		Metric uint32
+		IfName string
+	}
+
+	var metricIfNameArr []MetricIfName
+
 	for _, iface := range interfaces {
 		if iface.OperStatus != winipcfg.IfOperStatusUp {
 			continue
@@ -385,11 +393,18 @@ func getAutoDetectInterfaceByFamily(family winipcfg.AddressFamily) (string, erro
 				ipnet = net.IPNet{IP: net.IPv6zero, Mask: net.CIDRMask(0, 128)}
 			}
 
-			if _, err = iface.LUID.Route(ipnet, nextHop); err == nil {
-				return ifname, nil
+			if row, err := iface.LUID.Route(ipnet, nextHop); err == nil {
+				metricIfNameArr = append(metricIfNameArr, MetricIfName{Metric: row.Metric, IfName: ifname})
+				//return ifname, nil
 			}
 		}
-	}
 
+	}
+	if len(metricIfNameArr) > 0 {
+		sort.SliceStable(metricIfNameArr, func(i, j int) bool {
+			return metricIfNameArr[i].Metric < metricIfNameArr[j].Metric
+		})
+		return metricIfNameArr[0].IfName, nil
+	}
 	return "", errors.New("ethernet interface not found")
 }

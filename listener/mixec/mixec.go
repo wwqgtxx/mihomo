@@ -85,6 +85,7 @@ func handleECConn(conn net.Conn, cl ChanListener, in chan<- C.ConnContext) {
 	switch head[0] {
 	case socks4.Version: // 0x04
 		socks.HandleSocks4(bufConn, in)
+		return
 	case socks5.Version: // 0x05
 		socks.HandleSocks5(bufConn, in)
 		return

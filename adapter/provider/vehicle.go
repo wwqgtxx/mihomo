@@ -10,8 +10,13 @@ import (
 	"time"
 
 	"github.com/Dreamacro/clash/component/dialer"
+	"github.com/Dreamacro/clash/component/inner_dialer"
+	C "github.com/Dreamacro/clash/constant"
 	types "github.com/Dreamacro/clash/constant/provider"
+	"github.com/Dreamacro/clash/log"
 )
+
+var remoteDialer = inner_dialer.NewDialer(C.PROVIDER)
 
 type FileVehicle struct {
 	path string
@@ -46,53 +51,68 @@ func (h *HTTPVehicle) Path() string {
 	return h.path
 }
 
-func (h *HTTPVehicle) Read() ([]byte, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*20)
-	defer cancel()
-
-	uri, err := url.Parse(h.url)
-	if err != nil {
-		return nil, err
+func (h *HTTPVehicle) Read() (buf []byte, err error) {
+	type DC func(ctx context.Context, network, address string) (net.Conn, error)
+	innerDailContext := remoteDialer.DialContext
+	defaultDailContext := func(ctx context.Context, network, address string) (net.Conn, error) {
+		return dialer.DialContext(ctx, network, address)
 	}
 
-	req, err := http.NewRequest(http.MethodGet, uri.String(), nil)
-	if err != nil {
-		return nil, err
+	read := func(dc DC) ([]byte, error) {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*20)
+		defer cancel()
+
+		uri, err := url.Parse(h.url)
+		if err != nil {
+			return nil, err
+		}
+
+		req, err := http.NewRequest(http.MethodGet, uri.String(), nil)
+		if err != nil {
+			return nil, err
+		}
+
+		if user := uri.User; user != nil {
+			password, _ := user.Password()
+			req.SetBasicAuth(user.Username(), password)
+		}
+
+		req.Header.Set("User-Agent", "clash")
+
+		req = req.WithContext(ctx)
+
+		transport := &http.Transport{
+			// from http.DefaultTransport
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+			DialContext:           dc,
+		}
+
+		client := http.Client{Transport: transport}
+		resp, err := client.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+
+		buf, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		return buf, nil
 	}
 
-	if user := uri.User; user != nil {
-		password, _ := user.Password()
-		req.SetBasicAuth(user.Username(), password)
+	for _, dc := range []DC{innerDailContext, defaultDailContext} {
+		buf, err = read(dc)
+		if err == nil {
+			return
+		}
+		log.Errorln("[Provider] fetch from inner error: %s, fallback to direct", err)
 	}
-
-	req.Header.Set("user-agent", "clash")
-
-	req = req.WithContext(ctx)
-
-	transport := &http.Transport{
-		// from http.DefaultTransport
-		MaxIdleConns:          100,
-		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ExpectContinueTimeout: 1 * time.Second,
-		DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
-			return dialer.DialContext(ctx, network, address)
-		},
-	}
-
-	client := http.Client{Transport: transport}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	buf, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	return buf, nil
+	return
 }
 
 func NewHTTPVehicle(url string, path string) *HTTPVehicle {

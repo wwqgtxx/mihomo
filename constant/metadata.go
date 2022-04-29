@@ -27,6 +27,7 @@ const (
 	MTPROXY
 	TUN
 	DNS
+	PROVIDER
 )
 
 type NetWork int
@@ -70,6 +71,8 @@ func (t Type) String() string {
 		return "TUN"
 	case DNS:
 		return "DNS"
+	case PROVIDER:
+		return "Provider"
 	default:
 		return "Unknown"
 	}

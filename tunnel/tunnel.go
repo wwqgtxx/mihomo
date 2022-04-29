@@ -12,6 +12,7 @@ import (
 
 	"github.com/Dreamacro/clash/adapter/inbound"
 	"github.com/Dreamacro/clash/common/channel"
+	"github.com/Dreamacro/clash/component/inner_dialer"
 	"github.com/Dreamacro/clash/component/mmdb"
 	"github.com/Dreamacro/clash/component/nat"
 	P "github.com/Dreamacro/clash/component/process"
@@ -52,6 +53,7 @@ func SetPreResolveProcessName(b bool) {
 }
 
 func init() {
+	inner_dialer.Init(TCPIn(), UDPIn())
 	go process()
 }
 

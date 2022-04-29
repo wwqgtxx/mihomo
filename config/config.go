@@ -400,12 +400,15 @@ func parseProxies(cfg *RawConfig) (proxies map[string]C.Proxy, providersMap map[
 		providersMap[name] = pd
 	}
 
-	for _, provider := range providersMap {
-		log.Infoln("Start initial provider %s", provider.Name())
-		if err := provider.Initial(); err != nil {
-			return nil, nil, fmt.Errorf("initial proxy provider %s error: %w", provider.Name(), err)
-		}
-	}
+	// --------------------------------
+	// merge to executor.loadProvider()
+	// --------------------------------
+	//for _, provider := range providersMap {
+	//	log.Infoln("Start initial provider %s", provider.Name())
+	//	if err := provider.Initial(); err != nil {
+	//		return nil, nil, fmt.Errorf("initial proxy provider %s error: %w", provider.Name(), err)
+	//	}
+	//}
 
 	// parse proxy group
 	for idx, mapping := range groupsConfig {
@@ -414,6 +417,9 @@ func parseProxies(cfg *RawConfig) (proxies map[string]C.Proxy, providersMap map[
 			return nil, nil, fmt.Errorf("proxy group[%d]: %w", idx, err)
 		}
 
+		// --------------------------------
+		// merge to outboundgroup.ParseProxyGroup()
+		// --------------------------------
 		//groupName := group.Name()
 		//if _, exist := proxies[groupName]; exist {
 		//	return nil, nil, fmt.Errorf("proxy group %s: the duplicate name", groupName)
@@ -422,17 +428,20 @@ func parseProxies(cfg *RawConfig) (proxies map[string]C.Proxy, providersMap map[
 		//proxies[groupName] = adapter.NewProxy(group)
 	}
 
+	// --------------------------------
+	// merge to executor.loadProvider()
+	// --------------------------------
 	// initial compatible provider
-	for _, pd := range providersMap {
-		if pd.VehicleType() != providerTypes.Compatible {
-			continue
-		}
-
-		log.Infoln("Start initial compatible provider %s", pd.Name())
-		if err := pd.Initial(); err != nil {
-			return nil, nil, err
-		}
-	}
+	//for _, pd := range providersMap {
+	//	if pd.VehicleType() != providerTypes.Compatible {
+	//		continue
+	//	}
+	//
+	//	log.Infoln("Start initial compatible provider %s", pd.Name())
+	//	if err := pd.Initial(); err != nil {
+	//		return nil, nil, err
+	//	}
+	//}
 
 	ps := []C.Proxy{}
 	for _, v := range proxyList {
@@ -467,12 +476,15 @@ func parseRules(cfg *RawConfig, proxies map[string]C.Proxy) (rules []C.Rule, pro
 		providersMap[name] = rd
 	}
 
-	for _, ruleProvider := range providersMap {
-		log.Infoln("Start initial ruleProvider %s", ruleProvider.Name())
-		if err := ruleProvider.Initial(); err != nil {
-			return nil, nil, fmt.Errorf("initial rule ruleProvider %s error: %w", ruleProvider.Name(), err)
-		}
-	}
+	// --------------------------------
+	// merge to executor.loadProvider()
+	// --------------------------------
+	//for _, ruleProvider := range providersMap {
+	//	log.Infoln("Start initial ruleProvider %s", ruleProvider.Name())
+	//	if err := ruleProvider.Initial(); err != nil {
+	//		return nil, nil, fmt.Errorf("initial rule ruleProvider %s error: %w", ruleProvider.Name(), err)
+	//	}
+	//}
 
 	// parse rules
 	for idx, line := range rulesConfig {

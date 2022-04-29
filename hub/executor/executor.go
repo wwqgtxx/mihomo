@@ -79,6 +79,8 @@ func ApplyConfig(cfg *config.Config, force bool) {
 	updateDNS(cfg.DNS)
 	updateTun(cfg.General)
 	updateExperimental(cfg)
+
+	loadProvider(cfg.RulesProviders, cfg.Providers)
 }
 
 func GetGeneral() *config.General {
@@ -116,6 +118,38 @@ func GetGeneral() *config.General {
 	}
 
 	return general
+}
+
+func loadProvider(ruleProviders map[string]R.RuleProvider, proxyProviders map[string]providerTypes.ProxyProvider) {
+	load := func(pv providerTypes.Provider) {
+		if pv.VehicleType() == providerTypes.Compatible {
+			log.Infoln("Start initial compatible provider %s", pv.Name())
+		} else {
+			log.Infoln("Start initial provider %s", (pv).Name())
+		}
+
+		if err := (pv).Initial(); err != nil {
+			switch pv.Type() {
+			case providerTypes.Proxy:
+				{
+					log.Warnln("initial proxy provider %s error: %v", (pv).Name(), err)
+				}
+			case providerTypes.Rule:
+				{
+					log.Warnln("initial rule provider %s error: %v", (pv).Name(), err)
+				}
+
+			}
+		}
+	}
+
+	for _, proxyProvider := range proxyProviders {
+		load(proxyProvider)
+	}
+
+	for _, ruleProvider := range ruleProviders {
+		load(ruleProvider)
+	}
 }
 
 func updateExperimental(c *config.Config) {}

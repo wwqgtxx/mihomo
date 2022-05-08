@@ -28,6 +28,7 @@ require (
 )
 
 require (
+	github.com/aead/chacha20 v0.0.0-20180709150244-8b13a72661da // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/google/btree v1.0.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
@@ -38,8 +39,7 @@ require (
 	golang.org/x/text v0.3.8-0.20220504184655-ea49e3e2d5b3 // indirect
 	golang.org/x/time v0.0.0-20220411224347-583f2d630306 // indirect
 	golang.org/x/tools v0.1.11-0.20220506163328-22b709631a03 // indirect
-	golang.org/x/xerrors v0.0.0-20220411194840-2f41105eb62f // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
 
-replace github.com/Dreamacro/go-shadowsocks2 v0.1.7 => github.com/wwqgtxx/go-shadowsocks2 v0.1.7
+replace github.com/Dreamacro/go-shadowsocks2 v0.1.8 => github.com/wwqgtxx/go-shadowsocks2 v0.1.8

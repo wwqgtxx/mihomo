@@ -491,10 +491,10 @@ func ReCreateTun(conf config.Tun, tcpIn chan<- C.ConnContext, udpIn chan<- *inbo
 			if autoDetectInterfaceName != "" && autoDetectInterfaceName != "<nil>" {
 				targetInterface = autoDetectInterfaceName
 			} else {
-				log.Debugln("Auto detect interface name is empty.")
+				log.Warnln("Auto detect interface name is empty.")
 			}
 		} else {
-			log.Debugln("Can not find auto detect interface. %s", err.Error())
+			log.Warnln("Can not find auto detect interface. %s", err.Error())
 		}
 	}
 	if dialer.DefaultInterface.Load() != targetInterface {

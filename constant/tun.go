@@ -2,6 +2,7 @@ package constant
 
 import (
 	"net"
+	"net/netip"
 )
 
 const (
@@ -14,9 +15,9 @@ const (
 
 // ZeroTierFakeGatewayIp from
 // https://github.com/zerotier/ZeroTierOne/blob/1.8.6/osdep/WindowsEthernetTap.cpp#L994
-var ZeroTierFakeGatewayIp = net.ParseIP("25.255.255.254")
+var ZeroTierFakeGatewayIp = netip.MustParseAddr("25.255.255.254")
 
-var TunBroadcastAddr = net.IP(tunBroadcastAddr)
+var TunBroadcastAddr = net.ParseIP(tunBroadcastAddr)
 var TunAutoRouteCidr = []string{
 	// From "CIDR Ranges for Everything except RFC1918"
 	// https://serverfault.com/questions/304781/cidr-ranges-for-everything-except-rfc1918

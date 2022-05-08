@@ -4,10 +4,9 @@
 package dev
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
-	"net"
+	"net/netip"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -154,9 +153,9 @@ startOver:
 	family := winipcfg.AddressFamily(windows.AF_INET)
 	familyV6 := winipcfg.AddressFamily(windows.AF_INET6)
 
-	tunAddress := wintun.ParseIPCidr(tun.tunAddress + "/16")
+	tunAddress := netip.MustParsePrefix(tun.tunAddress + "/16")
 
-	addresses := []net.IPNet{tunAddress.IPNet()}
+	addresses := []netip.Prefix{tunAddress}
 
 	err = luid.FlushIPAddresses(familyV6)
 	if err == windows.ERROR_NOT_FOUND && retryOnFailure {
@@ -187,9 +186,9 @@ startOver:
 	foundDefault6 := false
 
 	if tun.autoRoute {
-		var allowedIPs []*wintun.IPCidr
+		var allowedIPs []netip.Prefix
 		for _, ipCidr := range autoRouteCidr {
-			allowedIPs = append(allowedIPs, wintun.ParseIPCidr(ipCidr))
+			allowedIPs = append(allowedIPs, netip.MustParsePrefix(ipCidr))
 		}
 
 		estimatedRouteCount := len(allowedIPs)
@@ -197,24 +196,25 @@ startOver:
 		var haveV4Address, haveV6Address bool = true, false
 
 		for _, allowedip := range allowedIPs {
-			allowedip.MaskSelf()
-			if (allowedip.Bits() == 32 && !haveV4Address) || (allowedip.Bits() == 128 && !haveV6Address) {
+			allowedip = allowedip.Masked()
+			//allowedip.MaskSelf()
+			if (allowedip.Addr().Is4() && !haveV4Address) || (allowedip.Addr().Is6() && !haveV6Address) {
 				continue
 			}
 			route := winipcfg.RouteData{
-				Destination: allowedip.IPNet(),
+				Destination: allowedip,
 				Metric:      0,
 			}
-			if allowedip.Bits() == 32 {
-				if allowedip.Cidr == 0 {
+			if allowedip.Addr().Is4() {
+				if allowedip.Bits() == 0 {
 					foundDefault4 = true
 				}
-				route.NextHop = net.IPv4zero
-			} else if allowedip.Bits() == 128 {
-				if allowedip.Cidr == 0 {
+				route.NextHop = netip.IPv4Unspecified()
+			} else if allowedip.Addr().Is6() {
+				if allowedip.Bits() == 0 {
 					foundDefault6 = true
 				}
-				route.NextHop = net.IPv6zero
+				route.NextHop = netip.IPv6Unspecified()
 			}
 			routes = append(routes, route)
 		}
@@ -224,22 +224,22 @@ startOver:
 			if routes[i].Metric != routes[j].Metric {
 				return routes[i].Metric < routes[j].Metric
 			}
-			if c := bytes.Compare(routes[i].NextHop, routes[j].NextHop); c != 0 {
+			if c := routes[i].NextHop.Compare(routes[j].NextHop); c != 0 {
 				return c < 0
 			}
-			if c := bytes.Compare(routes[i].Destination.IP, routes[j].Destination.IP); c != 0 {
+			if c := routes[i].Destination.Addr().Compare(routes[j].Destination.Addr()); c != 0 {
 				return c < 0
 			}
-			if c := bytes.Compare(routes[i].Destination.Mask, routes[j].Destination.Mask); c != 0 {
+			if c := routes[i].Destination.Bits() - routes[j].Destination.Bits(); c != 0 {
 				return c < 0
 			}
 			return false
 		})
 		for i := 0; i < len(routes); i++ {
 			if i > 0 && routes[i].Metric == routes[i-1].Metric &&
-				bytes.Equal(routes[i].NextHop, routes[i-1].NextHop) &&
-				bytes.Equal(routes[i].Destination.IP, routes[i-1].Destination.IP) &&
-				bytes.Equal(routes[i].Destination.Mask, routes[i-1].Destination.Mask) {
+				routes[i].NextHop == routes[i-1].NextHop &&
+				routes[i].Destination.Addr() == routes[i-1].Destination.Addr() &&
+				routes[i].Destination.Bits() == routes[i-1].Destination.Bits() {
 				continue
 			}
 			deduplicatedRoutes = append(deduplicatedRoutes, &routes[i])
@@ -304,7 +304,7 @@ startOver:
 		return fmt.Errorf("unable to set v6 metric and MTU: %w", err)
 	}
 
-	err = luid.SetDNS(family, []net.IP{net.ParseIP(C.TunDnsAddress)}, nil)
+	err = luid.SetDNS(family, []netip.Addr{netip.MustParseAddr(C.TunDnsAddress)}, nil)
 	if err == windows.ERROR_NOT_FOUND && retryOnFailure {
 		goto startOver
 	} else if err != nil {
@@ -313,19 +313,19 @@ startOver:
 	return nil
 }
 
-func cleanupAddressesOnDisconnectedInterfaces(family winipcfg.AddressFamily, addresses []net.IPNet) {
+func cleanupAddressesOnDisconnectedInterfaces(family winipcfg.AddressFamily, addresses []netip.Prefix) {
 	if len(addresses) == 0 {
 		return
 	}
-	addrToStr := func(ip *net.IP) string {
-		if ip4 := ip.To4(); ip4 != nil {
-			return string(ip4)
-		}
-		return string(*ip)
-	}
-	addrHash := make(map[string]bool, len(addresses))
+	//addrToStr := func(ip *net.IP) string {
+	//	if ip4 := ip.To4(); ip4 != nil {
+	//		return string(ip4)
+	//	}
+	//	return string(*ip)
+	//}
+	addrHash := make(map[netip.Addr]bool, len(addresses))
 	for i := range addresses {
-		addrHash[addrToStr(&addresses[i].IP)] = true
+		addrHash[addresses[i].Addr()] = true
 	}
 	interfaces, err := winipcfg.GetAdaptersAddresses(family, winipcfg.GAAFlagDefault)
 	if err != nil {
@@ -336,9 +336,12 @@ func cleanupAddressesOnDisconnectedInterfaces(family winipcfg.AddressFamily, add
 			continue
 		}
 		for address := iface.FirstUnicastAddress; address != nil; address = address.Next {
-			ip := address.Address.IP()
-			if addrHash[addrToStr(&ip)] {
-				ipnet := net.IPNet{IP: ip, Mask: net.CIDRMask(int(address.OnLinkPrefixLength), 8*len(ip))}
+			ip, _ := netip.AddrFromSlice(address.Address.IP())
+			if addrHash[ip] {
+				//ip := address.Address.IP()
+				//if addrHash[addrToStr(&ip)] {
+				ipnet := netip.PrefixFrom(ip, int(address.OnLinkPrefixLength))
+				//ipnet := net.IPNet{IP: ip, Mask: net.CIDRMask(int(address.OnLinkPrefixLength), 8*len(ip))}
 				log.Infoln("Cleaning up stale address %s from interface ‘%s’", ipnet.String(), iface.FriendlyName())
 				iface.LUID.DeleteIPAddress(ipnet)
 			}
@@ -380,17 +383,17 @@ func getAutoDetectInterfaceByFamily(family winipcfg.AddressFamily) (string, erro
 		}
 
 		for gatewayAddress := iface.FirstGatewayAddress; gatewayAddress != nil; gatewayAddress = gatewayAddress.Next {
-			nextHop := gatewayAddress.Address.IP()
+			nextHop, _ := netip.AddrFromSlice(gatewayAddress.Address.IP())
 
-			if nextHop.Equal(C.ZeroTierFakeGatewayIp) {
+			if nextHop.Compare(C.ZeroTierFakeGatewayIp) == 0 {
 				continue
 			}
 
-			var ipnet net.IPNet
+			var ipnet netip.Prefix
 			if family == windows.AF_INET {
-				ipnet = net.IPNet{IP: net.IPv4zero, Mask: net.CIDRMask(0, 32)}
+				ipnet = netip.PrefixFrom(netip.IPv4Unspecified(), 0)
 			} else {
-				ipnet = net.IPNet{IP: net.IPv6zero, Mask: net.CIDRMask(0, 128)}
+				ipnet = netip.PrefixFrom(netip.IPv6Unspecified(), 0)
 			}
 
 			if row, err := iface.LUID.Route(ipnet, nextHop); err == nil {

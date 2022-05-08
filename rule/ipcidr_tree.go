@@ -33,9 +33,9 @@ func (i *IpCidrTree) Match(metadata *C.Metadata) bool {
 	v4, v6, _ := patricia.ParseIPFromString(ip.String())
 	found := false
 	if v4 != nil {
-		found, _, _ = i.treeV4.FindDeepestTag(*v4)
+		found, _ = i.treeV4.FindDeepestTag(*v4)
 	} else {
-		found, _, _ = i.treeV6.FindDeepestTag(*v6)
+		found, _ = i.treeV6.FindDeepestTag(*v6)
 	}
 	return found
 }
@@ -46,12 +46,9 @@ func (i *IpCidrTree) Insert(ipCidr string) error {
 		return err
 	}
 	if v4 != nil {
-		_, _, err = i.treeV4.Set(*v4, true)
+		_, _ = i.treeV4.Set(*v4, true)
 	} else {
-		_, _, err = i.treeV6.Set(*v6, true)
-	}
-	if err != nil {
-		return err
+		_, _ = i.treeV6.Set(*v6, true)
 	}
 	i.insertN++
 	return nil

@@ -7,8 +7,8 @@ import (
 	"github.com/Dreamacro/clash/adapter/inbound"
 	C "github.com/Dreamacro/clash/constant"
 	"github.com/Dreamacro/clash/log"
+	"github.com/Dreamacro/clash/transport/shadowsocks/core"
 	"github.com/Dreamacro/clash/transport/socks5"
-	"github.com/Dreamacro/go-shadowsocks2/core"
 )
 
 type Listener struct {

@@ -22,7 +22,7 @@ import (
 	R "github.com/Dreamacro/clash/rule"
 	T "github.com/Dreamacro/clash/tunnel"
 
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 // General config
@@ -607,6 +607,10 @@ func parseNameServer(servers []string, useRemoteDnsDefault bool) ([]dns.NameServ
 			return nil, fmt.Errorf("DNS NameServer[%d] format error: %s", idx, err.Error())
 		}
 
+		// parse with specific interface
+		// .e.g 10.0.0.1#en0
+		interfaceName := u.Fragment
+
 		var addr, dnsNetType string
 		switch u.Scheme {
 		case "udp":
@@ -638,6 +642,7 @@ func parseNameServer(servers []string, useRemoteDnsDefault bool) ([]dns.NameServ
 			dns.NameServer{
 				Net:       dnsNetType,
 				Addr:      addr,
+				Interface: interfaceName,
 				UseRemote: useRemote,
 			},
 		)

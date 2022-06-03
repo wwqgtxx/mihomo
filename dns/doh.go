@@ -84,7 +84,7 @@ func (dc *dohClient) doRequest(req *http.Request) (msg *D.Msg, err error) {
 	return msg, err
 }
 
-func newDoHClient(url string, r *Resolver, useRemote bool) *dohClient {
+func newDoHClient(url, iface string, r *Resolver, useRemote bool) *dohClient {
 	return &dohClient{
 		url: url,
 		transport: &http.Transport{
@@ -104,7 +104,12 @@ func newDoHClient(url string, r *Resolver, useRemote bool) *dohClient {
 					return nil, err
 				}
 
-				return dialer.DialContext(ctx, "tcp", net.JoinHostPort(ip.String(), port))
+				options := []dialer.Option{}
+				if iface != "" {
+					options = append(options, dialer.WithInterface(iface))
+				}
+
+				return dialer.DialContext(ctx, "tcp", net.JoinHostPort(ip.String(), port), options...)
 			},
 		},
 	}

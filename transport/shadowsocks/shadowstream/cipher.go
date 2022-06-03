@@ -114,3 +114,25 @@ func (k rc4Md5Key) Decrypter(iv []byte) cipher.Stream {
 func RC4MD5(key []byte) (Cipher, error) {
 	return rc4Md5Key(key), nil
 }
+
+type noneCipher struct{}
+
+func (n noneCipher) XORKeyStream(dst, src []byte) {
+	copy(dst, src)
+}
+
+func (n noneCipher) Encrypter(iv []byte) cipher.Stream {
+	return n
+}
+
+func (n noneCipher) Decrypter(iv []byte) cipher.Stream {
+	return n
+}
+
+func (n noneCipher) IVSize() int {
+	return 0
+}
+
+func NONE(key []byte) (Cipher, error) {
+	return noneCipher{}, nil
+}

@@ -100,6 +100,7 @@ func GetGeneral() *config.General {
 			MixECConfig:       ports.MixECConfig,
 			TProxyPort:        ports.TProxyPort,
 			ShadowSocksConfig: ports.ShadowSocksConfig,
+			VmessConfig:       ports.VmessConfig,
 			TcpTunConfig:      ports.TcpTunConfig,
 			UdpTunConfig:      ports.UdpTunConfig,
 			MTProxyConfig:     ports.MTProxyConfig,
@@ -256,6 +257,7 @@ func updateGeneral(general *config.General, force bool) {
 	P.ReCreateMixed(general.MixedPort, tcpIn, udpIn)
 	P.ReCreateMixEC(general.MixECConfig, tcpIn, udpIn)
 	P.ReCreateShadowSocks(general.ShadowSocksConfig, tcpIn, udpIn)
+	P.ReCreateVmess(general.VmessConfig, tcpIn, udpIn)
 	P.ReCreateTcpTun(general.TcpTunConfig, tcpIn, udpIn)
 	P.ReCreateUdpTun(general.UdpTunConfig, tcpIn, udpIn)
 	P.ReCreateMTProxy(general.MTProxyConfig, tcpIn, udpIn)

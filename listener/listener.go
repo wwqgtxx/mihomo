@@ -24,6 +24,7 @@ import (
 	"github.com/Dreamacro/clash/listener/tun/dev"
 	"github.com/Dreamacro/clash/listener/tun/ipstack"
 	"github.com/Dreamacro/clash/listener/tunnel"
+	"github.com/Dreamacro/clash/listener/vmess"
 	"github.com/Dreamacro/clash/log"
 )
 
@@ -43,6 +44,7 @@ var (
 	tunAdapter          ipstack.TunAdapter
 	mixECListener       *mixec.Listener
 	shadowSocksListener *shadowsocks.Listener
+	vmessListener       *vmess.Listener
 	tcpTunListener      *tunnel.Listener
 	udpTunListener      *tunnel.UdpListener
 	mtpListener         *mtproxy.Listener
@@ -56,6 +58,7 @@ var (
 	tunMux    sync.Mutex
 	mixECMux  sync.Mutex
 	ssMux     sync.Mutex
+	vmessMux  sync.Mutex
 	tcpTunMux sync.Mutex
 	udpTunMux sync.Mutex
 	mtpMux    sync.Mutex
@@ -71,6 +74,7 @@ type Ports struct {
 	TProxyPort        int    `json:"tproxy-port"`
 	MixECConfig       string `json:"mixec-config"`
 	ShadowSocksConfig string `json:"ss-config"`
+	VmessConfig       string `json:"vmess-config"`
 	TcpTunConfig      string `json:"tcptun-config"`
 	UdpTunConfig      string `json:"udptun-config"`
 	MTProxyConfig     string `json:"mtproxy-config"`
@@ -280,6 +284,46 @@ func ReCreateShadowSocks(shadowSocksConfig string, tcpIn chan<- C.ConnContext, u
 	}
 
 	shadowSocksListener = listener
+
+	return
+}
+
+func ReCreateVmess(vmessConfig string, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.PacketAdapter) {
+	vmessMux.Lock()
+	defer vmessMux.Unlock()
+
+	var err error
+	defer func() {
+		if err != nil {
+			log.Errorln("Start Vmess server error: %s", err.Error())
+		}
+	}()
+
+	shouldIgnore := false
+
+	if vmessListener != nil {
+		if vmessListener.Config() != vmessConfig {
+			vmessListener.Close()
+			vmessListener = nil
+		} else {
+			shouldIgnore = true
+		}
+	}
+
+	if shouldIgnore {
+		return
+	}
+
+	if len(vmessConfig) == 0 {
+		return
+	}
+
+	listener, err := vmess.New(vmessConfig, tcpIn, udpIn)
+	if err != nil {
+		return
+	}
+
+	vmessListener = listener
 
 	return
 }
@@ -621,6 +665,10 @@ func GetPorts() *Ports {
 
 	if shadowSocksListener != nil {
 		ports.ShadowSocksConfig = shadowSocksListener.Config()
+	}
+
+	if vmessListener != nil {
+		ports.VmessConfig = vmessListener.Config()
 	}
 
 	if tcpTunListener != nil {

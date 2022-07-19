@@ -43,7 +43,7 @@ func New(config string, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.Packet
 		ml.listeners = append(ml.listeners, l)
 
 		go func() {
-			log.Infoln("MixEC(RESTful Api+Socks+MTProxy+ShadowSocksWS) proxy listening at: %s", l.Addr().String())
+			log.Infoln("MixEC(RESTful Api+Socks+MTProxy+VmessWS) proxy listening at: %s", l.Addr().String())
 			for {
 				c, err := l.Accept()
 				if err != nil {

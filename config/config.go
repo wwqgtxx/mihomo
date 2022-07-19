@@ -51,6 +51,7 @@ type Inbound struct {
 	Tun               Tun      `json:"tun"`
 	MixECConfig       string   `json:"mixec-config"`
 	ShadowSocksConfig string   `json:"ss-config"`
+	VmessConfig       string   `json:"vmess-config"`
 	TcpTunConfig      string   `json:"tcptun-config"`
 	UdpTunConfig      string   `json:"udptun-config"`
 	MTProxyConfig     string   `json:"mtproxy-config"`
@@ -152,6 +153,7 @@ type RawConfig struct {
 	MixedPort              int          `yaml:"mixed-port"`
 	MixECConfig            string       `yaml:"mixec-config"`
 	ShadowSocksConfig      string       `yaml:"ss-config"`
+	VmessConfig            string       `yaml:"vmess-config"`
 	TcpTunConfig           string       `yaml:"tcptun-config"`
 	UdpTunConfig           string       `yaml:"udptun-config"`
 	MTProxyConfig          string       `yaml:"mtproxy-config"`
@@ -321,6 +323,7 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 			Tun:               cfg.Tun,
 			MixECConfig:       cfg.MixECConfig,
 			ShadowSocksConfig: cfg.ShadowSocksConfig,
+			VmessConfig:       cfg.VmessConfig,
 			TcpTunConfig:      cfg.TcpTunConfig,
 			UdpTunConfig:      cfg.UdpTunConfig,
 			MTProxyConfig:     cfg.MTProxyConfig,

@@ -7,8 +7,8 @@ import (
 	"sync"
 
 	C "github.com/Dreamacro/clash/constant"
-	"github.com/Dreamacro/clash/listener/shadowsocks"
-	"github.com/Dreamacro/clash/transport/vmess"
+	"github.com/Dreamacro/clash/listener/vmess"
+	classVmess "github.com/Dreamacro/clash/transport/vmess"
 	"github.com/gorilla/websocket"
 	"go.uber.org/atomic"
 )
@@ -64,8 +64,8 @@ func (h ecHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		//defer ws.Close()
-		conn := vmess.StreamUpgradedWebsocketConn(ws)
-		if !shadowsocks.HandleShadowSocks(conn, h.in) {
+		conn := classVmess.StreamUpgradedWebsocketConn(ws)
+		if !vmess.HandleVmess(conn) {
 			_ = ws.Close()
 		}
 		return

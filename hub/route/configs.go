@@ -35,6 +35,7 @@ type configSchema struct {
 	Tun                    *tunSchema         `json:"tun"`
 	MixECConfig            *string            `json:"mixec-config"`
 	ShadowSocksConfig      *string            `json:"ss-config"`
+	VmessConfig            *string            `json:"vmess-config"`
 	TcptunConfig           *string            `json:"tcptun-config"`
 	UdptunConfig           *string            `json:"udptun-config"`
 	AllowLan               *bool              `json:"allow-lan"`
@@ -130,6 +131,7 @@ func patchConfigs(w http.ResponseWriter, r *http.Request) {
 	P.ReCreateTun(pointerOrDefaultTun(general.Tun, P.Tun()), tcpIn, udpIn)
 	P.ReCreateMixEC(pointerOrDefaultString(general.MixECConfig, ports.MixECConfig), tcpIn, udpIn)
 	P.ReCreateShadowSocks(pointerOrDefaultString(general.ShadowSocksConfig, ports.ShadowSocksConfig), tcpIn, udpIn)
+	P.ReCreateVmess(pointerOrDefaultString(general.VmessConfig, ports.VmessConfig), tcpIn, udpIn)
 	P.ReCreateTcpTun(pointerOrDefaultString(general.TcptunConfig, ports.TcpTunConfig), tcpIn, udpIn)
 	P.ReCreateUdpTun(pointerOrDefaultString(general.UdptunConfig, ports.UdpTunConfig), tcpIn, udpIn)
 

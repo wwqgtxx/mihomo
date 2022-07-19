@@ -4,14 +4,12 @@ import (
 	"encoding/json"
 	"net"
 	"strconv"
+
+	"github.com/Dreamacro/clash/transport/socks5"
 )
 
 // Socks addr type
 const (
-	AtypIPv4       = 1
-	AtypDomainName = 3
-	AtypIPv6       = 4
-
 	TCP NetWork = iota
 	UDP
 
@@ -92,7 +90,6 @@ type Metadata struct {
 	DstPort     string  `json:"destinationPort"`
 	InIP        net.IP  `json:"inboundIP"`
 	InPort      string  `json:"inboundPort"`
-	AddrType    int     `json:"-"`
 	Host        string  `json:"host"`
 	DNSMode     DNSMode `json:"dnsMode"`
 	Process     string  `json:"process"`
@@ -110,6 +107,17 @@ func (m *Metadata) SourceAddress() string {
 	return net.JoinHostPort(m.SrcIP.String(), m.SrcPort)
 }
 
+func (m *Metadata) AddrType() int {
+	switch true {
+	case m.Host != "" || m.DstIP == nil:
+		return socks5.AtypDomainName
+	case m.DstIP.To4() != nil:
+		return socks5.AtypIPv4
+	default:
+		return socks5.AtypIPv6
+	}
+}
+
 func (m *Metadata) Resolved() bool {
 	return m.DstIP != nil
 }
@@ -120,11 +128,6 @@ func (m *Metadata) Pure() *Metadata {
 	if m.DNSMode == DNSMapping && m.DstIP != nil {
 		copy := *m
 		copy.Host = ""
-		if copy.DstIP.To4() != nil {
-			copy.AddrType = AtypIPv4
-		} else {
-			copy.AddrType = AtypIPv6
-		}
 		return &copy
 	}
 

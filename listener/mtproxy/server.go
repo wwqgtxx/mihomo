@@ -135,13 +135,12 @@ func (l *Listener) HandleConn(conn net.Conn, in chan<- C.ConnContext) {
 			remoteHost, remotePort, _ := net.SplitHostPort(conn.RemoteAddr().String())
 			remoteIp := net.ParseIP(remoteHost)
 			metadata := &C.Metadata{
-				NetWork:  C.TCP,
-				AddrType: C.AtypDomainName,
-				Host:     host,
-				DstIP:    nil,
-				DstPort:  port,
-				SrcIP:    remoteIp,
-				SrcPort:  remotePort,
+				NetWork: C.TCP,
+				Host:    host,
+				DstIP:   nil,
+				DstPort: port,
+				SrcIP:   remoteIp,
+				SrcPort: remotePort,
 			}
 			metadata.Type = C.MTPROXY
 			if host, port, err := net.SplitHostPort(conn.LocalAddr().String()); err == nil {

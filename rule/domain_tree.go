@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"github.com/Dreamacro/clash/transport/socks5"
 	"strings"
 
 	"github.com/Dreamacro/clash/component/trie"
@@ -23,7 +24,7 @@ func (d *DomainTree) RuleType() C.RuleType {
 }
 
 func (d *DomainTree) Match(metadata *C.Metadata) bool {
-	if metadata.AddrType != C.AtypDomainName {
+	if metadata.AddrType() != socks5.AtypDomainName {
 		return false
 	}
 	return d.dt.Search(metadata.Host) != nil

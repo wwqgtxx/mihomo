@@ -11,19 +11,19 @@ require (
 	github.com/gorilla/websocket v1.5.0
 	github.com/insomniacslk/dhcp v0.0.0-20220504074936-1ca156eafb9f
 	github.com/kentik/patricia v1.0.0
-	github.com/miekg/dns v1.1.48
+	github.com/miekg/dns v1.1.50
 	github.com/oschwald/geoip2-golang v1.7.0
 	github.com/sirupsen/logrus v1.8.1
-	github.com/stretchr/testify v1.7.1
+	github.com/stretchr/testify v1.8.0
 	go.etcd.io/bbolt v1.3.6
 	go.uber.org/atomic v1.9.0
 	go.uber.org/automaxprocs v1.5.1
-	golang.org/x/crypto v0.0.0-20220507011949-2cf3adece122
-	golang.org/x/net v0.0.0-20220425223048-2871e0cb64e4
-	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/sys v0.0.0-20220503163025-988cb79eb6c6
+	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
+	golang.org/x/net v0.0.0-20220706163947-c90051bbdb60
+	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f
+	golang.org/x/sys v0.0.0-20220704084225-05e143d24a9e
 	golang.zx2c4.com/wireguard/windows v0.5.3
-	gopkg.in/yaml.v3 v3.0.0
+	gopkg.in/yaml.v3 v3.0.1
 	gvisor.dev/gvisor v0.0.0-20220506231117-8ef340c14150
 )
 

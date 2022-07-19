@@ -33,11 +33,10 @@ func (d RemoteDialer) DialContext(ctx context.Context, network, addr string) (ne
 
 	conn1, conn2 := net.Pipe()
 	metadata := &C.Metadata{
-		NetWork:  C.TCP,
-		AddrType: C.AtypDomainName,
-		Host:     host,
-		DstIP:    nil,
-		DstPort:  port,
+		NetWork: C.TCP,
+		Host:    host,
+		DstIP:   nil,
+		DstPort: port,
 	}
 	metadata.Type = d.mType
 	connContext := icontext.NewConnContext(conn2, metadata)

@@ -4,11 +4,11 @@ go 1.18
 
 require (
 	github.com/Dreamacro/clash v0.0.0 // local
-	github.com/docker/docker v20.10.16+incompatible
+	github.com/docker/docker v20.10.17+incompatible
 	github.com/docker/go-connections v0.4.0
-	github.com/miekg/dns v1.1.49
-	github.com/stretchr/testify v1.7.1
-	golang.org/x/net v0.0.0-20220520000938-2e3eb7b945c2
+	github.com/miekg/dns v1.1.50
+	github.com/stretchr/testify v1.8.0
+	golang.org/x/net v0.0.0-20220708220712-1185a9018129
 )
 
 require (
@@ -35,16 +35,16 @@ require (
 	github.com/u-root/uio v0.0.0-20220204230159-dac05f7d2cb4 // indirect
 	go.etcd.io/bbolt v1.3.6 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
-	golang.org/x/crypto v0.0.0-20220507011949-2cf3adece122 // indirect
+	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
-	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/sys v0.0.0-20220503163025-988cb79eb6c6 // indirect
+	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f // indirect
+	golang.org/x/sys v0.0.0-20220704084225-05e143d24a9e // indirect
 	golang.org/x/text v0.3.8-0.20220504184655-ea49e3e2d5b3 // indirect
 	golang.org/x/time v0.0.0-20220411224347-583f2d630306 // indirect
 	golang.org/x/tools v0.1.11-0.20220506163328-22b709631a03 // indirect
 	golang.zx2c4.com/wireguard/windows v0.5.3 // indirect
-	gopkg.in/yaml.v3 v3.0.0 // indirect
-	gotest.tools/v3 v3.2.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
+	gotest.tools/v3 v3.3.0 // indirect
 	gvisor.dev/gvisor v0.0.0-20220506231117-8ef340c14150 // indirect
 )
 

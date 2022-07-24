@@ -35,7 +35,8 @@ jobs:
         run: |
           cd component/mmdb
           rm Country.mmdb
-          wget -O Country.mmdb https://raw.githubusercontent.com/JMVoid/ipip2mmdb/release/Country.mmdb
+          wget -O Country.mmdb https://raw.githubusercontent.com/Loyalsoldier/geoip/release/Country-only-cn-private.mmdb
+#          wget -O Country.mmdb https://raw.githubusercontent.com/JMVoid/ipip2mmdb/release/Country.mmdb
 
       - name: Build
 #        if: startsWith(github.ref, 'refs/tags/')

@@ -3,6 +3,7 @@ package dns
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"io"
 	"net"
 	"net/http"
@@ -110,6 +111,10 @@ func newDoHClient(url, iface string, r *Resolver, useRemote bool) *dohClient {
 				}
 
 				return dialer.DialContext(ctx, "tcp", net.JoinHostPort(ip.String(), port), options...)
+			},
+			TLSClientConfig: &tls.Config{
+				// alpn identifier, see https://tools.ietf.org/html/draft-hoffman-dprive-dns-tls-alpn-00#page-6
+				NextProtos: []string{"dns"},
 			},
 		},
 	}

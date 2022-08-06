@@ -13,17 +13,17 @@ require (
 	github.com/kentik/patricia v1.0.0
 	github.com/miekg/dns v1.1.50
 	github.com/oschwald/geoip2-golang v1.7.0
-	github.com/sagernet/sing v0.0.0-20220718031123-cb7239c6a70e
-	github.com/sagernet/sing-vmess v0.0.0-20220718031323-07c377156e4a
+	github.com/sagernet/sing v0.0.0-20220804023557-9c64b40e7050
+	github.com/sagernet/sing-vmess v0.0.0-20220804023624-e829b41c84c2
 	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/testify v1.8.0
 	go.etcd.io/bbolt v1.3.6
 	go.uber.org/atomic v1.9.0
 	go.uber.org/automaxprocs v1.5.1
-	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
+	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
 	golang.org/x/net v0.0.0-20220706163947-c90051bbdb60
 	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f
-	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8
+	golang.org/x/sys v0.0.0-20220804214406-8e32c043e418
 	golang.zx2c4.com/wireguard/windows v0.5.3
 	gopkg.in/yaml.v3 v3.0.1
 	gvisor.dev/gvisor v0.0.0-20220506231117-8ef340c14150

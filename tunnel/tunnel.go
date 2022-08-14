@@ -203,11 +203,13 @@ func handleUDPConn(packet *inbound.PacketAdapter) {
 
 	// local resolve UDP dns
 	if !metadata.Resolved() {
-		ip, err := resolver.ResolveIPWithResolver(metadata.Host, resolver.DialerResolver)
+		ips, err := resolver.LookupIPWithResolver(context.Background(), metadata.Host, resolver.DialerResolver)
 		if err != nil {
 			return
+		} else if len(ips) == 0 {
+			return
 		}
-		metadata.DstIP = ip
+		metadata.DstIP = ips[0]
 	}
 
 	key := packet.LocalAddr().String()

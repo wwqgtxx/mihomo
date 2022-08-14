@@ -41,7 +41,7 @@ func (p *Proxy) Dial(metadata *C.Metadata) (C.Conn, error) {
 // DialContext implements C.ProxyAdapter
 func (p *Proxy) DialContext(ctx context.Context, metadata *C.Metadata, opts ...dialer.Option) (C.Conn, error) {
 	conn, err := p.ProxyAdapter.DialContext(ctx, metadata, opts...)
-	//p.alive.Store(err == nil)
+	p.alive.Store(err == nil)
 	return conn, err
 }
 
@@ -55,7 +55,7 @@ func (p *Proxy) DialUDP(metadata *C.Metadata) (C.PacketConn, error) {
 // ListenPacketContext implements C.ProxyAdapter
 func (p *Proxy) ListenPacketContext(ctx context.Context, metadata *C.Metadata, opts ...dialer.Option) (C.PacketConn, error) {
 	pc, err := p.ProxyAdapter.ListenPacketContext(ctx, metadata, opts...)
-	//p.alive.Store(err == nil)
+	p.alive.Store(err == nil)
 	return pc, err
 }
 

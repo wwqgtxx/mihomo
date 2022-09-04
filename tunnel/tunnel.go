@@ -256,9 +256,17 @@ func handleUDPConn(packet *inbound.PacketAdapter) {
 		rawPc, err := proxy.ListenPacketContext(ctx, metadata.Pure())
 		if err != nil {
 			if rule == nil {
-				log.Warnln("[%s][UDP] dial %s(%s) to %s error: %s", metadata.Type.String(), proxy.Name(), metadata.Process, metadata.RemoteAddress(), err.Error())
+				log.Warnln(
+					"[%s][UDP] dial %s(%s) %s --> %s error: %s",
+					metadata.Type.String(),
+					proxy.Name(),
+					metadata.Process,
+					metadata.SourceAddress(),
+					metadata.RemoteAddress(),
+					err.Error(),
+				)
 			} else {
-				log.Warnln("[%s][UDP] dial %s(%s) (match %s/%s) to %s error: %s", metadata.Type.String(), proxy.Name(), metadata.Process, rule.RuleType().String(), rule.Payload(), metadata.RemoteAddress(), err.Error())
+				log.Warnln("[%s][UDP] dial %s(%s) (match %s/%s) %s --> %s error: %s", metadata.Type.String(), proxy.Name(), metadata.Process, rule.RuleType().String(), rule.Payload(), metadata.SourceAddress(), metadata.RemoteAddress(), err.Error())
 			}
 			return
 		}
@@ -267,13 +275,28 @@ func handleUDPConn(packet *inbound.PacketAdapter) {
 
 		switch true {
 		case rule != nil:
-			log.Infoln("[%s][UDP] %s(%s) --> %s match %s(%s) using %s", metadata.Type.String(), metadata.SourceAddress(), metadata.Process, metadata.RemoteAddress(), rule.RuleType().String(), rule.Payload(), rawPc.Chains().String())
+			log.Infoln(
+				"[%s][UDP] %s(%s) --> %s match %s(%s) using %s",
+				metadata.Type.String(),
+				metadata.SourceAddress(),
+				metadata.Process,
+				metadata.RemoteAddress(),
+				rule.RuleType().String(),
+				rule.Payload(),
+				rawPc.Chains().String(),
+			)
 		case mode == Global:
 			log.Infoln("[%s][UDP] %s(%s) --> %s using GLOBAL", metadata.Type.String(), metadata.SourceAddress(), metadata.Process, metadata.RemoteAddress())
 		case mode == Direct:
 			log.Infoln("[%s][UDP] %s(%s) --> %s using DIRECT", metadata.Type.String(), metadata.SourceAddress(), metadata.Process, metadata.RemoteAddress())
 		default:
-			log.Infoln("[%s][UDP] %s(%s) --> %s doesn't match any rule using DIRECT", metadata.Type.String(), metadata.Process, metadata.SourceAddress(), metadata.RemoteAddress())
+			log.Infoln(
+				"[%s][UDP] %s(%s) --> %s doesn't match any rule using DIRECT",
+				metadata.Type.String(),
+				metadata.SourceAddress(),
+				metadata.Process,
+				metadata.RemoteAddress(),
+			)
 		}
 
 		oAddr, _ := netip.AddrFromSlice(metadata.DstIP)
@@ -310,9 +333,17 @@ func handleTCPConn(connCtx C.ConnContext) {
 	remoteConn, err := proxy.DialContext(ctx, metadata.Pure())
 	if err != nil {
 		if rule == nil {
-			log.Warnln("[%s][TCP] dial %s(%s) to %s error: %s", metadata.Type.String(), metadata.Process, proxy.Name(), metadata.RemoteAddress(), err.Error())
+			log.Warnln(
+				"[%s][TCP] dial %s(%s) %s --> %s error: %s",
+				metadata.Type.String(),
+				proxy.Name(),
+				metadata.Process,
+				metadata.SourceAddress(),
+				metadata.RemoteAddress(),
+				err.Error(),
+			)
 		} else {
-			log.Warnln("[%s][TCP] dial %s(%s) (match %s/%s) to %s error: %s", metadata.Type.String(), metadata.Process, proxy.Name(), rule.RuleType().String(), rule.Payload(), metadata.RemoteAddress(), err.Error())
+			log.Warnln("[%s][TCP] dial %s(%s) (match %s/%s) %s --> %s error: %s", metadata.Type.String(), proxy.Name(), metadata.Process, rule.RuleType().String(), rule.Payload(), metadata.SourceAddress(), metadata.RemoteAddress(), err.Error())
 		}
 		return
 	}
@@ -321,13 +352,28 @@ func handleTCPConn(connCtx C.ConnContext) {
 
 	switch true {
 	case rule != nil:
-		log.Infoln("[%s][TCP] %s(%s) --> %s match %s(%s) using %s", metadata.Type.String(), metadata.SourceAddress(), metadata.Process, metadata.RemoteAddress(), rule.RuleType().String(), rule.Payload(), remoteConn.Chains().String())
+		log.Infoln(
+			"[%s][TCP] %s(%s) --> %s match %s(%s) using %s",
+			metadata.Type.String(),
+			metadata.SourceAddress(),
+			metadata.Process,
+			metadata.RemoteAddress(),
+			rule.RuleType().String(),
+			rule.Payload(),
+			remoteConn.Chains().String(),
+		)
 	case mode == Global:
 		log.Infoln("[%s][TCP] %s(%s) --> %s using GLOBAL", metadata.Type.String(), metadata.SourceAddress(), metadata.Process, metadata.RemoteAddress())
 	case mode == Direct:
 		log.Infoln("[%s][TCP] %s(%s) --> %s using DIRECT", metadata.Type.String(), metadata.SourceAddress(), metadata.Process, metadata.RemoteAddress())
 	default:
-		log.Infoln("[%s][TCP] %s(%s) --> %s doesn't match any rule using DIRECT", metadata.Type.String(), metadata.SourceAddress(), metadata.Process, metadata.RemoteAddress())
+		log.Infoln(
+			"[%s][TCP] %s(%s) --> %s doesn't match any rule using DIRECT",
+			metadata.Type.String(),
+			metadata.SourceAddress(),
+			metadata.Process,
+			metadata.RemoteAddress(),
+		)
 	}
 
 	handleSocket(connCtx, remoteConn)

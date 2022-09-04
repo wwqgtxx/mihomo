@@ -580,6 +580,10 @@ func ReCreateMixEC(config string, tcpIn chan<- C.ConnContext, udpIn chan<- *inbo
 		return
 	}
 
+	if len(config) == 0 {
+		return
+	}
+
 	listener, err := mixec.New(config, tcpIn, udpIn)
 	if err != nil {
 		return

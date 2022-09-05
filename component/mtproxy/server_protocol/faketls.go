@@ -49,7 +49,7 @@ type fakeTLSServerProtocol struct {
 	cloakPort string
 }
 
-func (c *fakeTLSServerProtocol) Handshake(socket io.ReadWriteCloser) (io.ReadWriteCloser, error) {
+func (c *fakeTLSServerProtocol) Handshake(socket net.Conn) (net.Conn, error) {
 	rewinded := NewRewind(socket)
 	bufferedReader := bufio.NewReader(rewinded)
 
@@ -82,7 +82,7 @@ func (c *fakeTLSServerProtocol) Handshake(socket io.ReadWriteCloser) (io.ReadWri
 	return conn, err
 }
 
-func (c *fakeTLSServerProtocol) tlsHandshake(conn io.ReadWriter) error {
+func (c *fakeTLSServerProtocol) tlsHandshake(conn net.Conn) error {
 	helloRecord, err := tlstypes.ReadRecord(conn)
 	if err != nil {
 		return fmt.Errorf("cannot read initial record: %w", err)
@@ -121,7 +121,7 @@ func (c *fakeTLSServerProtocol) tlsHandshake(conn io.ReadWriter) error {
 	return nil
 }
 
-func (c *fakeTLSServerProtocol) CloakHost(clientConn io.ReadWriteCloser) {
+func (c *fakeTLSServerProtocol) CloakHost(clientConn net.Conn) {
 
 	addr := net.JoinHostPort(c.cloakHost, c.cloakPort)
 
@@ -144,7 +144,7 @@ func MakeFakeTLSServerProtocol(secret []byte, secretMode common.SecretMode, cloa
 	}
 }
 
-func cloak(one, another io.ReadWriteCloser) {
+func cloak(one, another net.Conn) {
 	defer func() {
 		one.Close()
 		another.Close()
@@ -203,13 +203,13 @@ func cloakPipe(one io.Writer, another io.Reader, wg *sync.WaitGroup) {
 }
 
 type wrapperPing struct {
-	parent      io.ReadWriteCloser
+	net.Conn
 	ctx         context.Context
 	channelPing chan<- struct{}
 }
 
 func (w *wrapperPing) Read(p []byte) (int, error) {
-	n, err := w.parent.Read(p)
+	n, err := w.Conn.Read(p)
 	if err == nil {
 		select {
 		case <-w.ctx.Done():
@@ -221,7 +221,7 @@ func (w *wrapperPing) Read(p []byte) (int, error) {
 }
 
 func (w *wrapperPing) Write(p []byte) (int, error) {
-	n, err := w.parent.Write(p)
+	n, err := w.Conn.Write(p)
 	if err == nil {
 		select {
 		case <-w.ctx.Done():
@@ -233,31 +233,31 @@ func (w *wrapperPing) Write(p []byte) (int, error) {
 }
 
 func (w *wrapperPing) Close() error {
-	return w.parent.Close()
+	return w.Conn.Close()
 }
 
-func NewPing(ctx context.Context, parent io.ReadWriteCloser, channelPing chan<- struct{}) io.ReadWriteCloser {
+func NewPing(ctx context.Context, parent net.Conn, channelPing chan<- struct{}) net.Conn {
 	return &wrapperPing{
-		parent:      parent,
+		Conn:        parent,
 		ctx:         ctx,
 		channelPing: channelPing,
 	}
 }
 
 type ReadWriteCloseRewinder interface {
-	io.ReadWriteCloser
+	net.Conn
 	Rewind()
 }
 
 type wrapperRewind struct {
-	parent       io.ReadWriteCloser
+	net.Conn
 	activeReader io.Reader
 	buf          bytes.Buffer
 	mutex        sync.Mutex
 }
 
 func (w *wrapperRewind) Write(p []byte) (int, error) {
-	return w.parent.Write(p)
+	return w.Conn.Write(p)
 }
 
 func (w *wrapperRewind) Read(p []byte) (int, error) {
@@ -270,18 +270,18 @@ func (w *wrapperRewind) Read(p []byte) (int, error) {
 func (w *wrapperRewind) Close() error {
 	w.buf.Reset()
 
-	return w.parent.Close()
+	return w.Conn.Close()
 }
 
 func (w *wrapperRewind) Rewind() {
 	w.mutex.Lock()
-	w.activeReader = io.MultiReader(&w.buf, w.parent)
+	w.activeReader = io.MultiReader(&w.buf, w.Conn)
 	w.mutex.Unlock()
 }
 
-func NewRewind(parent io.ReadWriteCloser) ReadWriteCloseRewinder {
+func NewRewind(parent net.Conn) ReadWriteCloseRewinder {
 	rv := &wrapperRewind{
-		parent: parent,
+		Conn: parent,
 	}
 	rv.activeReader = io.TeeReader(parent, &rv.buf)
 
@@ -289,7 +289,7 @@ func NewRewind(parent io.ReadWriteCloser) ReadWriteCloseRewinder {
 }
 
 type wrapperFakeTLS struct {
-	io.ReadWriteCloser
+	net.Conn
 	buf bytes.Buffer
 }
 
@@ -307,7 +307,7 @@ func (w *wrapperFakeTLS) flush(p []byte) (int, error) {
 
 func (w *wrapperFakeTLS) read() ([]byte, error) {
 	for {
-		rec, err := tlstypes.ReadRecord(w.ReadWriteCloser)
+		rec, err := tlstypes.ReadRecord(w.Conn)
 		if err != nil {
 			return nil, err
 		}
@@ -350,7 +350,7 @@ func (w *wrapperFakeTLS) Write(p []byte) (int, error) {
 		buf.Reset()
 		v.WriteBytes(&buf)
 
-		_, err := buf.WriteTo(w.ReadWriteCloser)
+		_, err := buf.WriteTo(w.Conn)
 		if err != nil {
 			return sum, err
 		}
@@ -361,8 +361,8 @@ func (w *wrapperFakeTLS) Write(p []byte) (int, error) {
 	return sum, nil
 }
 
-func NewFakeTLS(socket io.ReadWriteCloser) io.ReadWriteCloser {
+func NewFakeTLS(socket net.Conn) net.Conn {
 	return &wrapperFakeTLS{
-		ReadWriteCloser: socket,
+		Conn: socket,
 	}
 }

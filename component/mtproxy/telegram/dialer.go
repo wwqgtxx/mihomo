@@ -3,8 +3,8 @@ package telegram
 import (
 	"errors"
 	"fmt"
-	"io"
 	"math/rand"
+	"net"
 
 	"github.com/Dreamacro/clash/component/mtproxy/common"
 )
@@ -43,7 +43,7 @@ func (b *TelegramDialer) Secret() []byte {
 	return b.secret
 }
 
-func (b *TelegramDialer) Dial(serverProtocol common.ServerProtocol, dialFunc func(addr string) (io.ReadWriteCloser, error)) (io.ReadWriteCloser, error) {
+func (b *TelegramDialer) Dial(serverProtocol common.ServerProtocol, dialFunc func(addr string) (net.Conn, error)) (net.Conn, error) {
 	for _, addr := range b.getAddresses(serverProtocol.DC(), serverProtocol.ConnectionProtocol()) {
 		conn, err := dialFunc(addr)
 		if err != nil {
@@ -61,7 +61,7 @@ func (b *TelegramDialer) Dial(serverProtocol common.ServerProtocol, dialFunc fun
 	return nil, errors.New("cannot dial to the chosen DC")
 }
 
-func (b *TelegramDialer) handshake(conn io.ReadWriteCloser, ct common.ConnectionType) (io.ReadWriteCloser, error) {
+func (b *TelegramDialer) handshake(conn net.Conn, ct common.ConnectionType) (net.Conn, error) {
 	fm := common.GenerateFrame(ct)
 	data := fm.Bytes()
 

@@ -1,6 +1,8 @@
 package common
 
-import "io"
+import (
+	"net"
+)
 
 const SimpleSecretLength = 16
 
@@ -79,7 +81,7 @@ const (
 )
 
 type ServerProtocol interface {
-	Handshake(io.ReadWriteCloser) (io.ReadWriteCloser, error)
+	Handshake(net.Conn) (net.Conn, error)
 	ConnectionType() ConnectionType
 	ConnectionProtocol() ConnectionProtocol
 	DC() DC

@@ -2,11 +2,10 @@ package mtproxy
 
 import (
 	"errors"
-	"io"
 	"net"
 	"strings"
-	"sync"
 
+	N "github.com/Dreamacro/clash/common/net"
 	"github.com/Dreamacro/clash/component/mtproxy/common"
 	"github.com/Dreamacro/clash/component/mtproxy/server_protocol"
 	"github.com/Dreamacro/clash/component/mtproxy/tools"
@@ -129,7 +128,7 @@ func (l *Listener) HandleConn(conn net.Conn, in chan<- C.ConnContext) {
 
 	telegramConn, err := l.serverInfo.TelegramDialer.Dial(
 		serverProtocol,
-		func(addr string) (io.ReadWriteCloser, error) {
+		func(addr string) (net.Conn, error) {
 			conn1, conn2 := net.Pipe()
 			host, port, _ := net.SplitHostPort(addr)
 			remoteHost, remotePort, _ := net.SplitHostPort(conn.RemoteAddr().String())
@@ -157,18 +156,7 @@ func (l *Listener) HandleConn(conn net.Conn, in chan<- C.ConnContext) {
 	}
 	defer telegramConn.Close()
 
-	wg := &sync.WaitGroup{}
-	wg.Add(2)
-
-	go directPipe(telegramConn, serverConn, wg)
-	go directPipe(serverConn, telegramConn, wg)
-
-	wg.Wait()
-}
-
-func directPipe(dst io.WriteCloser, src io.ReadCloser, wg *sync.WaitGroup) {
-	defer wg.Done()
-	_, _ = io.Copy(dst, src)
+	N.Relay(serverConn, telegramConn)
 }
 
 func HandleFakeTLS(conn net.Conn, in chan<- C.ConnContext) bool {

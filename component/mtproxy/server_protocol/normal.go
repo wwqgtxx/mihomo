@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 
 	"github.com/Dreamacro/clash/component/mtproxy/common"
 )
@@ -31,7 +32,7 @@ func (c *normalServerProtocol) DC() common.DC {
 	return c.dc
 }
 
-func (c *normalServerProtocol) Handshake(socket io.ReadWriteCloser) (io.ReadWriteCloser, error) {
+func (c *normalServerProtocol) Handshake(socket net.Conn) (net.Conn, error) {
 	fm, err := c.ReadFrame(socket)
 	if err != nil {
 		return nil, fmt.Errorf("cannot make a client handshake: %w", err)

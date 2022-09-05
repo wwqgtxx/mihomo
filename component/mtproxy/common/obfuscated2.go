@@ -3,17 +3,17 @@ package common
 import (
 	"bytes"
 	"crypto/cipher"
-	"io"
+	"net"
 )
 
 type wrapperObfuscated2 struct {
+	net.Conn
 	encryptor cipher.Stream
 	decryptor cipher.Stream
-	parent    io.ReadWriteCloser
 }
 
 func (w *wrapperObfuscated2) Read(p []byte) (int, error) {
-	n, err := w.parent.Read(p)
+	n, err := w.Conn.Read(p)
 	if err != nil {
 		return n, err
 	}
@@ -32,16 +32,16 @@ func (w *wrapperObfuscated2) Write(p []byte) (int, error) {
 
 	w.encryptor.XORKeyStream(buf, buf)
 
-	return w.parent.Write(buf)
+	return w.Conn.Write(buf)
 }
 
 func (w *wrapperObfuscated2) Close() error {
-	return w.parent.Close()
+	return w.Conn.Close()
 }
 
-func NewObfuscated2(socket io.ReadWriteCloser, encryptor, decryptor cipher.Stream) io.ReadWriteCloser {
+func NewObfuscated2(socket net.Conn, encryptor, decryptor cipher.Stream) net.Conn {
 	return &wrapperObfuscated2{
-		parent:    socket,
+		Conn:      socket,
 		encryptor: encryptor,
 		decryptor: decryptor,
 	}

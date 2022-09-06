@@ -69,7 +69,7 @@ func New(config string, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.Packet
 	}
 
 	service := vmess.NewService[string](h)
-	err = service.UpdateUsers([]string{username}, []string{password}, []int{1})
+	err = service.UpdateUsers([]string{username}, []string{password})
 	if err != nil {
 		return nil, err
 	}

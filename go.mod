@@ -13,14 +13,14 @@ require (
 	github.com/kentik/patricia v1.0.0
 	github.com/miekg/dns v1.1.50
 	github.com/oschwald/geoip2-golang v1.8.0
-	github.com/sagernet/sing v0.0.0-20220804023557-9c64b40e7050
-	github.com/sagernet/sing-vmess v0.0.0-20220804023624-e829b41c84c2
+	github.com/sagernet/sing v0.0.0-20220718031123-cb7239c6a70e
+	github.com/sagernet/sing-vmess v0.0.0-20220718031323-07c377156e4a
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.0
 	go.etcd.io/bbolt v1.3.6
 	go.uber.org/atomic v1.10.0
 	go.uber.org/automaxprocs v1.5.1
-	golang.org/x/crypto v0.0.0-20220824171710-5757bc0c5503
+	golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90
 	golang.org/x/net v0.0.0-20220822230855-b0a4917ee28c
 	golang.org/x/sync v0.0.0-20220819030929-7fc1605a5dde
 	golang.org/x/sys v0.0.0-20220825204002-c680a09ffe64

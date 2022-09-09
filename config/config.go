@@ -36,6 +36,7 @@ type General struct {
 	RoutingMark            int          `json:"-"`
 	UseRemoteDnsDefault    bool         `json:"use-remote-dns-default"`
 	UseSystemDnsDial       bool         `json:"use-system-dns-dial"`
+	HealthCheckURL         string       `json:"health-check-url"`
 	HealthCheckLazyDefault bool         `json:"health-check-lazy-default"`
 	TouchAfterLazyPassNum  int          `json:"touch-after-lazy-pass-num"`
 	PreResolveProcessName  bool         `json:"pre-resolve-process-name"`
@@ -170,6 +171,7 @@ type RawConfig struct {
 	RoutingMark            int          `yaml:"routing-mark"`
 	UseRemoteDnsDefault    bool         `yaml:"use-remote-dns-default"`
 	UseSystemDnsDial       bool         `yaml:"use-system-dns-dial"`
+	HealthCheckURL         string       `yaml:"health-check-url"`
 	HealthCheckLazyDefault bool         `yaml:"health-check-lazy-default"`
 	TouchAfterLazyPassNum  int          `yaml:"touch-after-lazy-pass-num"`
 	PreResolveProcessName  bool         `yaml:"pre-resolve-process-name"`
@@ -206,6 +208,7 @@ func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 		LogLevel:               log.INFO,
 		UseRemoteDnsDefault:    true,
 		UseSystemDnsDial:       false,
+		HealthCheckURL:         "",
 		HealthCheckLazyDefault: true,
 		TouchAfterLazyPassNum:  0,
 		PreResolveProcessName:  false,
@@ -342,6 +345,7 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 		RoutingMark:            cfg.RoutingMark,
 		UseRemoteDnsDefault:    cfg.UseRemoteDnsDefault,
 		UseSystemDnsDial:       cfg.UseSystemDnsDial,
+		HealthCheckURL:         cfg.HealthCheckURL,
 		HealthCheckLazyDefault: cfg.HealthCheckLazyDefault,
 		TouchAfterLazyPassNum:  cfg.TouchAfterLazyPassNum,
 		PreResolveProcessName:  cfg.PreResolveProcessName,

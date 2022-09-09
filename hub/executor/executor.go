@@ -113,6 +113,7 @@ func GetGeneral() *config.General {
 		IPv6:                   !resolver.DisableIPv6,
 		UseRemoteDnsDefault:    dns.UseRemoteDnsDefault(),
 		UseSystemDnsDial:       dns.UseSystemDnsDial(),
+		HealthCheckURL:         adapter.HealthCheckURL(),
 		HealthCheckLazyDefault: provider.HealthCheckLazyDefault(),
 		TouchAfterLazyPassNum:  provider.TouchAfterLazyPassNum(),
 		PreResolveProcessName:  tunnel.PreResolveProcessName(),
@@ -227,6 +228,7 @@ func updateGeneral(general *config.General, force bool) {
 	resolver.DisableIPv6 = !general.IPv6
 	dns.SetUseRemoteDnsDefault(general.UseRemoteDnsDefault)
 	dns.SetUseSystemDnsDial(general.UseSystemDnsDial)
+	adapter.SetHealthCheckURL(general.HealthCheckURL)
 	provider.SetHealthCheckLazyDefault(general.HealthCheckLazyDefault)
 	provider.SetTouchAfterLazyPassNum(general.TouchAfterLazyPassNum)
 	tunnel.SetPreResolveProcessName(general.PreResolveProcessName)

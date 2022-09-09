@@ -130,6 +130,10 @@ func (p *Proxy) URLTest(ctx context.Context, url string) (t uint16, err error) {
 		}
 	}()
 
+	if len(healthCheckURL) > 0 {
+		url = healthCheckURL
+	}
+
 	addr, err := urlToMetadata(url)
 	if err != nil {
 		return
@@ -209,4 +213,14 @@ func urlToMetadata(rawURL string) (addr C.Metadata, err error) {
 		DstPort: port,
 	}
 	return
+}
+
+var healthCheckURL string
+
+func HealthCheckURL() string {
+	return healthCheckURL
+}
+
+func SetHealthCheckURL(newHealthCheckURL string) {
+	healthCheckURL = newHealthCheckURL
 }

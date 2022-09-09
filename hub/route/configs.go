@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"path/filepath"
 
+	"github.com/Dreamacro/clash/adapter"
 	"github.com/Dreamacro/clash/adapter/provider"
 	"github.com/Dreamacro/clash/component/resolver"
 	"github.com/Dreamacro/clash/config"
@@ -45,6 +46,7 @@ type configSchema struct {
 	IPv6                   *bool              `json:"ipv6"`
 	UseRemoteDnsDefault    *bool              `json:"use-remote-dns-default"`
 	UseSystemDnsDial       *bool              `json:"use-system-dns-dial"`
+	HealthCheckURL         *string            `json:"health-check-url"`
 	HealthCheckLazyDefault *bool              `json:"health-check-lazy-default"`
 	TouchAfterLazyPassNum  *int               `json:"touch-after-lazy-pass-num"`
 	PreResolveProcessName  *bool              `json:"pre-resolve-process-name"`
@@ -149,6 +151,10 @@ func patchConfigs(w http.ResponseWriter, r *http.Request) {
 
 	if general.UseSystemDnsDial != nil {
 		dns.SetUseSystemDnsDial(*general.UseSystemDnsDial)
+	}
+
+	if general.HealthCheckURL != nil {
+		adapter.SetHealthCheckURL(*general.HealthCheckURL)
 	}
 
 	if general.HealthCheckLazyDefault != nil {

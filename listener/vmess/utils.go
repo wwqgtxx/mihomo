@@ -4,6 +4,8 @@ import (
 	"errors"
 	"net"
 	"net/url"
+	"sync"
+	"sync/atomic"
 
 	"github.com/sagernet/sing/common/buf"
 	"github.com/sagernet/sing/common/metadata"
@@ -14,6 +16,9 @@ type packet struct {
 	conn  network.PacketConn
 	rAddr net.Addr
 	buff  *buf.Buffer
+
+	writeBackWg    *sync.WaitGroup
+	writeBackAllow *atomic.Bool
 }
 
 func (c *packet) Data() []byte {
@@ -30,6 +35,13 @@ func (c *packet) WriteBack(b []byte, addr net.Addr) (n int, err error) {
 	defer buff.Release()
 	n, err = buff.Write(b)
 	if err != nil {
+		return
+	}
+
+	c.writeBackWg.Add(1)
+	defer c.writeBackWg.Done()
+	if !c.writeBackAllow.Load() {
+		err = errors.New("writeBack to closed connection")
 		return
 	}
 	err = c.conn.WritePacket(buff, metadata.ParseSocksaddr(addr.String()))

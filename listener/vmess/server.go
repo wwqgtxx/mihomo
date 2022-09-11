@@ -4,6 +4,8 @@ import (
 	"context"
 	"net"
 	"strings"
+	"sync"
+	"sync/atomic"
 
 	"github.com/Dreamacro/clash/adapter/inbound"
 	C "github.com/Dreamacro/clash/constant"
@@ -30,15 +32,37 @@ type handler struct {
 	udpIn chan<- *inbound.PacketAdapter
 }
 
+type waitCloseConn struct {
+	net.Conn
+	wg    *sync.WaitGroup
+	close sync.Once
+}
+
+func (c *waitCloseConn) Close() error { // call from handleTCPConn(connCtx C.ConnContext)
+	c.close.Do(func() {
+		c.wg.Done()
+	})
+	return c.Conn.Close()
+}
+
 func (h *handler) NewConnection(ctx context.Context, conn net.Conn, metadata metadata.Metadata) error {
 	target := socks5.ParseAddr(metadata.Destination.String())
-	h.tcpIn <- inbound.NewSocket(target, conn, C.VMESS)
+	wg := &sync.WaitGroup{}
+	defer wg.Wait() // this goroutine must exit after conn.Close()
+	wg.Add(1)
+	h.tcpIn <- inbound.NewSocket(target, &waitCloseConn{Conn: conn, wg: wg}, C.VMESS)
 	return nil
 }
 
 func (h *handler) NewPacketConnection(ctx context.Context, conn network.PacketConn, metadata metadata.Metadata) error {
+	defer func() { _ = conn.Close() }()
+	wg := &sync.WaitGroup{}
+	defer wg.Wait() // this goroutine must exit after all conn.WritePacket() is not running
+	allow := &atomic.Bool{}
+	defer allow.Store(false) // set writeBackAllow before wg.Wait()
+	allow.Store(true)
 	for {
-		buff := buf.NewPacket()
+		buff := buf.NewPacket() // do not use stack buffer
 		dest, err := conn.ReadPacket(buff)
 		if err != nil {
 			buff.Release()
@@ -46,9 +70,11 @@ func (h *handler) NewPacketConnection(ctx context.Context, conn network.PacketCo
 		}
 		target := socks5.ParseAddr(dest.String())
 		packet := &packet{
-			conn:  conn,
-			rAddr: metadata.Source.UDPAddr(),
-			buff:  buff,
+			conn:           conn,
+			rAddr:          metadata.Source.UDPAddr(),
+			buff:           buff,
+			writeBackWg:    wg,
+			writeBackAllow: allow,
 		}
 		select {
 		case h.udpIn <- inbound.NewPacket(target, packet, C.VMESS):
@@ -69,7 +95,12 @@ func New(config string, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.Packet
 	}
 
 	service := vmess.NewService[string](h)
-	err = service.UpdateUsers([]string{username}, []string{password})
+	err = service.UpdateUsers([]string{username}, []string{password}, []int{1})
+	if err != nil {
+		return nil, err
+	}
+
+	err = service.Start()
 	if err != nil {
 		return nil, err
 	}
@@ -112,6 +143,7 @@ func (l *Listener) Close() {
 	for _, lis := range l.listeners {
 		_ = lis.Close()
 	}
+	_ = l.service.Close()
 }
 
 func (l *Listener) Config() string {

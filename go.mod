@@ -13,8 +13,8 @@ require (
 	github.com/kentik/patricia v1.0.0
 	github.com/miekg/dns v1.1.50
 	github.com/oschwald/geoip2-golang v1.8.0
-	github.com/sagernet/sing v0.0.0-20220718031123-cb7239c6a70e
-	github.com/sagernet/sing-vmess v0.0.0-20220718031323-07c377156e4a
+	github.com/sagernet/sing v0.0.0-20220910144724-62c4ebdbcb3f
+	github.com/sagernet/sing-vmess v0.0.0-20220907073918-72d7fdf6825f
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.0
 	go.etcd.io/bbolt v1.3.6

@@ -5,7 +5,6 @@ import (
 	"net"
 	"net/url"
 	"sync"
-	"sync/atomic"
 
 	"github.com/sagernet/sing/common/buf"
 	"github.com/sagernet/sing/common/metadata"
@@ -13,12 +12,11 @@ import (
 )
 
 type packet struct {
-	conn  network.PacketConn
+	conn  *network.PacketConn
+	mutex *sync.Mutex
 	rAddr net.Addr
+	lAddr net.Addr
 	buff  *buf.Buffer
-
-	writeBackWg    *sync.WaitGroup
-	writeBackAllow *atomic.Bool
 }
 
 func (c *packet) Data() []byte {
@@ -38,13 +36,13 @@ func (c *packet) WriteBack(b []byte, addr net.Addr) (n int, err error) {
 		return
 	}
 
-	c.writeBackWg.Add(1)
-	defer c.writeBackWg.Done()
-	if !c.writeBackAllow.Load() {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	if c.conn == nil {
 		err = errors.New("writeBack to closed connection")
 		return
 	}
-	err = c.conn.WritePacket(buff, metadata.ParseSocksaddr(addr.String()))
+	err = (*c.conn).WritePacket(buff, metadata.ParseSocksaddr(addr.String()))
 	return
 }
 
@@ -58,7 +56,7 @@ func (c *packet) Drop() {
 }
 
 func (c *packet) InAddr() net.Addr {
-	return c.conn.LocalAddr()
+	return c.lAddr
 }
 
 func parseVmessURL(s string) (addr, username, password string, err error) {

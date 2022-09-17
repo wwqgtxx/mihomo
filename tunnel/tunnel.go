@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/jpillora/backoff"
+
 	"github.com/Dreamacro/clash/adapter/inbound"
 	"github.com/Dreamacro/clash/common/channel"
 	"github.com/Dreamacro/clash/component/inner_dialer"
@@ -253,8 +255,9 @@ func handleUDPConn(packet *inbound.PacketAdapter) {
 
 		ctx, cancel := context.WithTimeout(context.Background(), C.DefaultUDPTimeout)
 		defer cancel()
-		rawPc, err := proxy.ListenPacketContext(ctx, metadata.Pure())
-		if err != nil {
+		rawPc, err := retry(ctx, func(ctx context.Context) (C.PacketConn, error) {
+			return proxy.ListenPacketContext(ctx, metadata.Pure())
+		}, func(err error) {
 			if rule == nil {
 				log.Warnln(
 					"[%s][UDP] dial %s(%s) %s --> %s error: %s",
@@ -268,6 +271,8 @@ func handleUDPConn(packet *inbound.PacketAdapter) {
 			} else {
 				log.Warnln("[%s][UDP] dial %s(%s) (match %s/%s) %s --> %s error: %s", metadata.Type.String(), proxy.Name(), metadata.Process, rule.RuleType().String(), rule.Payload(), metadata.SourceAddress(), metadata.RemoteAddress(), err.Error())
 			}
+		})
+		if err != nil {
 			return
 		}
 		pCtx.InjectPacketConn(rawPc)
@@ -330,8 +335,9 @@ func handleTCPConn(connCtx C.ConnContext) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), C.DefaultTCPTimeout)
 	defer cancel()
-	remoteConn, err := proxy.DialContext(ctx, metadata.Pure())
-	if err != nil {
+	remoteConn, err := retry(ctx, func(ctx context.Context) (C.Conn, error) {
+		return proxy.DialContext(ctx, metadata.Pure())
+	}, func(err error) {
 		if rule == nil {
 			log.Warnln(
 				"[%s][TCP] dial %s(%s) %s --> %s error: %s",
@@ -345,6 +351,8 @@ func handleTCPConn(connCtx C.ConnContext) {
 		} else {
 			log.Warnln("[%s][TCP] dial %s(%s) (match %s/%s) %s --> %s error: %s", metadata.Type.String(), proxy.Name(), metadata.Process, rule.RuleType().String(), rule.Payload(), metadata.SourceAddress(), metadata.RemoteAddress(), err.Error())
 		}
+	})
+	if err != nil {
 		return
 	}
 	remoteConn = statistic.NewTCPTracker(remoteConn, statistic.DefaultManager, metadata, rule)
@@ -472,4 +480,30 @@ func match(metadata *C.Metadata) (C.Proxy, C.Rule, error) {
 	}
 
 	return proxies["DIRECT"], nil, nil
+}
+
+func retry[T any](ctx context.Context, ft func(context.Context) (T, error), fe func(err error)) (t T, err error) {
+	b := &backoff.Backoff{
+		Min:    10 * time.Millisecond,
+		Max:    1 * time.Second,
+		Factor: 2,
+		Jitter: true,
+	}
+	for i := 0; i < 10; i++ {
+		t, err = ft(ctx)
+		if err != nil {
+			if fe != nil {
+				fe(err)
+			}
+			select {
+			case <-time.After(b.Duration()):
+				continue
+			case <-ctx.Done():
+				return
+			}
+		} else {
+			break
+		}
+	}
+	return
 }

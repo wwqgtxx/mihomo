@@ -5,7 +5,6 @@ import (
 	"net"
 	"strings"
 	"sync"
-	"sync/atomic"
 
 	"github.com/Dreamacro/clash/adapter/inbound"
 	C "github.com/Dreamacro/clash/constant"
@@ -56,11 +55,13 @@ func (h *handler) NewConnection(ctx context.Context, conn net.Conn, metadata met
 
 func (h *handler) NewPacketConnection(ctx context.Context, conn network.PacketConn, metadata metadata.Metadata) error {
 	defer func() { _ = conn.Close() }()
-	wg := &sync.WaitGroup{}
-	defer wg.Wait() // this goroutine must exit after all conn.WritePacket() is not running
-	allow := &atomic.Bool{}
-	defer allow.Store(false) // set writeBackAllow before wg.Wait()
-	allow.Store(true)
+	mutex := sync.Mutex{}
+	conn2 := conn // a new interface to set nil in defer
+	defer func() {
+		mutex.Lock() // this goroutine must exit after all conn.WritePacket() is not running
+		defer mutex.Unlock()
+		conn2 = nil
+	}()
 	for {
 		buff := buf.NewPacket() // do not use stack buffer
 		dest, err := conn.ReadPacket(buff)
@@ -70,11 +71,11 @@ func (h *handler) NewPacketConnection(ctx context.Context, conn network.PacketCo
 		}
 		target := socks5.ParseAddr(dest.String())
 		packet := &packet{
-			conn:           conn,
-			rAddr:          metadata.Source.UDPAddr(),
-			buff:           buff,
-			writeBackWg:    wg,
-			writeBackAllow: allow,
+			conn:  &conn2,
+			mutex: &mutex,
+			rAddr: metadata.Source.UDPAddr(),
+			lAddr: conn.LocalAddr(),
+			buff:  buff,
 		}
 		select {
 		case h.udpIn <- inbound.NewPacket(target, packet, C.VMESS):

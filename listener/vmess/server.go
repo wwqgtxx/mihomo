@@ -84,6 +84,10 @@ func (h *handler) NewPacketConnection(ctx context.Context, conn network.PacketCo
 	}
 }
 
+func (h *handler) NewError(ctx context.Context, err error) {
+	log.Warnln("Vmess server get error: %+v", err)
+}
+
 func New(config string, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.PacketAdapter) (*Listener, error) {
 	addr, username, password, err := parseVmessURL(config)
 	if err != nil {

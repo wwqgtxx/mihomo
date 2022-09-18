@@ -58,8 +58,8 @@ github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZN
 github.com/prashantv/gostub v1.1.0 h1:BTyx3RfQjRHnUWaGF9oQos79AlQ5k8WNktv7VGvVH4g=
 github.com/sagernet/sing v0.0.0-20220916071326-834794b006ea h1:ZAWvZdeByPBBz3Vs+w3Erbh+DDo7D4biokoPhXl0nNU=
 github.com/sagernet/sing v0.0.0-20220916071326-834794b006ea/go.mod h1:x3NHUeJBQwV75L51zwmLKQdLtRvR+M4PmXkfQtU1vIY=
-github.com/sagernet/sing-vmess v0.0.0-20220913015714-c4ab86d40e12 h1:4HYGbTDDemgBVTmaspXbkgjJlXc3hYVjNxSddJndq8Y=
-github.com/sagernet/sing-vmess v0.0.0-20220913015714-c4ab86d40e12/go.mod h1:u66Vv7NHXJWfeAmhh7JuJp/cwxmuQlM56QoZ7B7Mmd0=
+github.com/sagernet/sing-vmess v0.0.0-20220917033734-9b634758039d h1:/GNWxSrQj4chFYk2jahIXNPdvUa9DW8IdgyqYFbq9oQ=
+github.com/sagernet/sing-vmess v0.0.0-20220917033734-9b634758039d/go.mod h1:u66Vv7NHXJWfeAmhh7JuJp/cwxmuQlM56QoZ7B7Mmd0=
 github.com/sirupsen/logrus v1.9.0 h1:trlNQbNUG3OdDrDil03MCb1H2o9nJ1x4/5LYw7byDE0=
 github.com/sirupsen/logrus v1.9.0/go.mod h1:naHLuLoDiP4jHNo9R0sCBMtWGeIprob74mVsIT4qYEQ=
 github.com/smartystreets/assertions v0.0.0-20180927180507-b2de0cb4f26d/go.mod h1:OnSkiWE9lh6wB0YB77sQom3nweQdgAjqCqsofrRNTgc=

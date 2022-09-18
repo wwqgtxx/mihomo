@@ -15,7 +15,7 @@ require (
 	github.com/miekg/dns v1.1.50
 	github.com/oschwald/geoip2-golang v1.8.0
 	github.com/sagernet/sing v0.0.0-20220916071326-834794b006ea
-	github.com/sagernet/sing-vmess v0.0.0-20220913015714-c4ab86d40e12
+	github.com/sagernet/sing-vmess v0.0.0-20220917033734-9b634758039d
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.0
 	go.etcd.io/bbolt v1.3.6

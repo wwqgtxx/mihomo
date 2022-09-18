@@ -40,9 +40,9 @@ func (p *Proxy) Dial(metadata *C.Metadata) (C.Conn, error) {
 
 // DialContext implements C.ProxyAdapter
 func (p *Proxy) DialContext(ctx context.Context, metadata *C.Metadata, opts ...dialer.Option) (C.Conn, error) {
-	conn, err := p.ProxyAdapter.DialContext(ctx, metadata, opts...)
-	p.alive.Store(err == nil)
-	return conn, err
+	return aliveContext(p, ctx, func(ctx context.Context) (C.Conn, error) {
+		return p.ProxyAdapter.DialContext(ctx, metadata, opts...)
+	})
 }
 
 // DialUDP implements C.ProxyAdapter
@@ -54,9 +54,21 @@ func (p *Proxy) DialUDP(metadata *C.Metadata) (C.PacketConn, error) {
 
 // ListenPacketContext implements C.ProxyAdapter
 func (p *Proxy) ListenPacketContext(ctx context.Context, metadata *C.Metadata, opts ...dialer.Option) (C.PacketConn, error) {
-	pc, err := p.ProxyAdapter.ListenPacketContext(ctx, metadata, opts...)
-	p.alive.Store(err == nil)
-	return pc, err
+	return aliveContext(p, ctx, func(ctx context.Context) (C.PacketConn, error) {
+		return p.ProxyAdapter.ListenPacketContext(ctx, metadata, opts...)
+	})
+}
+
+func aliveContext[T any](p *Proxy, ctx context.Context, f func(context.Context) (T, error)) (T, error) {
+	beginTime := time.Now()
+	t, err := f(ctx)
+	timeUsed := time.Now().Sub(beginTime)
+	if err != nil {
+		if ctx.Err() == nil || timeUsed > 1*time.Second { // context not cancelled or timeUsed>1s
+			p.alive.Store(false)
+		}
+	}
+	return t, err
 }
 
 // DelayHistory implements C.Proxy

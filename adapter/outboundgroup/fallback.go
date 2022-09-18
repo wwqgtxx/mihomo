@@ -30,6 +30,8 @@ func (f *Fallback) DialContext(ctx context.Context, metadata *C.Metadata, opts .
 	c, err := proxy.DialContext(ctx, metadata, f.Base.DialOptions(opts...)...)
 	if err == nil {
 		c.AppendToChains(f)
+	} else {
+		f.doHealthCheck(proxy)
 	}
 	return c, err
 }
@@ -40,6 +42,8 @@ func (f *Fallback) ListenPacketContext(ctx context.Context, metadata *C.Metadata
 	pc, err := proxy.ListenPacketContext(ctx, metadata, f.Base.DialOptions(opts...)...)
 	if err == nil {
 		pc.AppendToChains(f)
+	} else {
+		f.doHealthCheck(proxy)
 	}
 	return pc, err
 }
@@ -90,6 +94,16 @@ func (f *Fallback) findAliveProxy(touch bool) C.Proxy {
 	}
 
 	return proxies[0]
+}
+
+func (f *Fallback) doHealthCheck(proxy C.Proxy) {
+	for _, proxyProvider := range f.providers {
+		for _, proxy2 := range proxyProvider.Proxies() {
+			if proxy == proxy2 {
+				go proxyProvider.HealthCheck()
+			}
+		}
+	}
 }
 
 func NewFallback(option *GroupCommonOption, providers []provider.ProxyProvider) *Fallback {

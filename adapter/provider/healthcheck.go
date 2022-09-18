@@ -14,7 +14,7 @@ import (
 
 const (
 	defaultURLTestTimeout = time.Second * 5
-	waitAfterAURLTest     = time.Second * 1
+	waitAfterAURLTest     = time.Millisecond * 100
 )
 
 var (
@@ -43,12 +43,7 @@ func (hc *HealthCheck) process() {
 	ticker := time.NewTicker(time.Duration(hc.interval) * time.Second)
 	passNum := 0
 
-	switch hc.gtype {
-	case "fallback":
-		go hc.fallbackCheck()
-	default:
-		go hc.check()
-	}
+	go hc.check()
 
 	for {
 		select {
@@ -56,12 +51,7 @@ func (hc *HealthCheck) process() {
 			now := time.Now().Unix()
 			if !hc.lazy || now-hc.lastTouch.Load() < int64(hc.interval) {
 				passNum = 0
-				switch hc.gtype {
-				case "fallback":
-					go hc.fallbackCheck()
-				default:
-					hc.check()
-				}
+				hc.check()
 			} else {
 				passNum++
 				if passNum > 0 && passNum > touchAfterLazyPassNum {
@@ -88,29 +78,6 @@ func (hc *HealthCheck) touch() {
 }
 
 func (hc *HealthCheck) check() {
-	id := ""
-	if uid, err := uuid.NewV4(); err == nil {
-		id = uid.String()
-	}
-	log.Infoln("Start New Health Checking {%s}", id)
-
-	b, _ := batch.New(context.Background(), batch.WithConcurrencyNum(10))
-	for _, proxy := range hc.proxies {
-		p := proxy
-		b.Go(p.Name(), func() (any, error) {
-			ctx, cancel := context.WithTimeout(context.Background(), defaultURLTestTimeout)
-			defer cancel()
-			p.URLTest(ctx, hc.url)
-			log.Infoln("Health Checked %s : %t %d ms {%s}", p.Name(), p.Alive(), p.LastDelay(), id)
-			return nil, nil
-		})
-	}
-	b.Wait()
-
-	log.Infoln("Finish A Health Checking {%s}", id)
-}
-
-func (hc *HealthCheck) fallbackCheck() {
 	if hc.checking.Swap(true) {
 		log.Infoln("A Health Checking is Running, break")
 		return
@@ -122,45 +89,77 @@ func (hc *HealthCheck) fallbackCheck() {
 	if uid, err := uuid.NewV4(); err == nil {
 		id = uid.String()
 	}
+	log.Infoln("Start New Health Checking {%s}", id)
+	switch hc.gtype {
+	case "fallback":
+		hc.fallbackCheck(id)
+	default:
+		hc.normalCheck(id)
+	}
+	log.Infoln("Finish A Health Checking {%s}", id)
+}
+
+func (hc *HealthCheck) normalCheck(id string) {
+	b, _ := batch.New(context.Background(), batch.WithConcurrencyNum(10))
+	for _, proxy := range hc.proxies {
+		p := proxy
+		b.Go(p.Name(), func() (any, error) {
+			ctx, cancel := context.WithTimeout(context.Background(), defaultURLTestTimeout)
+			defer cancel()
+			log.Infoln("Health Checking %s {%s}", proxy.Name(), id)
+			p.URLTest(ctx, hc.url)
+			log.Infoln("Health Checked %s : %t %d ms {%s}", p.Name(), p.Alive(), p.LastDelay(), id)
+			return nil, nil
+		})
+	}
+	b.Wait()
+}
+
+func (hc *HealthCheck) fallbackCheck(id string) {
 	check := func(proxy C.Proxy) {
 		ctx, cancel := context.WithTimeout(context.Background(), defaultURLTestTimeout)
+		defer cancel()
 		log.Infoln("Health Checking %s {%s}", proxy.Name(), id)
 		proxy.URLTest(ctx, hc.url)
-		//<-ctx.Done()
-		cancel()
 		log.Infoln("Health Checked %s : %t %d ms {%s}", proxy.Name(), proxy.Alive(), proxy.LastDelay(), id)
 	}
 	wait := func() {
 		<-time.After(waitAfterAURLTest)
 	}
-	log.Infoln("Start New Health Checking {%s}", id)
-	for i, proxy := range hc.proxies {
-		wait()
-		check(proxy)
+	cleaner := func() {
+		if hc.cleanerRun.Swap(true) {
+			log.Infoln("A Health Check Cleaner is Running, break")
+			return
+		}
+		defer func() {
+			hc.cleanerRun.Store(false)
+		}()
+		log.Infoln("Start New Health Check Cleaner {%s}", id)
+		b, _ := batch.New(context.Background(), batch.WithConcurrencyNum(10))
+		for _, proxy := range hc.proxies {
+			if proxy.Alive() {
+				continue
+			}
+			wait()
+			p := proxy
+			b.Go(p.Name(), func() (any, error) {
+				check(p)
+				return nil, nil
+			})
+		}
+		b.Wait()
+		log.Infoln("Finish A Health Check Cleaner {%s}", id)
+	}
+	for _, proxy := range hc.proxies {
 		if proxy.Alive() {
-			go func() {
-				if hc.cleanerRun.Swap(true) {
-					log.Infoln("A Health Check Cleaner is Running, break")
-					return
-				}
-				defer func() {
-					hc.cleanerRun.Store(false)
-				}()
-				log.Infoln("Start New Health Check Cleaner {%s}", id)
-				for _, proxy := range hc.proxies[i:] {
-					if proxy.Alive() {
-						continue
-					}
-					wait()
-					check(proxy)
-				}
-				log.Infoln("Finish A Health Check Cleaner {%s}", id)
-			}()
-			break
+			wait()
+			check(proxy)
+			if proxy.Alive() {
+				break
+			}
 		}
 	}
-
-	log.Infoln("Finish A Health Checking {%s}", id)
+	go cleaner()
 }
 
 func (hc *HealthCheck) close() {
@@ -168,6 +167,9 @@ func (hc *HealthCheck) close() {
 }
 
 func NewHealthCheck(proxies []C.Proxy, url string, interval uint, lazy bool, gtype string) *HealthCheck {
+	if url == "" {
+		url = "http://cp.cloudflare.com/generate_204"
+	}
 	return &HealthCheck{
 		proxies:    proxies,
 		url:        url,

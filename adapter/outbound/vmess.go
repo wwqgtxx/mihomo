@@ -58,9 +58,10 @@ type VmessOption struct {
 	WSHeaders map[string]string `proxy:"ws-headers,omitempty"`
 	WSPath    string            `proxy:"ws-path,omitempty"`
 
-	PacketAddr          bool `proxy:"packet-addr,omitempty"`
-	XUDP                bool `proxy:"xudp,omitempty"`
-	AuthenticatedLength bool `proxy:"authenticated-length,omitempty"`
+	PacketAddr          bool   `proxy:"packet-addr,omitempty"`
+	XUDP                bool   `proxy:"xudp,omitempty"`
+	PacketEncoding      string `proxy:"packet_encoding,omitempty"`
+	AuthenticatedLength bool   `proxy:"authenticated-length,omitempty"`
 }
 
 type HTTPOptions struct {
@@ -256,6 +257,8 @@ func (v *Vmess) ListenPacketContext(ctx context.Context, metadata *C.Metadata, o
 	}
 
 	if v.option.PacketAddr {
+		_metadata := *metadata // make a copy
+		metadata = &_metadata
 		metadata.Host = packetaddr.SeqPacketMagicAddress
 		metadata.DstPort = "443"
 	}
@@ -328,6 +331,12 @@ func NewVmess(option VmessOption) (*Vmess, error) {
 		return nil, err
 	}
 
+	switch option.PacketEncoding {
+	case "packetaddr":
+		option.PacketAddr = true
+	case "xudp":
+		option.XUDP = true
+	}
 	if option.XUDP {
 		option.PacketAddr = false
 	}

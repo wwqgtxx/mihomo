@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/Dreamacro/clash/component/dialer"
 	"github.com/Dreamacro/clash/component/resolver"
@@ -17,12 +18,16 @@ import (
 	"github.com/Dreamacro/clash/transport/socks5"
 	"github.com/Dreamacro/clash/transport/vmess"
 
+	singVmess "github.com/sagernet/sing-vmess"
+	"github.com/sagernet/sing-vmess/packetaddr"
+	M "github.com/sagernet/sing/common/metadata"
 	"golang.org/x/net/http2"
 )
 
 type Vmess struct {
 	*Base
-	client *vmess.Client
+	//client *vmess.Client
+	client *singVmess.Client
 	option *VmessOption
 
 	// for gun mux
@@ -52,6 +57,10 @@ type VmessOption struct {
 	// add back for compatible
 	WSHeaders map[string]string `proxy:"ws-headers,omitempty"`
 	WSPath    string            `proxy:"ws-path,omitempty"`
+
+	PacketAddr          bool `proxy:"packet-addr,omitempty"`
+	XUDP                bool `proxy:"xudp,omitempty"`
+	AuthenticatedLength bool `proxy:"authenticated-length,omitempty"`
 }
 
 type HTTPOptions struct {
@@ -193,7 +202,16 @@ func (v *Vmess) StreamConn(c net.Conn, metadata *C.Metadata) (net.Conn, error) {
 		return nil, err
 	}
 
-	return v.client.StreamConn(c, parseVmessAddr(metadata))
+	//return v.client.StreamConn(c, parseVmessAddr(metadata))
+	if metadata.NetWork == C.UDP {
+		if v.option.XUDP {
+			return v.client.DialXUDPPacketConn(c, M.ParseSocksaddr(metadata.RemoteAddress()))
+		} else {
+			return v.client.DialPacketConn(c, M.ParseSocksaddr(metadata.RemoteAddress()))
+		}
+	} else {
+		return v.client.DialConn(c, M.ParseSocksaddr(metadata.RemoteAddress()))
+	}
 }
 
 // DialContext implements C.ProxyAdapter
@@ -206,7 +224,8 @@ func (v *Vmess) DialContext(ctx context.Context, metadata *C.Metadata, opts ...d
 		}
 		defer safeConnClose(c, err)
 
-		c, err = v.client.StreamConn(c, parseVmessAddr(metadata))
+		//c, err = v.client.StreamConn(c, parseVmessAddr(metadata))
+		c, err = v.client.DialConn(c, M.ParseSocksaddr(metadata.RemoteAddress()))
 		if err != nil {
 			return nil, err
 		}
@@ -236,6 +255,11 @@ func (v *Vmess) ListenPacketContext(ctx context.Context, metadata *C.Metadata, o
 		metadata.DstIP = ip
 	}
 
+	if v.option.PacketAddr {
+		metadata.Host = packetaddr.SeqPacketMagicAddress
+		metadata.DstPort = "443"
+	}
+
 	var c net.Conn
 	// gun transport
 	if v.transport != nil && len(opts) == 0 {
@@ -245,7 +269,12 @@ func (v *Vmess) ListenPacketContext(ctx context.Context, metadata *C.Metadata, o
 		}
 		defer safeConnClose(c, err)
 
-		c, err = v.client.StreamConn(c, parseVmessAddr(metadata))
+		//c, err = v.client.StreamConn(c, parseVmessAddr(metadata))
+		if v.option.XUDP {
+			c, err = v.client.DialXUDPPacketConn(c, M.ParseSocksaddr(metadata.RemoteAddress()))
+		} else {
+			c, err = v.client.DialPacketConn(c, M.ParseSocksaddr(metadata.RemoteAddress()))
+		}
 	} else {
 		c, err = dialer.DialContext(ctx, "tcp", v.addr, v.Base.DialOptions(opts...)...)
 		if err != nil {
@@ -266,6 +295,11 @@ func (v *Vmess) ListenPacketContext(ctx context.Context, metadata *C.Metadata, o
 
 // ListenPacketOnStreamConn implements C.ProxyAdapter
 func (v *Vmess) ListenPacketOnStreamConn(c net.Conn, metadata *C.Metadata) (_ C.PacketConn, err error) {
+	if v.option.PacketAddr {
+		return newPacketConn(&threadSafePacketConn{PacketConn: packetaddr.NewBindConn(c)}, v), nil
+	} else if pc, ok := c.(net.PacketConn); ok {
+		return newPacketConn(&threadSafePacketConn{PacketConn: pc}, v), nil
+	}
 	return newPacketConn(&vmessPacketConn{Conn: c, rAddr: metadata.UDPAddr()}, v), nil
 }
 
@@ -276,16 +310,26 @@ func (v *Vmess) SupportUOT() bool {
 
 func NewVmess(option VmessOption) (*Vmess, error) {
 	security := strings.ToLower(option.Cipher)
-	client, err := vmess.NewClient(vmess.Config{
-		UUID:     option.UUID,
-		AlterID:  uint16(option.AlterID),
-		Security: security,
-		HostName: option.Server,
-		Port:     strconv.Itoa(option.Port),
-		IsAead:   option.AlterID == 0,
-	})
+	//client, err := vmess.NewClient(vmess.Config{
+	//	UUID:     option.UUID,
+	//	AlterID:  uint16(option.AlterID),
+	//	Security: security,
+	//	HostName: option.Server,
+	//	Port:     strconv.Itoa(option.Port),
+	//	IsAead:   option.AlterID == 0,
+	//})
+	var options []singVmess.ClientOption
+	if option.AuthenticatedLength {
+		options = append(options, singVmess.ClientWithAuthenticatedLength())
+	}
+	client, err := singVmess.NewClient(option.UUID, security, option.AlterID, options...)
+
 	if err != nil {
 		return nil, err
+	}
+
+	if option.XUDP {
+		option.PacketAddr = false
 	}
 
 	switch option.Network {
@@ -374,12 +418,26 @@ func parseVmessAddr(metadata *C.Metadata) *vmess.DstAddr {
 	}
 }
 
+type threadSafePacketConn struct {
+	net.PacketConn
+	access sync.Mutex
+}
+
+func (c *threadSafePacketConn) WriteTo(b []byte, addr net.Addr) (int, error) {
+	c.access.Lock()
+	defer c.access.Unlock()
+	return c.PacketConn.WriteTo(b, addr)
+}
+
 type vmessPacketConn struct {
 	net.Conn
-	rAddr net.Addr
+	rAddr  net.Addr
+	access sync.Mutex
 }
 
 func (uc *vmessPacketConn) WriteTo(b []byte, addr net.Addr) (int, error) {
+	uc.access.Lock()
+	defer uc.access.Unlock()
 	return uc.Conn.Write(b)
 }
 

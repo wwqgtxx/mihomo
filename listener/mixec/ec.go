@@ -7,8 +7,9 @@ import (
 	"sync"
 
 	C "github.com/Dreamacro/clash/constant"
-	"github.com/Dreamacro/clash/listener/vmess"
-	classVmess "github.com/Dreamacro/clash/transport/vmess"
+	"github.com/Dreamacro/clash/listener/sing_shadowsocks"
+	"github.com/Dreamacro/clash/listener/sing_vmess"
+	"github.com/Dreamacro/clash/transport/vmess"
 	"github.com/gorilla/websocket"
 	"go.uber.org/atomic"
 )
@@ -58,14 +59,26 @@ type ecHandler struct {
 }
 
 func (h ecHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/" && websocket.IsWebSocketUpgrade(r) {
+	if r.URL.Path == "/socket.io" && websocket.IsWebSocketUpgrade(r) {
 		ws, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			return
 		}
 		//defer ws.Close()
-		conn := classVmess.StreamUpgradedWebsocketConn(ws)
-		if !vmess.HandleVmess(conn) {
+		conn := vmess.StreamUpgradedWebsocketConn(ws)
+		if !sing_vmess.HandleVmess(conn) {
+			_ = ws.Close()
+		}
+		return
+	}
+	if r.URL.Path == "/ws" && websocket.IsWebSocketUpgrade(r) {
+		ws, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+		//defer ws.Close()
+		conn := vmess.StreamUpgradedWebsocketConn(ws)
+		if !sing_shadowsocks.HandleShadowSocks(conn) {
 			_ = ws.Close()
 		}
 		return

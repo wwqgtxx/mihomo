@@ -1,20 +1,18 @@
-package vmess
+package sing_vmess
 
 import (
 	"context"
 	"net"
+	"net/url"
 	"strings"
-	"sync"
 
 	"github.com/Dreamacro/clash/adapter/inbound"
 	C "github.com/Dreamacro/clash/constant"
+	"github.com/Dreamacro/clash/listener/sing"
 	"github.com/Dreamacro/clash/log"
-	"github.com/Dreamacro/clash/transport/socks5"
 
 	vmess "github.com/sagernet/sing-vmess"
-	"github.com/sagernet/sing/common/buf"
 	"github.com/sagernet/sing/common/metadata"
-	"github.com/sagernet/sing/common/network"
 )
 
 type Listener struct {
@@ -26,77 +24,16 @@ type Listener struct {
 
 var _listener *Listener
 
-type handler struct {
-	tcpIn chan<- C.ConnContext
-	udpIn chan<- *inbound.PacketAdapter
-}
-
-type waitCloseConn struct {
-	net.Conn
-	wg    *sync.WaitGroup
-	close sync.Once
-}
-
-func (c *waitCloseConn) Close() error { // call from handleTCPConn(connCtx C.ConnContext)
-	c.close.Do(func() {
-		c.wg.Done()
-	})
-	return c.Conn.Close()
-}
-
-func (h *handler) NewConnection(ctx context.Context, conn net.Conn, metadata metadata.Metadata) error {
-	target := socks5.ParseAddr(metadata.Destination.String())
-	wg := &sync.WaitGroup{}
-	defer wg.Wait() // this goroutine must exit after conn.Close()
-	wg.Add(1)
-	h.tcpIn <- inbound.NewSocket(target, &waitCloseConn{Conn: conn, wg: wg}, C.VMESS)
-	return nil
-}
-
-func (h *handler) NewPacketConnection(ctx context.Context, conn network.PacketConn, metadata metadata.Metadata) error {
-	defer func() { _ = conn.Close() }()
-	mutex := sync.Mutex{}
-	conn2 := conn // a new interface to set nil in defer
-	defer func() {
-		mutex.Lock() // this goroutine must exit after all conn.WritePacket() is not running
-		defer mutex.Unlock()
-		conn2 = nil
-	}()
-	for {
-		buff := buf.NewPacket() // do not use stack buffer
-		dest, err := conn.ReadPacket(buff)
-		if err != nil {
-			buff.Release()
-			return err
-		}
-		target := socks5.ParseAddr(dest.String())
-		packet := &packet{
-			conn:  &conn2,
-			mutex: &mutex,
-			rAddr: metadata.Source.UDPAddr(),
-			lAddr: conn.LocalAddr(),
-			buff:  buff,
-		}
-		select {
-		case h.udpIn <- inbound.NewPacket(target, packet, C.VMESS):
-		default:
-		}
-	}
-}
-
-func (h *handler) NewError(ctx context.Context, err error) {
-	log.Warnln("Vmess server get error: %+v", err)
-}
-
 func New(config string, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.PacketAdapter) (*Listener, error) {
 	addr, username, password, err := parseVmessURL(config)
 	if err != nil {
 		return nil, err
 	}
 
-	h := &handler{
-		tcpIn: tcpIn,
-		udpIn: udpIn,
+	h := &sing.ListenerHandler{
+		TcpIn: tcpIn,
+		UdpIn: udpIn,
+		Type:  C.VMESS,
 	}
 
 	service := vmess.NewService[string](h)
@@ -172,4 +109,18 @@ func HandleVmess(conn net.Conn) bool {
 		return true
 	}
 	return false
+}
+
+func parseVmessURL(s string) (addr, username, password string, err error) {
+	u, err := url.Parse(s)
+	if err != nil {
+		return
+	}
+
+	addr = u.Host
+	if u.User != nil {
+		username = u.User.Username()
+		password, _ = u.User.Password()
+	}
+	return
 }

@@ -17,14 +17,14 @@ import (
 	"github.com/Dreamacro/clash/listener/mixed"
 	"github.com/Dreamacro/clash/listener/mtproxy"
 	"github.com/Dreamacro/clash/listener/redir"
-	"github.com/Dreamacro/clash/listener/shadowsocks"
+	"github.com/Dreamacro/clash/listener/sing_shadowsocks"
+	"github.com/Dreamacro/clash/listener/sing_vmess"
 	"github.com/Dreamacro/clash/listener/socks"
 	"github.com/Dreamacro/clash/listener/tproxy"
 	"github.com/Dreamacro/clash/listener/tun"
 	"github.com/Dreamacro/clash/listener/tun/dev"
 	"github.com/Dreamacro/clash/listener/tun/ipstack"
 	"github.com/Dreamacro/clash/listener/tunnel"
-	"github.com/Dreamacro/clash/listener/vmess"
 	"github.com/Dreamacro/clash/log"
 )
 
@@ -43,8 +43,8 @@ var (
 	mixedUDPLister      *socks.UDPListener
 	tunAdapter          ipstack.TunAdapter
 	mixECListener       *mixec.Listener
-	shadowSocksListener *shadowsocks.Listener
-	vmessListener       *vmess.Listener
+	shadowSocksListener *sing_shadowsocks.Listener
+	vmessListener       *sing_vmess.Listener
 	tcpTunListener      *tunnel.Listener
 	udpTunListener      *tunnel.UdpListener
 	mtpListener         *mtproxy.Listener
@@ -278,7 +278,7 @@ func ReCreateShadowSocks(shadowSocksConfig string, tcpIn chan<- C.ConnContext, u
 		return
 	}
 
-	listener, err := shadowsocks.New(shadowSocksConfig, tcpIn, udpIn)
+	listener, err := sing_shadowsocks.New(shadowSocksConfig, tcpIn, udpIn)
 	if err != nil {
 		return
 	}
@@ -318,7 +318,7 @@ func ReCreateVmess(vmessConfig string, tcpIn chan<- C.ConnContext, udpIn chan<- 
 		return
 	}
 
-	listener, err := vmess.New(vmessConfig, tcpIn, udpIn)
+	listener, err := sing_vmess.New(vmessConfig, tcpIn, udpIn)
 	if err != nil {
 		return
 	}

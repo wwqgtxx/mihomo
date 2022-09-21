@@ -7,22 +7,22 @@ require (
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/go-chi/cors v1.2.1
 	github.com/go-chi/render v1.0.2
-	github.com/gofrs/uuid v4.2.0+incompatible
+	github.com/gofrs/uuid v4.3.0+incompatible
 	github.com/gorilla/websocket v1.5.0
 	github.com/insomniacslk/dhcp v0.0.0-20220822114210-de18a9d48e84
 	github.com/jpillora/backoff v1.0.0
 	github.com/kentik/patricia v1.0.0
 	github.com/miekg/dns v1.1.50
 	github.com/oschwald/geoip2-golang v1.8.0
-	github.com/sagernet/sing v0.0.0-20220916071326-834794b006ea
+	github.com/sagernet/sing v0.0.0-20220921101604-86d7d510231f
 	github.com/sagernet/sing-shadowsocks v0.0.0-20220819002358-7461bb09a8f6
-	github.com/sagernet/sing-vmess v0.0.0-20220917033734-9b634758039d
+	github.com/sagernet/sing-vmess v0.0.0-20220921104047-5231f5f964db
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.0
 	go.etcd.io/bbolt v1.3.6
 	go.uber.org/atomic v1.10.0
 	go.uber.org/automaxprocs v1.5.1
-	golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90
+	golang.org/x/crypto v0.0.0-20220919173607-35f4265a4bc0
 	golang.org/x/net v0.0.0-20220822230855-b0a4917ee28c
 	golang.org/x/sync v0.0.0-20220819030929-7fc1605a5dde
 	golang.org/x/sys v0.0.0-20220913120320-3275c407cedc

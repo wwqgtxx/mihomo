@@ -11,6 +11,7 @@ import (
 	"github.com/Dreamacro/clash/log"
 	"github.com/Dreamacro/clash/transport/socks5"
 
+	vmess "github.com/sagernet/sing-vmess"
 	"github.com/sagernet/sing/common/buf"
 	M "github.com/sagernet/sing/common/metadata"
 	"github.com/sagernet/sing/common/network"
@@ -38,6 +39,8 @@ func (c *waitCloseConn) Close() error { // call from handleTCPConn(connCtx C.Con
 
 func (h *ListenerHandler) NewConnection(ctx context.Context, conn net.Conn, metadata M.Metadata) error {
 	switch metadata.Destination.Fqdn {
+	case vmess.MuxDestination.Fqdn:
+		return vmess.HandleMuxConnection(ctx, conn, h)
 	case uot.UOTMagicAddress:
 		metadata.Destination = M.Socksaddr{}
 		return h.NewPacketConnection(ctx, uot.NewClientConn(conn), metadata)

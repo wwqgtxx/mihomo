@@ -1,9 +1,11 @@
 package config
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
+	"net/netip"
 	"net/url"
 	"os"
 	"strings"
@@ -104,7 +106,71 @@ type Tun struct {
 	DnsHijack           []string `yaml:"dns-hijack" json:"dns-hijack"`
 	AutoDetectInterface bool     `yaml:"auto-detect-interface" json:"auto-detect-interface"`
 	AutoRoute           bool     `yaml:"auto-route" json:"auto-route"`
-	AutoRouteCidr       []string `yaml:"auto-route-cidr" json:"auto-route-cidr"`
+
+	InterfaceName          string         `json:"interface_name,omitempty"`
+	MTU                    uint32         `json:"mtu,omitempty"`
+	Inet4Address           []ListenPrefix `json:"inet4_address,omitempty"`
+	Inet6Address           []ListenPrefix `json:"inet6_address,omitempty"`
+	StrictRoute            bool           `json:"strict_route,omitempty"`
+	IncludeUID             []uint32       `json:"include_uid,omitempty"`
+	IncludeUIDRange        []string       `json:"include_uid_range,omitempty"`
+	ExcludeUID             []uint32       `json:"exclude_uid,omitempty"`
+	ExcludeUIDRange        []string       `json:"exclude_uid_range,omitempty"`
+	IncludeAndroidUser     []int          `json:"include_android_user,omitempty"`
+	IncludePackage         []string       `json:"include_package,omitempty"`
+	ExcludePackage         []string       `json:"exclude_package,omitempty"`
+	EndpointIndependentNat bool           `json:"endpoint_independent_nat,omitempty"`
+	UDPTimeout             int64          `json:"udp_timeout,omitempty"`
+}
+
+type ListenPrefix netip.Prefix
+
+func (p ListenPrefix) MarshalJSON() ([]byte, error) {
+	prefix := netip.Prefix(p)
+	if !prefix.IsValid() {
+		return json.Marshal(nil)
+	}
+	return json.Marshal(prefix.String())
+}
+
+func (p ListenPrefix) MarshalYAML() (interface{}, error) {
+	prefix := netip.Prefix(p)
+	if !prefix.IsValid() {
+		return nil, nil
+	}
+	return prefix.String(), nil
+}
+
+func (p *ListenPrefix) UnmarshalJSON(bytes []byte) error {
+	var value string
+	err := json.Unmarshal(bytes, &value)
+	if err != nil {
+		return err
+	}
+	prefix, err := netip.ParsePrefix(value)
+	if err != nil {
+		return err
+	}
+	*p = ListenPrefix(prefix)
+	return nil
+}
+
+func (p *ListenPrefix) UnmarshalYAML(node *yaml.Node) error {
+	var value string
+	err := node.Decode(&value)
+	if err != nil {
+		return err
+	}
+	prefix, err := netip.ParsePrefix(value)
+	if err != nil {
+		return err
+	}
+	*p = ListenPrefix(prefix)
+	return nil
+}
+
+func (p ListenPrefix) Build() netip.Prefix {
+	return netip.Prefix(p)
 }
 
 // Experimental config
@@ -218,14 +284,16 @@ func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 		ProxyGroup:             []map[string]any{},
 		Tun: Tun{
 			Enable:              false,
-			Stack:               "gvisor",
-			DnsHijack:           []string{C.TunDnsListen},
+			Stack:               "system",
+			DnsHijack:           []string{},
 			AutoDetectInterface: true,
 			AutoRoute:           true,
-			AutoRouteCidr:       C.TunAutoRouteCidr,
+			Inet4Address:        []ListenPrefix{ListenPrefix(netip.MustParsePrefix("198.18.0.1/30"))},
+			Inet6Address:        []ListenPrefix{ListenPrefix(netip.MustParsePrefix("fdfe:dcba:9876::1/126"))},
 		},
 		DNS: RawDNS{
 			Enable:      true,
+			IPv6:        true,
 			UseHosts:    true,
 			FakeIPRange: "198.18.0.1/16",
 			FallbackFilter: RawFallbackFilter{

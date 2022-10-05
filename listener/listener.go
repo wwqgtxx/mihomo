@@ -3,7 +3,6 @@ package proxy
 import (
 	"fmt"
 	"net"
-	"runtime"
 	"strconv"
 	"sync"
 
@@ -18,12 +17,10 @@ import (
 	"github.com/Dreamacro/clash/listener/mtproxy"
 	"github.com/Dreamacro/clash/listener/redir"
 	"github.com/Dreamacro/clash/listener/sing_shadowsocks"
+	"github.com/Dreamacro/clash/listener/sing_tun"
 	"github.com/Dreamacro/clash/listener/sing_vmess"
 	"github.com/Dreamacro/clash/listener/socks"
 	"github.com/Dreamacro/clash/listener/tproxy"
-	"github.com/Dreamacro/clash/listener/tun"
-	"github.com/Dreamacro/clash/listener/tun/dev"
-	"github.com/Dreamacro/clash/listener/tun/ipstack"
 	"github.com/Dreamacro/clash/listener/tunnel"
 	"github.com/Dreamacro/clash/log"
 )
@@ -41,7 +38,7 @@ var (
 	tproxyUDPListener   *tproxy.UDPListener
 	mixedListener       *mixed.Listener
 	mixedUDPLister      *socks.UDPListener
-	tunAdapter          ipstack.TunAdapter
+	tunLister           *sing_tun.Listener
 	mixECListener       *mixec.Listener
 	shadowSocksListener *sing_shadowsocks.Listener
 	vmessListener       *sing_vmess.Listener
@@ -81,17 +78,10 @@ type Ports struct {
 }
 
 func Tun() config.Tun {
-	if tunAdapter == nil {
+	if tunLister == nil {
 		return tunConfig
 	}
-	return config.Tun{
-		Enable:              true,
-		Stack:               tunAdapter.Stack(),
-		DnsHijack:           tunAdapter.DnsHijack(),
-		AutoDetectInterface: tunAdapter.AutoDetectInterface(),
-		AutoRoute:           tunAdapter.AutoRoute(),
-		AutoRouteCidr:       tunAdapter.AutoRouteCidr(),
-	}
+	return tunLister.Config()
 }
 
 func AllowLan() bool {
@@ -512,9 +502,9 @@ func ReCreateTun(conf config.Tun, tcpIn chan<- C.ConnContext, udpIn chan<- *inbo
 
 	tunConfig = conf
 
-	if tunAdapter != nil {
-		tunAdapter.Close()
-		tunAdapter = nil
+	if tunLister != nil {
+		tunLister.Close()
+		tunLister = nil
 	}
 
 	generalInterface := dialer.GeneralInterface.Load()
@@ -528,28 +518,7 @@ func ReCreateTun(conf config.Tun, tcpIn chan<- C.ConnContext, udpIn chan<- *inbo
 		return
 	}
 
-	targetInterface := generalInterface
-	if generalInterface == "" && conf.AutoDetectInterface {
-		autoDetectInterfaceName, err := dev.GetAutoDetectInterface()
-		if err == nil {
-			if autoDetectInterfaceName != "" && autoDetectInterfaceName != "<nil>" {
-				targetInterface = autoDetectInterfaceName
-			} else {
-				log.Warnln("Auto detect interface name is empty.")
-			}
-		} else {
-			log.Warnln("Can not find auto detect interface. %s", err.Error())
-		}
-	}
-	if dialer.DefaultInterface.Load() != targetInterface {
-		log.Infoln("Use interface name: %s", targetInterface)
-
-		dialer.DefaultInterface.Store(targetInterface)
-
-		iface.FlushCache()
-	}
-
-	tunAdapter, err = tun.New(conf, tcpIn, udpIn)
+	tunLister, err = sing_tun.New(conf, tcpIn, udpIn)
 
 	return
 }
@@ -707,9 +676,9 @@ func genAddr(host string, port int, allowLan bool) string {
 
 // CleanUp clean up something
 func CleanUp() {
-	if runtime.GOOS == "windows" {
-		if tunAdapter != nil {
-			tunAdapter.Close()
-		}
-	}
+	//if runtime.GOOS == "windows" {
+	//	if tunLister != nil {
+	//		tunLister.Close()
+	//	}
+	//}
 }

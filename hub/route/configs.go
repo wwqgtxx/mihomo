@@ -58,7 +58,6 @@ type tunSchema struct {
 	DnsHijack           *[]string `yaml:"dns-hijack" json:"dns-hijack"`
 	AutoDetectInterface *bool     `yaml:"auto-detect-interface" json:"auto-detect-interface"`
 	AutoRoute           *bool     `yaml:"auto-route" json:"auto-route"`
-	AutoRouteCidr       *[]string `yaml:"auto-route-cidr" json:"auto-route-cidr"`
 }
 
 func getConfigs(w http.ResponseWriter, r *http.Request) {
@@ -96,9 +95,6 @@ func pointerOrDefaultTun(p *tunSchema, def config.Tun) config.Tun {
 		}
 		if p.AutoRoute != nil {
 			def.AutoRoute = *p.AutoRoute
-		}
-		if p.AutoRouteCidr != nil {
-			def.AutoRouteCidr = *p.AutoRouteCidr
 		}
 	}
 	return def

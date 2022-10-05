@@ -23,7 +23,7 @@ func (g *GEOIP) Match(metadata *C.Metadata) bool {
 		return false
 	}
 
-	if strings.EqualFold(g.country, "LAN") || C.TunBroadcastAddr.Equal(ip) {
+	if strings.EqualFold(g.country, "LAN") {
 		return ip.IsPrivate()
 	}
 	record, _ := mmdb.Instance().Country(ip)

@@ -25,7 +25,7 @@ type Server struct {
 
 // ServeDNS implement D.Handler ServeDNS
 func (s *Server) ServeDNS(w D.ResponseWriter, r *D.Msg) {
-	msg, err := handlerWithContext(s.handler, r)
+	msg, err := HandlerWithContext(s.handler, r)
 	if err != nil {
 		D.HandleFailed(w, r)
 		return
@@ -34,7 +34,7 @@ func (s *Server) ServeDNS(w D.ResponseWriter, r *D.Msg) {
 	w.WriteMsg(msg)
 }
 
-func handlerWithContext(handler handler, msg *D.Msg) (*D.Msg, error) {
+func HandlerWithContext(handler handler, msg *D.Msg) (*D.Msg, error) {
 	if len(msg.Question) == 0 {
 		return nil, errors.New("at least one question is required")
 	}

@@ -13,6 +13,7 @@ import (
 
 	vmess "github.com/sagernet/sing-vmess"
 	"github.com/sagernet/sing/common/buf"
+	E "github.com/sagernet/sing/common/exceptions"
 	M "github.com/sagernet/sing/common/metadata"
 	"github.com/sagernet/sing/common/network"
 	"github.com/sagernet/sing/common/uot"
@@ -67,6 +68,9 @@ func (h *ListenerHandler) NewPacketConnection(ctx context.Context, conn network.
 		dest, err := conn.ReadPacket(buff)
 		if err != nil {
 			buff.Release()
+			if E.IsClosed(err) {
+				break
+			}
 			return err
 		}
 		target := socks5.ParseAddr(dest.String())
@@ -82,6 +86,7 @@ func (h *ListenerHandler) NewPacketConnection(ctx context.Context, conn network.
 		default:
 		}
 	}
+	return nil
 }
 
 func (h *ListenerHandler) NewError(ctx context.Context, err error) {
@@ -115,11 +120,12 @@ func (c *packet) WriteBack(b []byte, addr net.Addr) (n int, err error) {
 
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
-	if c.conn == nil {
+	conn := *c.conn
+	if conn == nil {
 		err = errors.New("writeBack to closed connection")
 		return
 	}
-	err = (*c.conn).WritePacket(buff, M.ParseSocksaddr(addr.String()))
+	err = conn.WritePacket(buff, M.ParseSocksaddr(addr.String()))
 	return
 }
 

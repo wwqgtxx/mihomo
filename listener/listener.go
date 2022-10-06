@@ -3,6 +3,7 @@ package proxy
 import (
 	"fmt"
 	"net"
+	"runtime"
 	"strconv"
 	"sync"
 
@@ -676,9 +677,10 @@ func genAddr(host string, port int, allowLan bool) string {
 
 // CleanUp clean up something
 func CleanUp() {
-	//if runtime.GOOS == "windows" {
-	//	if tunLister != nil {
-	//		tunLister.Close()
-	//	}
-	//}
+	if runtime.GOOS == "windows" {
+		if tunLister != nil {
+			tunLister.Close()
+			tunLister = nil
+		}
+	}
 }

@@ -16,7 +16,7 @@ require (
 	github.com/oschwald/geoip2-golang v1.8.0
 	github.com/sagernet/sing v0.0.0-20221001030341-348376220066
 	github.com/sagernet/sing-shadowsocks v0.0.0-20220819002358-7461bb09a8f6
-	github.com/sagernet/sing-tun v0.0.0-20221002071549-aca9485369ea
+	github.com/sagernet/sing-tun v0.0.0-20221005115555-9a556307f6a3
 	github.com/sagernet/sing-vmess v0.0.0-20220930131037-c1250bdd9acf
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.0

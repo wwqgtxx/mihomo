@@ -25,6 +25,8 @@ import (
 	"github.com/sagernet/sing/common/ranges"
 )
 
+var InterfaceName = "clashr-tun"
+
 type Listener struct {
 	closed  bool
 	options config.Tun
@@ -37,10 +39,10 @@ type Listener struct {
 	defaultInterfaceMonitor tun.DefaultInterfaceMonitor
 }
 
-func New(options config.Tun, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.PacketAdapter) (*Listener, error) {
+func New(options config.Tun, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.PacketAdapter) (l *Listener, err error) {
 	tunName := options.InterfaceName
 	if tunName == "" {
-		tunName = tun.CalculateInterfaceName("clashr-tun")
+		tunName = tun.CalculateInterfaceName(InterfaceName)
 	}
 	tunMTU := options.MTU
 	if tunMTU == 0 {
@@ -104,26 +106,34 @@ func New(options config.Tun, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.P
 		UdpIn: udpIn,
 		Type:  C.TUN,
 	}, dnsHijack, handlerWithContext}
-	l := &Listener{
+	l = &Listener{
 		closed:  false,
 		options: options,
 		handler: handler,
 	}
+	defer func() {
+		if err != nil {
+			l.Close()
+			l = nil
+		}
+	}()
 
 	networkUpdateMonitor, err := tun.NewNetworkUpdateMonitor(handler)
 	if err != nil {
-		return nil, E.Cause(err, "create NetworkUpdateMonitor")
+		err = E.Cause(err, "create NetworkUpdateMonitor")
+		return
 	}
 	err = networkUpdateMonitor.Start()
 	if err != nil {
-		return nil, E.Cause(err, "start NetworkUpdateMonitor")
+		err = E.Cause(err, "start NetworkUpdateMonitor")
+		return
 	}
 	l.networkUpdateMonitor = networkUpdateMonitor
 
 	defaultInterfaceMonitor, err := tun.NewDefaultInterfaceMonitor(networkUpdateMonitor, tun.DefaultInterfaceMonitorOptions{})
 	if err != nil {
-		_ = networkUpdateMonitor.Close()
-		return nil, E.Cause(err, "create DefaultInterfaceMonitor")
+		err = E.Cause(err, "create DefaultInterfaceMonitor")
+		return
 	}
 	defaultInterfaceMonitor.RegisterCallback(func(event int) error {
 		generalInterface := dialer.GeneralInterface.Load()
@@ -145,8 +155,8 @@ func New(options config.Tun, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.P
 	})
 	err = defaultInterfaceMonitor.Start()
 	if err != nil {
-		_ = networkUpdateMonitor.Close()
-		return nil, E.Cause(err, "start DefaultInterfaceMonitor")
+		err = E.Cause(err, "start DefaultInterfaceMonitor")
+		return
 	}
 	l.defaultInterfaceMonitor = defaultInterfaceMonitor
 
@@ -171,9 +181,8 @@ func New(options config.Tun, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.P
 	//}
 	tunIf, err := tun.Open(tunOptions)
 	if err != nil {
-		_ = networkUpdateMonitor.Close()
-		_ = defaultInterfaceMonitor.Close()
-		return nil, E.Cause(err, "configure tun interface")
+		err = E.Cause(err, "configure tun interface")
+		return
 	}
 	l.tunIf = tunIf
 	l.tunStack, err = tun.NewStack(options.Stack, tun.StackOptions{
@@ -189,19 +198,15 @@ func New(options config.Tun, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.P
 		Logger:                 sing.Logger,
 	})
 	if err != nil {
-		_ = networkUpdateMonitor.Close()
-		_ = defaultInterfaceMonitor.Close()
-		return nil, err
+		return
 	}
 	err = l.tunStack.Start()
 	if err != nil {
-		_ = networkUpdateMonitor.Close()
-		_ = defaultInterfaceMonitor.Close()
-		_ = tunIf.Close()
-		return nil, err
+		return
 	}
-	sing.Logger.Info("started at ", tunOptions.Name)
-	return l, nil
+	log.Infoln("Tun adapter listening at: %s(%s,%s), mtu: %d, auto route: %v, ip stack: %s",
+		tunName, tunOptions.Inet4Address, tunOptions.Inet6Address, tunMTU, options.AutoRoute, options.Stack)
+	return
 }
 
 func uidToRange(uidList []uint32) []ranges.Range[uint32] {

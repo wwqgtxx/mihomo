@@ -88,7 +88,7 @@ func pointerOrDefaultTun(p *tunSchema, def config.Tun) config.Tun {
 			def.Stack = *p.Stack
 		}
 		if p.DnsHijack != nil {
-			def.DnsHijack = *p.DnsHijack
+			def.DNSHijack = *p.DnsHijack
 		}
 		if p.AutoDetectInterface != nil {
 			def.AutoDetectInterface = *p.AutoDetectInterface

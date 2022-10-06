@@ -69,7 +69,7 @@ func New(options config.Tun, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.P
 
 	var dnsAdds []netip.AddrPort
 
-	for _, d := range options.DnsHijack {
+	for _, d := range options.DNSHijack {
 		if _, after, ok := strings.Cut(d, "://"); ok {
 			d = after
 		}

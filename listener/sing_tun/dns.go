@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/Dreamacro/clash/common/pool"
+	"github.com/Dreamacro/clash/component/resolver"
+	"github.com/Dreamacro/clash/dns"
 	"github.com/Dreamacro/clash/listener/sing"
 	"github.com/Dreamacro/clash/log"
 
@@ -22,30 +24,59 @@ import (
 )
 
 const DefaultDnsReadTimeout = time.Second * 10
+const DefaultDnsRelayTimeout = time.Second * 5
+
+type DnsHandlerType func(ctx context.Context, msg *D.Msg) (*D.Msg, error)
 
 type ListenerHandler struct {
 	sing.ListenerHandler
-	DnsAdds            []netip.AddrPort
-	HandlerWithContext func(msg *D.Msg) (*D.Msg, error)
+	DnsAdds []netip.AddrPort
+
+	getDnsHandlerMutex sync.Mutex
+	defaultResolver    resolver.Resolver
+	defaultHostMapper  resolver.Enhancer
+	dnsHandler         DnsHandlerType
 }
 
-func (h *ListenerHandler) ShouldHijackDns(targetAddr netip.AddrPort) bool {
-	if h.HandlerWithContext == nil {
-		return false
+func (h *ListenerHandler) GetDnsHandler() (dnsHandler DnsHandlerType) {
+	h.getDnsHandlerMutex.Lock()
+	defer h.getDnsHandlerMutex.Unlock()
+
+	defaultResolver := resolver.DefaultResolver
+	defaultHostMapper := resolver.DefaultHostMapper
+	if defaultResolver != nil {
+		if defaultResolver == h.defaultResolver && defaultHostMapper == h.defaultHostMapper {
+			return h.dnsHandler
+		}
+		_dnsHandler := dns.NewHandler(defaultResolver.(*dns.Resolver), defaultHostMapper.(*dns.ResolverEnhancer))
+		dnsHandler = func(ctx context.Context, msg *D.Msg) (*D.Msg, error) {
+			return dns.HandlerWithContext(ctx, _dnsHandler, msg)
+		}
+		h.dnsHandler = dnsHandler
+		h.defaultResolver = defaultResolver
+		h.defaultHostMapper = defaultHostMapper
+	}
+	return
+}
+
+func (h *ListenerHandler) ShouldHijackDns(targetAddr netip.AddrPort) DnsHandlerType {
+	dnsHandler := h.GetDnsHandler()
+	if dnsHandler == nil {
+		return nil
 	}
 	if targetAddr.Addr().IsLoopback() && targetAddr.Port() == 53 { // cause by system stack
-		return true
+		return dnsHandler
 	}
 	for _, addrPort := range h.DnsAdds {
 		if addrPort == targetAddr || (addrPort.Addr().IsUnspecified() && targetAddr.Port() == 53) {
-			return true
+			return dnsHandler
 		}
 	}
-	return false
+	return nil
 }
 
 func (h *ListenerHandler) NewConnection(ctx context.Context, conn net.Conn, metadata M.Metadata) error {
-	if h.ShouldHijackDns(metadata.Destination.AddrPort()) {
+	if dnsHandler := h.ShouldHijackDns(metadata.Destination.AddrPort()); dnsHandler != nil {
 		log.Debugln("[DNS] hijack tcp:%s", metadata.Destination.String())
 		buff := pool.Get(pool.UDPBufferSize)
 		defer func() {
@@ -71,18 +102,26 @@ func (h *ListenerHandler) NewConnection(ctx context.Context, conn net.Conn, meta
 				break
 			}
 
-			inData := buff[:n]
-			msg, err := h.RelayDnsPacket(inData)
-			if err != nil {
-				return err
-			}
+			err = func() error {
+				ctx, cancel := context.WithTimeout(ctx, DefaultDnsRelayTimeout)
+				defer cancel()
+				inData := buff[:n]
+				msg, err := RelayDnsPacket(ctx, dnsHandler, inData)
+				if err != nil {
+					return err
+				}
 
-			err = binary.Write(conn, binary.BigEndian, uint16(len(msg)))
-			if err != nil {
-				return err
-			}
+				err = binary.Write(conn, binary.BigEndian, uint16(len(msg)))
+				if err != nil {
+					return err
+				}
 
-			_, err = conn.Write(msg)
+				_, err = conn.Write(msg)
+				if err != nil {
+					return err
+				}
+				return nil
+			}()
 			if err != nil {
 				return err
 			}
@@ -93,7 +132,7 @@ func (h *ListenerHandler) NewConnection(ctx context.Context, conn net.Conn, meta
 }
 
 func (h *ListenerHandler) NewPacketConnection(ctx context.Context, conn network.PacketConn, metadata M.Metadata) error {
-	if h.ShouldHijackDns(metadata.Destination.AddrPort()) {
+	if dnsHandler := h.ShouldHijackDns(metadata.Destination.AddrPort()); dnsHandler != nil {
 		log.Debugln("[DNS] hijack udp:%s from %s", metadata.Destination.String(), metadata.Source.String())
 		defer func() { _ = conn.Close() }()
 		mutex := sync.Mutex{}
@@ -114,8 +153,10 @@ func (h *ListenerHandler) NewPacketConnection(ctx context.Context, conn network.
 				return err
 			}
 			go func() {
+				ctx, cancel := context.WithTimeout(ctx, DefaultDnsRelayTimeout)
+				defer cancel()
 				inData := buff.Bytes()
-				msg, err := h.RelayDnsPacket(inData)
+				msg, err := RelayDnsPacket(ctx, dnsHandler, inData)
 				if err != nil {
 					buff.Release()
 					return
@@ -143,13 +184,13 @@ func (h *ListenerHandler) NewPacketConnection(ctx context.Context, conn network.
 	return h.ListenerHandler.NewPacketConnection(ctx, conn, metadata)
 }
 
-func (h *ListenerHandler) RelayDnsPacket(payload []byte) ([]byte, error) {
+func RelayDnsPacket(ctx context.Context, dnsHandle DnsHandlerType, payload []byte) ([]byte, error) {
 	msg := &D.Msg{}
 	if err := msg.Unpack(payload); err != nil {
 		return nil, err
 	}
 
-	r, err := h.HandlerWithContext(msg)
+	r, err := dnsHandle(ctx, msg)
 	if err != nil {
 		m := new(D.Msg)
 		m.SetRcode(msg, D.RcodeServerFailure)

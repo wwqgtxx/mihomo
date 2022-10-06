@@ -65,7 +65,7 @@ func (c *client) ExchangeContext(ctx context.Context, m *D.Msg) (*D.Msg, error) 
 		if network == "" || network == "udp" { // force use tcp when do remote dns
 			network = "tcp"
 		}
-		conn, err = remoteDial(network, net.JoinHostPort(ip.String(), c.port))
+		conn, err = remoteDialer.DialContext(ctx, network, net.JoinHostPort(ip.String(), c.port))
 	} else {
 		conn, err = dialer.DialContext(ctx, network, net.JoinHostPort(ip.String(), c.port), options...)
 	}

@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"time"
 
 	"github.com/Dreamacro/clash/component/dialer"
 	"github.com/Dreamacro/clash/component/resolver"
@@ -71,7 +72,7 @@ func (dc *dohClient) newRequest(m *D.Msg) (*http.Request, error) {
 }
 
 func (dc *dohClient) doRequest(req *http.Request) (msg *D.Msg, err error) {
-	client := &http.Client{Transport: dc.transport}
+	client := &http.Client{Transport: dc.transport, Timeout: 5 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -94,7 +95,7 @@ func newDoHClient(url, iface string, r *Resolver, useRemote bool) *dohClient {
 			ForceAttemptHTTP2: true,
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 				if useRemote {
-					return remoteDial(network, addr)
+					return remoteDialer.DialContext(ctx, network, addr)
 				}
 
 				host, port, err := net.SplitHostPort(addr)

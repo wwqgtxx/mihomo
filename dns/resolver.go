@@ -307,7 +307,7 @@ func (r *Resolver) lookupIP(ctx context.Context, host string, dnsType uint16) ([
 	query := &D.Msg{}
 	query.SetQuestion(D.Fqdn(host), dnsType)
 
-	msg, err := r.Exchange(query)
+	msg, err := r.ExchangeContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}

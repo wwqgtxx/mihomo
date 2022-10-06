@@ -10,14 +10,10 @@ import (
 	"github.com/Dreamacro/clash/adapter/inbound"
 	"github.com/Dreamacro/clash/component/dialer"
 	"github.com/Dreamacro/clash/component/iface"
-	"github.com/Dreamacro/clash/component/resolver"
 	"github.com/Dreamacro/clash/config"
 	C "github.com/Dreamacro/clash/constant"
-	"github.com/Dreamacro/clash/dns"
 	"github.com/Dreamacro/clash/listener/sing"
 	"github.com/Dreamacro/clash/log"
-
-	D "github.com/miekg/dns"
 
 	tun "github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing/common"
@@ -71,7 +67,7 @@ func New(options config.Tun, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.P
 		}
 	}
 
-	var dnsHijack []netip.AddrPort
+	var dnsAdds []netip.AddrPort
 
 	for _, d := range options.DnsHijack {
 		if _, after, ok := strings.Cut(d, "://"); ok {
@@ -83,29 +79,25 @@ func New(options config.Tun, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.P
 			return nil, fmt.Errorf("parse dns-hijack url error: %w", err)
 		}
 
-		dnsHijack = append(dnsHijack, addrPort)
+		dnsAdds = append(dnsAdds, addrPort)
 	}
 	for _, a := range options.Inet4Address {
 		addrPort := netip.AddrPortFrom(a.Build().Addr().Next(), 53)
-		dnsHijack = append(dnsHijack, addrPort)
+		dnsAdds = append(dnsAdds, addrPort)
 	}
 	for _, a := range options.Inet6Address {
 		addrPort := netip.AddrPortFrom(a.Build().Addr().Next(), 53)
-		dnsHijack = append(dnsHijack, addrPort)
-	}
-	var handlerWithContext func(msg *D.Msg) (*D.Msg, error)
-	if resolver.DefaultResolver != nil {
-		dnsHandler := dns.NewHandler(resolver.DefaultResolver.(*dns.Resolver), resolver.DefaultHostMapper.(*dns.ResolverEnhancer))
-		handlerWithContext = func(msg *D.Msg) (*D.Msg, error) {
-			return dns.HandlerWithContext(dnsHandler, msg)
-		}
+		dnsAdds = append(dnsAdds, addrPort)
 	}
 
-	handler := &ListenerHandler{sing.ListenerHandler{
-		TcpIn: tcpIn,
-		UdpIn: udpIn,
-		Type:  C.TUN,
-	}, dnsHijack, handlerWithContext}
+	handler := &ListenerHandler{
+		ListenerHandler: sing.ListenerHandler{
+			TcpIn: tcpIn,
+			UdpIn: udpIn,
+			Type:  C.TUN,
+		},
+		DnsAdds: dnsAdds,
+	}
 	l = &Listener{
 		closed:  false,
 		options: options,

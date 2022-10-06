@@ -33,6 +33,7 @@ type Listener struct {
 
 	networkUpdateMonitor    tun.NetworkUpdateMonitor
 	defaultInterfaceMonitor tun.DefaultInterfaceMonitor
+	packageManager          tun.PackageManager
 }
 
 func New(options config.Tun, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.PacketAdapter) (l *Listener, err error) {
@@ -168,9 +169,11 @@ func New(options config.Tun, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.P
 		TableIndex:         2022,
 	}
 
-	//if C.IsAndroid {
-	//	t.tunOptions.BuildAndroidRules(t.router.PackageManager(), t)
-	//}
+	err = l.buildAndroidRules(&tunOptions)
+	if err != nil {
+		err = E.Cause(err, "build android rules")
+		return
+	}
 	tunIf, err := tun.Open(tunOptions)
 	if err != nil {
 		err = E.Cause(err, "configure tun interface")

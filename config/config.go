@@ -284,7 +284,7 @@ func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 		ProxyGroup:             []map[string]any{},
 		Tun: Tun{
 			Enable:              false,
-			Stack:               "system",
+			Stack:               "gvisor",
 			DNSHijack:           []string{},
 			AutoDetectInterface: true,
 			AutoRoute:           true,

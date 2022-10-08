@@ -336,7 +336,7 @@ func handleTCPConn(connCtx C.ConnContext) {
 	ctx, cancel := context.WithTimeout(context.Background(), C.DefaultTCPTimeout)
 	defer cancel()
 	remoteConn, err := retry(ctx, func(ctx context.Context) (C.Conn, error) {
-		return proxy.DialContext(ctx, metadata.Pure())
+		return proxy.DialContext(ctx, metadata)
 	}, func(err error) {
 		if rule == nil {
 			log.Warnln(

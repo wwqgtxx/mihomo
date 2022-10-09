@@ -61,15 +61,15 @@ func TestPool_Basic(t *testing.T) {
 		last := pool.Lookup("bar.com")
 		bar, exist := pool.LookBack(last)
 
-		assert.True(t, first.Equal(net.IP{192, 168, 0, 2}))
-		assert.Equal(t, pool.Lookup("foo.com"), net.IP{192, 168, 0, 2})
-		assert.True(t, last.Equal(net.IP{192, 168, 0, 3}))
+		assert.True(t, first.Equal(net.IP{192, 168, 0, 4}))
+		assert.Equal(t, pool.Lookup("foo.com"), net.IP{192, 168, 0, 4})
+		assert.True(t, last.Equal(net.IP{192, 168, 0, 5}))
 		assert.True(t, exist)
 		assert.Equal(t, bar, "bar.com")
 		assert.Equal(t, pool.Gateway(), net.IP{192, 168, 0, 1})
 		assert.Equal(t, pool.IPNet().String(), ipnet.String())
-		assert.True(t, pool.Exist(net.IP{192, 168, 0, 3}))
-		assert.False(t, pool.Exist(net.IP{192, 168, 0, 4}))
+		assert.True(t, pool.Exist(net.IP{192, 168, 0, 5}))
+		assert.False(t, pool.Exist(net.IP{192, 168, 0, 6}))
 		assert.False(t, pool.Exist(net.ParseIP("::1")))
 	}
 }
@@ -105,13 +105,13 @@ func TestPool_CycleUsed(t *testing.T) {
 	defer os.Remove(tempfile)
 
 	for _, pool := range pools {
-		assert.Equal(t, net.IP{192, 168, 0, 2}, pool.Lookup("2.com"))
-		assert.Equal(t, net.IP{192, 168, 0, 3}, pool.Lookup("3.com"))
-		assert.Equal(t, net.IP{192, 168, 0, 4}, pool.Lookup("4.com"))
-		assert.Equal(t, net.IP{192, 168, 0, 5}, pool.Lookup("5.com"))
-		assert.Equal(t, net.IP{192, 168, 0, 6}, pool.Lookup("6.com"))
-		assert.Equal(t, net.IP{192, 168, 0, 2}, pool.Lookup("12.com"))
-		assert.Equal(t, net.IP{192, 168, 0, 3}, pool.Lookup("3.com"))
+		assert.Equal(t, net.IP{192, 168, 0, 4}, pool.Lookup("2.com"))
+		assert.Equal(t, net.IP{192, 168, 0, 5}, pool.Lookup("3.com"))
+		assert.Equal(t, net.IP{192, 168, 0, 6}, pool.Lookup("4.com"))
+		assert.Equal(t, net.IP{192, 168, 0, 7}, pool.Lookup("5.com"))
+		assert.Equal(t, net.IP{192, 168, 0, 8}, pool.Lookup("6.com"))
+		assert.Equal(t, net.IP{192, 168, 0, 4}, pool.Lookup("12.com"))
+		assert.Equal(t, net.IP{192, 168, 0, 5}, pool.Lookup("3.com"))
 	}
 }
 
@@ -187,8 +187,8 @@ func TestPool_Clone(t *testing.T) {
 
 	first := pool.Lookup("foo.com")
 	last := pool.Lookup("bar.com")
-	assert.True(t, first.Equal(net.IP{192, 168, 0, 2}))
-	assert.True(t, last.Equal(net.IP{192, 168, 0, 3}))
+	assert.True(t, first.Equal(net.IP{192, 168, 0, 4}))
+	assert.True(t, last.Equal(net.IP{192, 168, 0, 5}))
 
 	newPool, _ := New(Options{
 		IPNet: ipnet,

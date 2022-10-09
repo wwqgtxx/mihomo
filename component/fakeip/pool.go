@@ -145,7 +145,7 @@ type Options struct {
 
 // New return Pool instance
 func New(options Options) (*Pool, error) {
-	min := ipToUint(options.IPNet.IP) + 2
+	min := ipToUint(options.IPNet.IP) + 2 + 2 // default start with 198.18.0.4
 
 	ones, bits := options.IPNet.Mask.Size()
 	total := 1<<uint(bits-ones) - 2
@@ -158,7 +158,7 @@ func New(options Options) (*Pool, error) {
 	pool := &Pool{
 		min:     min,
 		max:     max,
-		gateway: min - 1,
+		gateway: min - 1 - 2,
 		host:    options.Host,
 		ipnet:   options.IPNet,
 	}

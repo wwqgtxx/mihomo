@@ -288,7 +288,7 @@ func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 			DNSHijack:           []string{},
 			AutoDetectInterface: true,
 			AutoRoute:           true,
-			Inet4Address:        []ListenPrefix{ListenPrefix(netip.MustParsePrefix("198.18.0.1/16"))},
+			Inet4Address:        []ListenPrefix{ListenPrefix(netip.MustParsePrefix("198.18.0.1/30"))},
 			Inet6Address:        []ListenPrefix{ListenPrefix(netip.MustParsePrefix("fdfe:dcba:9876::1/126"))},
 		},
 		DNS: RawDNS{

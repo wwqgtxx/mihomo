@@ -6,7 +6,6 @@ import (
 	"net"
 	"net/url"
 	"strings"
-	"time"
 
 	"github.com/Dreamacro/clash/adapter/inbound"
 	"github.com/Dreamacro/clash/common/sockopt"
@@ -23,8 +22,6 @@ import (
 	"github.com/sagernet/sing/common/metadata"
 )
 
-const UDPTimeout = 5 * time.Minute
-
 type Listener struct {
 	closed       bool
 	config       string
@@ -40,7 +37,7 @@ func New(config string, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.Packet
 	if err != nil {
 		return nil, err
 	}
-	udpTimeout := int64(UDPTimeout.Seconds())
+	udpTimeout := int64(sing.UDPTimeout.Seconds())
 
 	h := &sing.ListenerHandler{
 		TcpIn: tcpIn,

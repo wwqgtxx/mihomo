@@ -501,11 +501,20 @@ func ReCreateTun(conf config.Tun, tcpIn chan<- C.ConnContext, udpIn chan<- *inbo
 		}
 	}()
 
-	tunConfig = conf
+	shouldIgnore := false
 
 	if tunLister != nil {
-		tunLister.Close()
-		tunLister = nil
+		if tunLister.Config().String() != conf.String() {
+			tunLister.Close()
+			tunLister = nil
+		} else {
+			shouldIgnore = true
+			tunLister.FlushDefaultInterface()
+		}
+	}
+
+	if shouldIgnore {
+		return
 	}
 
 	generalInterface := dialer.GeneralInterface.Load()

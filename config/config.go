@@ -123,6 +123,11 @@ type Tun struct {
 	UDPTimeout             int64          `yaml:"udp-timeout" json:"udp_timeout,omitempty"`
 }
 
+func (t Tun) String() string {
+	b, _ := json.Marshal(t)
+	return string(b)
+}
+
 type ListenPrefix netip.Prefix
 
 func (p ListenPrefix) MarshalJSON() ([]byte, error) {

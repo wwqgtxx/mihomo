@@ -16,7 +16,7 @@ require (
 	github.com/oschwald/geoip2-golang v1.8.0
 	github.com/sagernet/sing v0.0.0-20221001030341-348376220066
 	github.com/sagernet/sing-shadowsocks v0.0.0-20220819002358-7461bb09a8f6
-	github.com/sagernet/sing-tun v0.0.0-20221005115555-9a556307f6a3
+	github.com/sagernet/sing-tun v0.0.0-20221012082254-488c3b75f6fd
 	github.com/sagernet/sing-vmess v0.0.0-20220930131037-c1250bdd9acf
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.0
@@ -24,9 +24,9 @@ require (
 	go.uber.org/atomic v1.10.0
 	go.uber.org/automaxprocs v1.5.1
 	golang.org/x/crypto v0.0.0-20220919173607-35f4265a4bc0
-	golang.org/x/net v0.0.0-20220927171203-f486391704dc
+	golang.org/x/net v0.0.0-20221004154528-8021a29435af
 	golang.org/x/sync v0.0.0-20220819030929-7fc1605a5dde
-	golang.org/x/sys v0.0.0-20220928140112-f11e5e49a4ec
+	golang.org/x/sys v0.0.0-20221006211917-84dc82d7e875
 	gopkg.in/yaml.v3 v3.0.1
 )
 

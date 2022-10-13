@@ -113,6 +113,8 @@ type Tun struct {
 	Inet4Address           []ListenPrefix `yaml:"inet4-address" json:"inet4_address,omitempty"`
 	Inet6Address           []ListenPrefix `yaml:"inet6-address" json:"inet6_address,omitempty"`
 	StrictRoute            bool           `yaml:"strict-route" json:"strict_route,omitempty"`
+	Inet4RouteAddress      []ListenPrefix `yaml:"inet4_route_address" json:"inet4_route_address,omitempty"`
+	Inet6RouteAddress      []ListenPrefix `yaml:"inet6_route_address" json:"inet6_route_address,omitempty"`
 	IncludeUID             []uint32       `yaml:"include-uid" json:"include_uid,omitempty"`
 	IncludeUIDRange        []string       `yaml:"include-uid-range" json:"include_uid_range,omitempty"`
 	ExcludeUID             []uint32       `yaml:"exclude-uid" json:"exclude_uid,omitempty"`

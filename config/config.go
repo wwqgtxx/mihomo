@@ -42,6 +42,7 @@ type General struct {
 	HealthCheckLazyDefault bool         `json:"health-check-lazy-default"`
 	TouchAfterLazyPassNum  int          `json:"touch-after-lazy-pass-num"`
 	PreResolveProcessName  bool         `json:"pre-resolve-process-name"`
+	TCPConcurrent          bool         `json:"tcp-concurrent"`
 }
 
 // Inbound
@@ -246,6 +247,7 @@ type RawConfig struct {
 	HealthCheckLazyDefault bool         `yaml:"health-check-lazy-default"`
 	TouchAfterLazyPassNum  int          `yaml:"touch-after-lazy-pass-num"`
 	PreResolveProcessName  bool         `yaml:"pre-resolve-process-name"`
+	TCPConcurrent          bool         `yaml:"tcp-concurrent"`
 
 	RuleProviders map[string]map[string]any `yaml:"rule-providers"`
 	ProxyProvider map[string]map[string]any `yaml:"proxy-providers"`
@@ -283,6 +285,7 @@ func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 		HealthCheckLazyDefault: true,
 		TouchAfterLazyPassNum:  0,
 		PreResolveProcessName:  false,
+		TCPConcurrent:          true,
 		Hosts:                  map[string]string{},
 		Rule:                   []string{},
 		Proxy:                  []map[string]any{},
@@ -422,6 +425,7 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 		HealthCheckLazyDefault: cfg.HealthCheckLazyDefault,
 		TouchAfterLazyPassNum:  cfg.TouchAfterLazyPassNum,
 		PreResolveProcessName:  cfg.PreResolveProcessName,
+		TCPConcurrent:          cfg.TCPConcurrent,
 	}, nil
 }
 

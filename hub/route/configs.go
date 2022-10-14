@@ -6,6 +6,7 @@ import (
 
 	"github.com/Dreamacro/clash/adapter"
 	"github.com/Dreamacro/clash/adapter/provider"
+	"github.com/Dreamacro/clash/component/dialer"
 	"github.com/Dreamacro/clash/component/resolver"
 	"github.com/Dreamacro/clash/config"
 	"github.com/Dreamacro/clash/constant"
@@ -44,6 +45,8 @@ type configSchema struct {
 	Mode                   *tunnel.TunnelMode `json:"mode"`
 	LogLevel               *log.LogLevel      `json:"log-level"`
 	IPv6                   *bool              `json:"ipv6"`
+	Sniffing               *bool              `json:"sniffing"`
+	TcpConcurrent          *bool              `json:"tcp-concurrent"`
 	UseRemoteDnsDefault    *bool              `json:"use-remote-dns-default"`
 	UseSystemDnsDial       *bool              `json:"use-system-dns-dial"`
 	HealthCheckURL         *string            `json:"health-check-url"`
@@ -114,6 +117,14 @@ func patchConfigs(w http.ResponseWriter, r *http.Request) {
 
 	if general.BindAddress != nil {
 		P.SetBindAddress(*general.BindAddress)
+	}
+
+	if general.Sniffing != nil {
+		tunnel.SetSniffing(*general.Sniffing)
+	}
+
+	if general.TcpConcurrent != nil {
+		dialer.SetDial(*general.TcpConcurrent)
 	}
 
 	ports := P.GetPorts()

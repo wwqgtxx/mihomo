@@ -20,6 +20,7 @@ import (
 	"github.com/Dreamacro/clash/component/nat"
 	P "github.com/Dreamacro/clash/component/process"
 	"github.com/Dreamacro/clash/component/resolver"
+	"github.com/Dreamacro/clash/component/sniffer"
 	C "github.com/Dreamacro/clash/constant"
 	"github.com/Dreamacro/clash/constant/provider"
 	icontext "github.com/Dreamacro/clash/context"
@@ -29,14 +30,15 @@ import (
 )
 
 var (
-	tcpQueue      = channel.NewInfiniteChannel[C.ConnContext]()
-	udpQueue      = channel.NewInfiniteChannel[*inbound.PacketAdapter]()
-	natTable      = nat.New()
-	rules         []C.Rule
-	ruleProviders map[string]R.RuleProvider
-	proxies       = make(map[string]C.Proxy)
-	providers     map[string]provider.ProxyProvider
-	configMux     sync.RWMutex
+	tcpQueue       = channel.NewInfiniteChannel[C.ConnContext]()
+	udpQueue       = channel.NewInfiniteChannel[*inbound.PacketAdapter]()
+	natTable       = nat.New()
+	rules          []C.Rule
+	ruleProviders  map[string]R.RuleProvider
+	proxies        = make(map[string]C.Proxy)
+	providers      map[string]provider.ProxyProvider
+	sniffingEnable bool
+	configMux      sync.RWMutex
 
 	// Outbound Rule
 	mode = Rule
@@ -46,6 +48,25 @@ var (
 
 	preResolveProcessName = false
 )
+
+func SetSniffing(b bool) {
+	if sniffer.Dispatcher.Enable() {
+		configMux.Lock()
+		sniffingEnable = b
+		configMux.Unlock()
+	}
+}
+
+func UpdateSniffer(dispatcher *sniffer.SnifferDispatcher) {
+	configMux.Lock()
+	sniffer.Dispatcher = dispatcher
+	sniffingEnable = true
+	configMux.Unlock()
+}
+
+func IsSniffing() bool {
+	return sniffingEnable
+}
 
 func PreResolveProcessName() bool {
 	return preResolveProcessName
@@ -325,6 +346,10 @@ func handleTCPConn(connCtx C.ConnContext) {
 	if err := preHandleMetadata(metadata); err != nil {
 		log.Debugln("[Metadata PreHandle] error: %s", err)
 		return
+	}
+
+	if sniffer.Dispatcher.Enable() && sniffingEnable {
+		sniffer.Dispatcher.TCPSniff(connCtx.Conn(), metadata)
 	}
 
 	proxy, rule, err := resolveMetadata(connCtx, metadata)

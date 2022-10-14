@@ -15,6 +15,7 @@ import (
 	"github.com/Dreamacro/clash/component/profile/cachefile"
 	"github.com/Dreamacro/clash/component/profile/cachefileplain"
 	"github.com/Dreamacro/clash/component/resolver"
+	SNI "github.com/Dreamacro/clash/component/sniffer"
 	"github.com/Dreamacro/clash/component/trie"
 	"github.com/Dreamacro/clash/config"
 	C "github.com/Dreamacro/clash/constant"
@@ -73,6 +74,7 @@ func ApplyConfig(cfg *config.Config, force bool) {
 	updateUsers(cfg.Users)
 	updateProxies(cfg.Proxies, cfg.Providers)
 	updateRules(cfg.Rules, cfg.RulesProviders)
+	updateSniffer(cfg.Sniffer)
 	updateHosts(cfg.Hosts)
 	updateProfile(cfg)
 	updateGeneral(cfg.General, force)
@@ -221,6 +223,26 @@ func updateTun(general *config.General) {
 	tcpIn := tunnel.TCPIn()
 	udpIn := tunnel.UDPIn()
 	P.ReCreateTun(general.Tun, tcpIn, udpIn)
+}
+
+func updateSniffer(sniffer *config.Sniffer) {
+	if sniffer.Enable {
+		dispatcher, err := SNI.NewSnifferDispatcher(sniffer.Sniffers, sniffer.ForceDomain, sniffer.SkipDomain, sniffer.Ports, sniffer.ForceDnsMapping)
+		if err != nil {
+			log.Warnln("initial sniffer failed, err:%v", err)
+		}
+
+		tunnel.UpdateSniffer(dispatcher)
+		log.Infoln("Sniffer is loaded and working")
+	} else {
+		dispatcher, err := SNI.NewCloseSnifferDispatcher()
+		if err != nil {
+			log.Warnln("initial sniffer failed, err:%v", err)
+		}
+
+		tunnel.UpdateSniffer(dispatcher)
+		log.Infoln("Sniffer is closed")
+	}
 }
 
 func updateGeneral(general *config.General, force bool) {

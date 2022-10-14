@@ -3,6 +3,7 @@ package context
 import (
 	"net"
 
+	N "github.com/Dreamacro/clash/common/net"
 	C "github.com/Dreamacro/clash/constant"
 
 	"github.com/gofrs/uuid"
@@ -19,7 +20,7 @@ func NewConnContext(conn net.Conn, metadata *C.Metadata) *ConnContext {
 	return &ConnContext{
 		id:       id,
 		metadata: metadata,
-		conn:     conn,
+		conn:     N.NewBufferedConn(conn),
 	}
 }
 

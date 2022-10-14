@@ -8,17 +8,21 @@ import (
 	"net/netip"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/Dreamacro/clash/adapter"
 	"github.com/Dreamacro/clash/adapter/outbound"
 	"github.com/Dreamacro/clash/adapter/outboundgroup"
 	"github.com/Dreamacro/clash/adapter/provider"
+	"github.com/Dreamacro/clash/common/generics/utils"
 	"github.com/Dreamacro/clash/component/auth"
 	"github.com/Dreamacro/clash/component/fakeip"
 	"github.com/Dreamacro/clash/component/trie"
 	C "github.com/Dreamacro/clash/constant"
 	providerTypes "github.com/Dreamacro/clash/constant/provider"
+	"github.com/Dreamacro/clash/constant/sniffer"
+	snifferTypes "github.com/Dreamacro/clash/constant/sniffer"
 	"github.com/Dreamacro/clash/dns"
 	"github.com/Dreamacro/clash/log"
 	R "github.com/Dreamacro/clash/rule"
@@ -181,6 +185,16 @@ func (p ListenPrefix) Build() netip.Prefix {
 	return netip.Prefix(p)
 }
 
+type Sniffer struct {
+	Enable          bool
+	Sniffers        []sniffer.Type
+	Reverses        *trie.DomainTrie
+	ForceDomain     *trie.DomainTrie
+	SkipDomain      *trie.DomainTrie
+	Ports           *[]utils.Range[uint16]
+	ForceDnsMapping bool
+}
+
 // Experimental config
 type Experimental struct{}
 
@@ -196,6 +210,7 @@ type Config struct {
 	Users          []auth.AuthUser
 	Proxies        map[string]C.Proxy
 	Providers      map[string]providerTypes.ProxyProvider
+	Sniffer        *Sniffer
 }
 
 type RawDNS struct {
@@ -251,6 +266,7 @@ type RawConfig struct {
 	PreResolveProcessName  bool         `yaml:"pre-resolve-process-name"`
 	TCPConcurrent          bool         `yaml:"tcp-concurrent"`
 
+	Sniffer       RawSniffer                `yaml:"sniffer"`
 	RuleProviders map[string]map[string]any `yaml:"rule-providers"`
 	ProxyProvider map[string]map[string]any `yaml:"proxy-providers"`
 	Hosts         map[string]string         `yaml:"hosts"`
@@ -261,6 +277,15 @@ type RawConfig struct {
 	Proxy         []map[string]any          `yaml:"proxies"`
 	ProxyGroup    []map[string]any          `yaml:"proxy-groups"`
 	Rule          []string                  `yaml:"rules"`
+}
+
+type RawSniffer struct {
+	Enable          bool     `yaml:"enable" json:"enable"`
+	Sniffing        []string `yaml:"sniffing" json:"sniffing"`
+	ForceDomain     []string `yaml:"force-domain" json:"force-domain"`
+	SkipDomain      []string `yaml:"skip-domain" json:"skip-domain"`
+	Ports           []string `yaml:"port-whitelist" json:"port-whitelist"`
+	ForceDnsMapping bool     `yaml:"force-dns-mapping" json:"force-dns-mapping"`
 }
 
 // Parse config
@@ -293,13 +318,21 @@ func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 		Proxy:                  []map[string]any{},
 		ProxyGroup:             []map[string]any{},
 		Tun: Tun{
-			Enable:              false,
+			Enable:              true,
 			Stack:               "system",
 			DNSHijack:           []string{},
 			AutoDetectInterface: true,
 			AutoRoute:           true,
 			Inet4Address:        []ListenPrefix{ListenPrefix(netip.MustParsePrefix("198.18.0.1/30"))},
 			Inet6Address:        []ListenPrefix{ListenPrefix(netip.MustParsePrefix("fdfe:dcba:9876::1/126"))},
+		},
+		Sniffer: RawSniffer{
+			Enable:          true,
+			Sniffing:        []string{snifferTypes.TLS.String(), snifferTypes.HTTP.String()},
+			ForceDomain:     []string{},
+			SkipDomain:      []string{},
+			Ports:           []string{"80", "443"},
+			ForceDnsMapping: true,
 		},
 		DNS: RawDNS{
 			Enable:      true,
@@ -378,6 +411,11 @@ func ParseRawConfig(rawCfg *RawConfig) (*Config, error) {
 	config.DNS = dnsCfg
 
 	config.Users = parseAuthentication(rawCfg.Authentication)
+
+	config.Sniffer, err = parseSniffer(rawCfg.Sniffer)
+	if err != nil {
+		return nil, err
+	}
 
 	return config, nil
 }
@@ -859,4 +897,77 @@ func parseAuthentication(rawRecords []string) []auth.AuthUser {
 		}
 	}
 	return users
+}
+
+func parseSniffer(snifferRaw RawSniffer) (*Sniffer, error) {
+	sniffer := &Sniffer{
+		Enable:          snifferRaw.Enable,
+		ForceDnsMapping: snifferRaw.ForceDnsMapping,
+	}
+
+	var ports []utils.Range[uint16]
+	if len(snifferRaw.Ports) == 0 {
+		ports = append(ports, *utils.NewRange[uint16](80, 80))
+		ports = append(ports, *utils.NewRange[uint16](443, 443))
+	} else {
+		for _, portRange := range snifferRaw.Ports {
+			portRaws := strings.Split(portRange, "-")
+			p, err := strconv.ParseUint(portRaws[0], 10, 16)
+			if err != nil {
+				return nil, fmt.Errorf("%s format error", portRange)
+			}
+
+			start := uint16(p)
+			if len(portRaws) > 1 {
+				p, err = strconv.ParseUint(portRaws[1], 10, 16)
+				if err != nil {
+					return nil, fmt.Errorf("%s format error", portRange)
+				}
+
+				end := uint16(p)
+				ports = append(ports, *utils.NewRange(start, end))
+			} else {
+				ports = append(ports, *utils.NewRange(start, start))
+			}
+		}
+	}
+
+	sniffer.Ports = &ports
+
+	loadSniffer := make(map[snifferTypes.Type]struct{})
+
+	for _, snifferName := range snifferRaw.Sniffing {
+		find := false
+		for _, snifferType := range snifferTypes.List {
+			if snifferType.String() == strings.ToUpper(snifferName) {
+				find = true
+				loadSniffer[snifferType] = struct{}{}
+			}
+		}
+
+		if !find {
+			return nil, fmt.Errorf("not find the sniffer[%s]", snifferName)
+		}
+	}
+
+	for st := range loadSniffer {
+		sniffer.Sniffers = append(sniffer.Sniffers, st)
+	}
+	sniffer.ForceDomain = trie.New()
+	for _, domain := range snifferRaw.ForceDomain {
+		err := sniffer.ForceDomain.Insert(domain, true)
+		if err != nil {
+			return nil, fmt.Errorf("error domian[%s] in force-domain, error:%v", domain, err)
+		}
+	}
+
+	sniffer.SkipDomain = trie.New()
+	for _, domain := range snifferRaw.SkipDomain {
+		err := sniffer.SkipDomain.Insert(domain, true)
+		if err != nil {
+			return nil, fmt.Errorf("error domian[%s] in force-domain, error:%v", domain, err)
+		}
+	}
+
+	return sniffer, nil
 }

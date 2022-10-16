@@ -517,6 +517,8 @@ func ReCreateTun(conf config.Tun, tcpIn chan<- C.ConnContext, udpIn chan<- *inbo
 		return
 	}
 
+	tunConfig = conf
+
 	generalInterface := dialer.GeneralInterface.Load()
 	defaultInterface := dialer.DefaultInterface.Load()
 	if !conf.Enable {

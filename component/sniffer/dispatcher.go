@@ -38,6 +38,7 @@ type SnifferDispatcher struct {
 	rwMux       sync.RWMutex
 
 	forceDnsMapping bool
+	parsePureIp     bool
 }
 
 func (sd *SnifferDispatcher) TCPSniff(conn net.Conn, metadata *C.Metadata) {
@@ -51,7 +52,7 @@ func (sd *SnifferDispatcher) TCPSniff(conn net.Conn, metadata *C.Metadata) {
 		return
 	}
 
-	if metadata.Host == "" || sd.forceDomain.Search(metadata.Host) != nil || (metadata.DNSMode == C.DNSMapping && sd.forceDnsMapping) {
+	if (metadata.Host == "" && sd.parsePureIp) || sd.forceDomain.Search(metadata.Host) != nil || (metadata.DNSMode == C.DNSMapping && sd.forceDnsMapping) {
 
 		port, err := strconv.ParseUint(metadata.DstPort, 10, 16)
 		if err != nil {
@@ -104,10 +105,18 @@ func (sd *SnifferDispatcher) replaceDomain(metadata *C.Metadata, host string) {
 	if metadata.DstIP != nil {
 		dstIP = metadata.DstIP.String()
 	}
-	log.Debugln("[Sniffer] Sniff TCP [%s:%s]-->[%s:%s] success, replace domain [%s]-->[%s]",
-		metadata.SrcIP, metadata.SrcPort,
-		dstIP, metadata.DstPort,
-		metadata.Host, host)
+	originHost := metadata.Host
+	if originHost != host {
+		log.Infoln("[Sniffer] Sniff TCP [%s:%s]-->[%s:%s] success, replace domain [%s]-->[%s]",
+			metadata.SrcIP, metadata.SrcPort,
+			dstIP, metadata.DstPort,
+			metadata.Host, host)
+	} else {
+		log.Debugln("[Sniffer] Sniff TCP [%s:%s]-->[%s:%s] success, replace domain [%s]-->[%s]",
+			metadata.SrcIP, metadata.SrcPort,
+			dstIP, metadata.DstPort,
+			metadata.Host, host)
+	}
 
 	metadata.Host = host
 	metadata.DNSMode = C.DNSNormal
@@ -180,7 +189,8 @@ func NewCloseSnifferDispatcher() (*SnifferDispatcher, error) {
 }
 
 func NewSnifferDispatcher(needSniffer []sniffer.Type, forceDomain *trie.DomainTrie,
-	skipSNI *trie.DomainTrie, ports *[]utils.Range[uint16], forceDnsMapping bool) (*SnifferDispatcher, error) {
+	skipSNI *trie.DomainTrie, ports *[]utils.Range[uint16],
+	forceDnsMapping bool, parsePureIp bool) (*SnifferDispatcher, error) {
 	dispatcher := SnifferDispatcher{
 		enable:          true,
 		forceDomain:     forceDomain,
@@ -188,6 +198,7 @@ func NewSnifferDispatcher(needSniffer []sniffer.Type, forceDomain *trie.DomainTr
 		portRanges:      ports,
 		skipList:        cache.NewLRUCache[string, uint8](cache.WithSize[string, uint8](128), cache.WithAge[string, uint8](600)),
 		forceDnsMapping: forceDnsMapping,
+		parsePureIp:     parsePureIp,
 	}
 
 	for _, snifferName := range needSniffer {

@@ -193,6 +193,7 @@ type Sniffer struct {
 	SkipDomain      *trie.DomainTrie
 	Ports           *[]utils.Range[uint16]
 	ForceDnsMapping bool
+	ParsePureIp     bool
 }
 
 // Experimental config
@@ -286,6 +287,7 @@ type RawSniffer struct {
 	SkipDomain      []string `yaml:"skip-domain" json:"skip-domain"`
 	Ports           []string `yaml:"port-whitelist" json:"port-whitelist"`
 	ForceDnsMapping bool     `yaml:"force-dns-mapping" json:"force-dns-mapping"`
+	ParsePureIp     bool     `yaml:"parse-pure-ip" json:"parse-pure-ip"`
 }
 
 // Parse config
@@ -318,7 +320,7 @@ func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 		Proxy:                  []map[string]any{},
 		ProxyGroup:             []map[string]any{},
 		Tun: Tun{
-			Enable:              true,
+			Enable:              false,
 			Stack:               "system",
 			DNSHijack:           []string{},
 			AutoDetectInterface: true,
@@ -333,6 +335,7 @@ func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 			SkipDomain:      []string{},
 			Ports:           []string{"80", "443"},
 			ForceDnsMapping: true,
+			ParsePureIp:     false,
 		},
 		DNS: RawDNS{
 			Enable:      true,
@@ -903,6 +906,7 @@ func parseSniffer(snifferRaw RawSniffer) (*Sniffer, error) {
 	sniffer := &Sniffer{
 		Enable:          snifferRaw.Enable,
 		ForceDnsMapping: snifferRaw.ForceDnsMapping,
+		ParsePureIp:     snifferRaw.ParsePureIp,
 	}
 
 	var ports []utils.Range[uint16]

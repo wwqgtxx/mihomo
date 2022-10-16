@@ -318,9 +318,47 @@ func StreamWebsocketConn(conn net.Conn, c *WebsocketConfig) (net.Conn, error) {
 	return streamWebsocketConn(conn, c, nil)
 }
 
-func StreamUpgradedWebsocketConn(wsConn *websocket.Conn) net.Conn {
-	return &websocketConn{
+var upgrader = websocket.Upgrader{}
+var replacer = strings.NewReplacer("+", "-", "/", "_", "=", "")
+
+func decodeEd(s string) ([]byte, error) {
+	return base64.RawURLEncoding.DecodeString(replacer.Replace(s))
+}
+
+func decodeXray0rtt(requestHeader http.Header) ([]byte, http.Header) {
+	var edBuf []byte
+	responseHeader := http.Header{}
+	// read inHeader's `Sec-WebSocket-Protocol` for Xray's 0rtt ws
+	if secProtocol := requestHeader.Get("Sec-WebSocket-Protocol"); len(secProtocol) > 0 {
+		if buf, err := decodeEd(secProtocol); err == nil { // sure could base64 decode
+			edBuf = buf
+			responseHeader.Set("Sec-WebSocket-Protocol", secProtocol)
+		}
+	}
+	return edBuf, responseHeader
+}
+
+func StreamUpgradedWebsocketConn(w http.ResponseWriter, r *http.Request) (net.Conn, error) {
+	edBuf, responseHeader := decodeXray0rtt(r.Header)
+	wsConn, err := upgrader.Upgrade(w, r, responseHeader)
+	if err != nil {
+		return nil, err
+	}
+	conn := &websocketConn{
 		conn:       wsConn,
 		remoteAddr: wsConn.RemoteAddr(),
 	}
+	if len(edBuf) > 0 {
+		return &websocketWithReaderConn{conn, io.MultiReader(bytes.NewReader(edBuf), conn)}, nil
+	}
+	return conn, nil
+}
+
+type websocketWithReaderConn struct {
+	*websocketConn
+	reader io.Reader
+}
+
+func (ws *websocketWithReaderConn) Read(b []byte) (n int, err error) {
+	return ws.reader.Read(b)
 }

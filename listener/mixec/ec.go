@@ -48,8 +48,6 @@ func (l *chanListener) PutConn(conn net.Conn) {
 	}
 }
 
-var upgrader = websocket.Upgrader{}
-
 var once sync.Once
 var _chanListener *chanListener
 
@@ -60,26 +58,22 @@ type ecHandler struct {
 
 func (h ecHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/socket.io" && websocket.IsWebSocketUpgrade(r) {
-		ws, err := upgrader.Upgrade(w, r, nil)
+		conn, err := vmess.StreamUpgradedWebsocketConn(w, r)
 		if err != nil {
 			return
 		}
-		//defer ws.Close()
-		conn := vmess.StreamUpgradedWebsocketConn(ws)
 		if !sing_vmess.HandleVmess(conn) {
-			_ = ws.Close()
+			_ = conn.Close()
 		}
 		return
 	}
 	if r.URL.Path == "/ws" && websocket.IsWebSocketUpgrade(r) {
-		ws, err := upgrader.Upgrade(w, r, nil)
+		conn, err := vmess.StreamUpgradedWebsocketConn(w, r)
 		if err != nil {
 			return
 		}
-		//defer ws.Close()
-		conn := vmess.StreamUpgradedWebsocketConn(ws)
 		if !sing_shadowsocks.HandleShadowSocks(conn) {
-			_ = ws.Close()
+			_ = conn.Close()
 		}
 		return
 	}

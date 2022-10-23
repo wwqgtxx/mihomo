@@ -122,7 +122,10 @@ func (c *fakeTLSServerProtocol) tlsHandshake(conn net.Conn) error {
 }
 
 func (c *fakeTLSServerProtocol) CloakHost(clientConn net.Conn) {
-
+	if c.cloakPort == "0" {
+		_ = clientConn.Close()
+		return
+	}
 	addr := net.JoinHostPort(c.cloakHost, c.cloakPort)
 
 	hostConn, err := net.Dial("tcp", addr)

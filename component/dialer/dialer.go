@@ -228,18 +228,24 @@ func concurrentDialContext(ctx context.Context, network string, destinations []n
 	}
 
 	connCount := len(destinations)
+	var firstErr error
 	for i := 0; i < connCount; i++ {
 		select {
 		case res := <-results:
 			if res.error == nil {
 				return res.Conn, nil
+			} else if firstErr == nil {
+				firstErr = res.error
 			}
 		case <-ctx.Done():
+			if firstErr == nil {
+				firstErr = ctx.Err()
+			}
 			break
 		}
 	}
 
-	return nil, fmt.Errorf("all ips %v tcp shake hands failed", destinations)
+	return nil, fmt.Errorf("all ips %v tcp shake hands failed, the first error is: %w", destinations, firstErr)
 }
 
 func concurrentSingleDialContext(ctx context.Context, network, address string, options []Option) (net.Conn, error) {

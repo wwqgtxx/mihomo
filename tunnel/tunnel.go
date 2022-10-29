@@ -358,10 +358,19 @@ func handleTCPConn(connCtx C.ConnContext) {
 		return
 	}
 
+	dialMetadata := metadata
+	if len(metadata.Host) > 0 {
+		if node := resolver.DefaultHosts.Search(metadata.Host); node != nil {
+			dialMetadata.DstIP = node.Data.(net.IP)
+			dialMetadata.DNSMode = C.DNSHosts
+			dialMetadata = dialMetadata.Pure()
+		}
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), C.DefaultTCPTimeout)
 	defer cancel()
 	remoteConn, err := retry(ctx, func(ctx context.Context) (C.Conn, error) {
-		return proxy.DialContext(ctx, metadata)
+		return proxy.DialContext(ctx, dialMetadata)
 	}, func(err error) {
 		if rule == nil {
 			log.Warnln(

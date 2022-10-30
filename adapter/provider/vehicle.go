@@ -105,13 +105,12 @@ func (h *HTTPVehicle) Read() (buf []byte, err error) {
 		return buf, nil
 	}
 
-	for _, dc := range []DC{innerDailContext, defaultDailContext} {
-		buf, err = read(dc)
-		if err == nil {
-			return
-		}
+	buf, err = read(innerDailContext)
+	if err != nil {
 		log.Errorln("[Provider] fetch from inner error: %s, fallback to direct", err)
+		buf, err = read(defaultDailContext)
 	}
+
 	return
 }
 

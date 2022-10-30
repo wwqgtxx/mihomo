@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"regexp"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/Dreamacro/clash/adapter"
@@ -96,10 +97,18 @@ func stopProxyProvider(pd *ProxySetProvider) {
 	pd.Fetcher.Destroy()
 }
 
-func NewProxySetProvider(name string, interval time.Duration, filter string, vehicle types.Vehicle, hc *HealthCheck) (*ProxySetProvider, error) {
-	filterReg, err := regexp.Compile(filter)
+func NewProxySetProvider(name string, interval time.Duration, filter string, excludeFilter string, vehicle types.Vehicle, hc *HealthCheck) (*ProxySetProvider, error) {
+	excludeFilterReg, err := regexp.Compile(excludeFilter)
 	if err != nil {
-		return nil, fmt.Errorf("invalid filter regex: %w", err)
+		return nil, fmt.Errorf("invalid excludeFilter regex: %w", err)
+	}
+	var filterRegs []*regexp.Regexp
+	for _, filter := range strings.Split(filter, "`") {
+		filterReg, err := regexp.Compile(filter)
+		if err != nil {
+			return nil, fmt.Errorf("invalid filter regex: %w", err)
+		}
+		filterRegs = append(filterRegs, filterReg)
 	}
 
 	if hc.auto() {
@@ -128,15 +137,33 @@ func NewProxySetProvider(name string, interval time.Duration, filter string, veh
 		}
 
 		proxies := []C.Proxy{}
-		for idx, mapping := range schema.Proxies {
-			if name, ok := mapping["name"].(string); ok && len(filter) > 0 && !filterReg.MatchString(name) {
-				continue
+		proxiesSet := map[string]struct{}{}
+		for _, filterReg := range filterRegs {
+			for idx, mapping := range schema.Proxies {
+				mName, ok := mapping["name"]
+				if !ok {
+					continue
+				}
+				name, ok := mName.(string)
+				if !ok {
+					continue
+				}
+				if len(excludeFilter) > 0 && excludeFilterReg.MatchString(name) {
+					continue
+				}
+				if !filterReg.MatchString(name) {
+					continue
+				}
+				if _, ok := proxiesSet[name]; ok {
+					continue
+				}
+				proxy, err := adapter.ParseProxy(mapping)
+				if err != nil {
+					return nil, fmt.Errorf("proxy %d error: %w", idx, err)
+				}
+				proxiesSet[name] = struct{}{}
+				proxies = append(proxies, proxy)
 			}
-			proxy, err := adapter.ParseProxy(mapping)
-			if err != nil {
-				return nil, fmt.Errorf("proxy %d error: %w", idx, err)
-			}
-			proxies = append(proxies, proxy)
 		}
 
 		if len(proxies) == 0 {

@@ -82,7 +82,7 @@ func (lb *LoadBalance) DialContext(ctx context.Context, metadata *C.Metadata, op
 		}
 	}()
 
-	proxy := lb.Unwrap(metadata)
+	proxy := lb.Unwrap(metadata, true)
 
 	c, err = proxy.DialContext(ctx, metadata, lb.Base.DialOptions(opts...)...)
 	return
@@ -96,7 +96,7 @@ func (lb *LoadBalance) ListenPacketContext(ctx context.Context, metadata *C.Meta
 		}
 	}()
 
-	proxy := lb.Unwrap(metadata)
+	proxy := lb.Unwrap(metadata, true)
 	return proxy.ListenPacketContext(ctx, metadata, lb.Base.DialOptions(opts...)...)
 }
 
@@ -167,8 +167,8 @@ func strategyConsistentHashing() strategyFn {
 }
 
 // Unwrap implements C.ProxyAdapter
-func (lb *LoadBalance) Unwrap(metadata *C.Metadata) C.Proxy {
-	proxies := lb.proxies(true)
+func (lb *LoadBalance) Unwrap(metadata *C.Metadata, touch bool) C.Proxy {
+	proxies := lb.proxies(touch)
 	return lb.strategyFn(proxies, metadata)
 }
 

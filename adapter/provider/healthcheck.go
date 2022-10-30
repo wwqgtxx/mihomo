@@ -43,15 +43,13 @@ func (hc *HealthCheck) process() {
 	ticker := time.NewTicker(time.Duration(hc.interval) * time.Second)
 	passNum := 0
 
-	go hc.check()
+	go hc.lazyCheck()
 
 	for {
 		select {
 		case <-ticker.C:
-			now := time.Now().Unix()
-			if !hc.lazy || now-hc.lastTouch.Load() < int64(hc.interval) {
+			if hc.lazyCheck() {
 				passNum = 0
-				hc.check()
 			} else {
 				passNum++
 				if passNum > 0 && passNum > touchAfterLazyPassNum {
@@ -62,6 +60,16 @@ func (hc *HealthCheck) process() {
 			ticker.Stop()
 			return
 		}
+	}
+}
+
+func (hc *HealthCheck) lazyCheck() bool {
+	now := time.Now().Unix()
+	if !hc.lazy || now-hc.lastTouch.Load() < int64(hc.interval) {
+		hc.check()
+		return true
+	} else {
+		return false
 	}
 }
 

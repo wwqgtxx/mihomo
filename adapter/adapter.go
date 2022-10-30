@@ -25,7 +25,7 @@ type Proxy struct {
 
 // Alive implements C.Proxy
 func (p *Proxy) Alive() bool {
-	if proxy := p.ProxyAdapter.Unwrap(nil); proxy != nil {
+	if proxy := p.ProxyAdapter.Unwrap(nil, false); proxy != nil {
 		return proxy.Alive()
 	}
 	return p.alive.Load()
@@ -73,7 +73,7 @@ func aliveContext[T any](p *Proxy, ctx context.Context, f func(context.Context) 
 
 // DelayHistory implements C.Proxy
 func (p *Proxy) DelayHistory() []C.DelayHistory {
-	if proxy := p.ProxyAdapter.Unwrap(nil); proxy != nil {
+	if proxy := p.ProxyAdapter.Unwrap(nil, false); proxy != nil {
 		return proxy.DelayHistory()
 	}
 	queue := p.history.Copy()
@@ -87,7 +87,7 @@ func (p *Proxy) DelayHistory() []C.DelayHistory {
 // LastDelay return last history record. if proxy is not alive, return the max value of uint16.
 // implements C.Proxy
 func (p *Proxy) LastDelay() (delay uint16) {
-	if proxy := p.ProxyAdapter.Unwrap(nil); proxy != nil {
+	if proxy := p.ProxyAdapter.Unwrap(nil, false); proxy != nil {
 		return proxy.LastDelay()
 	}
 	var max uint16 = 0xffff
@@ -127,7 +127,7 @@ func (p *Proxy) URLTest(ctx context.Context, url string) (t uint16, err error) {
 	if p.ignoreURLTest {
 		return p.LastDelay(), nil
 	}
-	if proxy := p.ProxyAdapter.Unwrap(nil); proxy != nil {
+	if proxy := p.ProxyAdapter.Unwrap(nil, true); proxy != nil {
 		return proxy.URLTest(ctx, url)
 	}
 	defer func() {

@@ -88,7 +88,7 @@ func (pp *proxySetProvider) setProxies(proxies []C.Proxy) {
 	pp.proxies = proxies
 	pp.healthCheck.setProxy(proxies)
 	if pp.healthCheck.auto() {
-		go pp.healthCheck.check()
+		go pp.healthCheck.lazyCheck()
 	}
 }
 

@@ -1,6 +1,6 @@
 module github.com/Dreamacro/clash
 
-go 1.18
+go 1.19
 
 require (
 	github.com/aead/chacha20 v0.0.0-20180709150244-8b13a72661da
@@ -12,6 +12,7 @@ require (
 	github.com/insomniacslk/dhcp v0.0.0-20220822114210-de18a9d48e84
 	github.com/jpillora/backoff v1.0.0
 	github.com/kentik/patricia v1.0.0
+	github.com/mdlayher/netlink v1.6.0
 	github.com/miekg/dns v1.1.50
 	github.com/oschwald/geoip2-golang v1.8.0
 	github.com/sagernet/sing v0.0.0-20221001030341-348376220066
@@ -36,8 +37,11 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/google/btree v1.0.1 // indirect
+	github.com/google/go-cmp v0.5.8 // indirect
+	github.com/josharian/native v1.0.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.12 // indirect
 	github.com/kr/text v0.2.0 // indirect
+	github.com/mdlayher/socket v0.1.1 // indirect
 	github.com/oschwald/maxminddb-golang v1.10.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/sagernet/abx-go v0.0.0-20220819185957-dba1257d738e // indirect

@@ -2,6 +2,7 @@ package outboundgroup
 
 import (
 	"regexp"
+	"strings"
 	"time"
 
 	C "github.com/Dreamacro/clash/constant"
@@ -23,11 +24,22 @@ func getProvidersProxies(providers []provider.ProxyProvider, touch bool, filter 
 	}
 	matchedProxies := []C.Proxy{}
 	if len(filter) > 0 {
-		filterReg, err := regexp.Compile(filter)
-		if err == nil {
+		var filterRegs []*regexp.Regexp
+		for _, filter := range strings.Split(filter, "`") {
+			filterReg, err := regexp.Compile(filter)
+			if err != nil {
+				continue
+			}
+			filterRegs = append(filterRegs, filterReg)
+		}
+		proxiesSet := map[string]struct{}{}
+		for _, filterReg := range filterRegs {
 			for _, p := range proxies {
-				if filterReg.MatchString(p.Name()) {
-					matchedProxies = append(matchedProxies, p)
+				if name := p.Name(); filterReg.MatchString(name) {
+					if _, ok := proxiesSet[name]; !ok {
+						proxiesSet[name] = struct{}{}
+						matchedProxies = append(matchedProxies, p)
+					}
 				}
 			}
 		}

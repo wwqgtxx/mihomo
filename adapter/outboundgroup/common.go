@@ -7,6 +7,7 @@ import (
 
 	C "github.com/Dreamacro/clash/constant"
 	"github.com/Dreamacro/clash/constant/provider"
+	"github.com/Dreamacro/clash/tunnel"
 )
 
 const (
@@ -48,10 +49,14 @@ func getProvidersProxies(providers []provider.ProxyProvider, touch bool, filter 
 				}
 			}
 		}
-		//if no proxy matched, means bad filter, return all proxies
+		// if no proxy matched, means bad filter, return all proxies
 		if len(matchedProxies) > 0 {
 			proxies = matchedProxies
 		}
+	}
+
+	if len(proxies) == 0 {
+		return []C.Proxy{tunnel.Proxies()["REJECT"]}
 	}
 	return proxies
 }

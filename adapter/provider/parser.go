@@ -3,6 +3,8 @@ package provider
 import (
 	"errors"
 	"fmt"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/Dreamacro/clash/common/structure"
@@ -26,6 +28,7 @@ type proxyProviderSchema struct {
 	Type          string            `provider:"type"`
 	Path          string            `provider:"path"`
 	URL           string            `provider:"url,omitempty"`
+	ConverterURL  string            `provider:"converter-url,omitempty"`
 	Interval      int               `provider:"interval,omitempty"`
 	Filter        string            `provider:"filter,omitempty"`
 	ExcludeFilter string            `provider:"exclude-filter,omitempty"`
@@ -52,6 +55,10 @@ func ParseProxyProvider(name string, mapping map[string]any, healthCheckLazyDefa
 	hc := NewHealthCheck([]C.Proxy{}, schema.HealthCheck.URL, hcInterval, schema.HealthCheck.Lazy, schema.HealthCheck.Type)
 
 	path := C.Path.Resolve(schema.Path)
+
+	if len(schema.ConverterURL) > 0 {
+		schema.URL = strings.Replace(schema.ConverterURL, "{url}", url.QueryEscape(schema.URL), 1)
+	}
 
 	var vehicle types.Vehicle
 	switch schema.Type {

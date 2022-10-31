@@ -69,6 +69,7 @@ func (hc *HealthCheck) lazyCheck() bool {
 		hc.check()
 		return true
 	} else {
+		log.Infoln("Skip once health check because we are lazy")
 		return false
 	}
 }
@@ -114,7 +115,7 @@ func (hc *HealthCheck) normalCheck(id string) {
 		b.Go(p.Name(), func() (any, error) {
 			ctx, cancel := context.WithTimeout(context.Background(), defaultURLTestTimeout)
 			defer cancel()
-			log.Infoln("Health Checking %s {%s}", proxy.Name(), id)
+			log.Infoln("Health Checking %s {%s}", p.Name(), id)
 			p.URLTest(ctx, hc.url)
 			log.Infoln("Health Checked %s : %t %d ms {%s}", p.Name(), p.Alive(), p.LastDelay(), id)
 			return nil, nil

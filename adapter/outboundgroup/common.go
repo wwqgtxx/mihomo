@@ -60,3 +60,13 @@ func getProvidersProxies(providers []provider.ProxyProvider, touch bool, filter 
 	}
 	return proxies
 }
+
+func doHealthCheck(providers []provider.ProxyProvider, proxy C.Proxy) {
+	for _, proxyProvider := range providers {
+		for _, proxy2 := range proxyProvider.Proxies() {
+			if proxy == proxy2 {
+				go proxyProvider.HealthCheck()
+			}
+		}
+	}
+}

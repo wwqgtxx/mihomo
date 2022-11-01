@@ -34,7 +34,8 @@ type HealthCheck struct {
 	lazy       bool
 	lastTouch  *atomic.Int64
 	done       chan struct{}
-	gtype      string
+	gType      string
+	gName      string
 	checking   *atomic.Bool
 	cleanerRun *atomic.Bool
 }
@@ -69,7 +70,7 @@ func (hc *HealthCheck) lazyCheck() bool {
 		hc.check()
 		return true
 	} else {
-		log.Infoln("Skip once health check because we are lazy")
+		log.Infoln("Skip once health check because we are lazy (%s)", hc.gName)
 		return false
 	}
 }
@@ -88,7 +89,7 @@ func (hc *HealthCheck) touch() {
 
 func (hc *HealthCheck) check() {
 	if hc.checking.Swap(true) {
-		log.Infoln("A Health Checking is Running, break")
+		log.Infoln("A Health Checking (%s) is Running, break", hc.gName)
 		return
 	}
 	defer func() {
@@ -98,14 +99,14 @@ func (hc *HealthCheck) check() {
 	if uid, err := uuid.NewV4(); err == nil {
 		id = uid.String()
 	}
-	log.Infoln("Start New Health Checking {%s}", id)
-	switch hc.gtype {
+	log.Infoln("Start New Health Checking (%s) {%s}", hc.gName, id)
+	switch hc.gType {
 	case "fallback":
 		hc.fallbackCheck(id)
 	default:
 		hc.normalCheck(id)
 	}
-	log.Infoln("Finish A Health Checking {%s}", id)
+	log.Infoln("Finish A Health Checking (%s) {%s}", hc.gName, id)
 }
 
 func (hc *HealthCheck) normalCheck(id string) {
@@ -115,9 +116,9 @@ func (hc *HealthCheck) normalCheck(id string) {
 		b.Go(p.Name(), func() (any, error) {
 			ctx, cancel := context.WithTimeout(context.Background(), defaultURLTestTimeout)
 			defer cancel()
-			log.Infoln("Health Checking %s {%s}", p.Name(), id)
+			log.Infoln("Health Checking (%s) %s {%s}", hc.gName, p.Name(), id)
 			p.URLTest(ctx, hc.url)
-			log.Infoln("Health Checked %s : %t %d ms {%s}", p.Name(), p.Alive(), p.LastDelay(), id)
+			log.Infoln("Health Checked (%s) %s : %t %d ms {%s}", hc.gName, p.Name(), p.Alive(), p.LastDelay(), id)
 			return nil, nil
 		})
 	}
@@ -128,22 +129,22 @@ func (hc *HealthCheck) fallbackCheck(id string) {
 	check := func(proxy C.Proxy) {
 		ctx, cancel := context.WithTimeout(context.Background(), defaultURLTestTimeout)
 		defer cancel()
-		log.Infoln("Health Checking %s {%s}", proxy.Name(), id)
+		log.Infoln("Health Checking (%s) %s {%s}", hc.gName, proxy.Name(), id)
 		proxy.URLTest(ctx, hc.url)
-		log.Infoln("Health Checked %s : %t %d ms {%s}", proxy.Name(), proxy.Alive(), proxy.LastDelay(), id)
+		log.Infoln("Health Checked (%s) %s : %t %d ms {%s}", hc.gName, proxy.Name(), proxy.Alive(), proxy.LastDelay(), id)
 	}
 	wait := func() {
 		<-time.After(waitAfterAURLTest)
 	}
 	cleaner := func() {
 		if hc.cleanerRun.Swap(true) {
-			log.Infoln("A Health Check Cleaner is Running, break")
+			log.Infoln("A Health Check Cleaner (%s) is Running, break", hc.gName)
 			return
 		}
 		defer func() {
 			hc.cleanerRun.Store(false)
 		}()
-		log.Infoln("Start New Health Check Cleaner {%s}", id)
+		log.Infoln("Start New Health Check Cleaner (%s) {%s}", hc.gName, id)
 		b, _ := batch.New(context.Background(), batch.WithConcurrencyNum(10))
 		for _, proxy := range hc.proxies {
 			if proxy.Alive() {
@@ -157,7 +158,7 @@ func (hc *HealthCheck) fallbackCheck(id string) {
 			})
 		}
 		b.Wait()
-		log.Infoln("Finish A Health Check Cleaner {%s}", id)
+		log.Infoln("Finish A Health Check Cleaner (%s) {%s}", hc.gName, id)
 	}
 	for _, proxy := range hc.proxies {
 		if proxy.Alive() {
@@ -175,7 +176,7 @@ func (hc *HealthCheck) close() {
 	hc.done <- struct{}{}
 }
 
-func NewHealthCheck(proxies []C.Proxy, url string, interval uint, lazy bool, gtype string) *HealthCheck {
+func NewHealthCheck(proxies []C.Proxy, url string, interval uint, lazy bool, gType string, gName string) *HealthCheck {
 	if url == "" {
 		url = "http://cp.cloudflare.com/generate_204"
 	}
@@ -186,7 +187,8 @@ func NewHealthCheck(proxies []C.Proxy, url string, interval uint, lazy bool, gty
 		lazy:       lazy,
 		lastTouch:  atomic.NewInt64(0),
 		done:       make(chan struct{}, 1),
-		gtype:      gtype,
+		gType:      gType,
+		gName:      gName,
 		checking:   atomic.NewBool(false),
 		cleanerRun: atomic.NewBool(false),
 	}

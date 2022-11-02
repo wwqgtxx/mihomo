@@ -2,6 +2,7 @@ package dialer
 
 import (
 	"net"
+	"net/netip"
 	"syscall"
 
 	"golang.org/x/sys/unix"
@@ -38,7 +39,7 @@ func bindControl(ifaceName string, chain controlFn) controlFn {
 	}
 }
 
-func bindIfaceToDialer(ifaceName string, dialer *net.Dialer, _ string, _ net.IP) error {
+func bindIfaceToDialer(ifaceName string, dialer *net.Dialer, _ string, _ netip.Addr) error {
 	dialer.Control = bindControl(ifaceName, dialer.Control)
 
 	return nil

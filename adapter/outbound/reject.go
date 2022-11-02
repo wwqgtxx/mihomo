@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"net"
+	"net/netip"
 	"time"
 
 	"github.com/Dreamacro/clash/component/dialer"
@@ -56,7 +57,9 @@ type nopPacketConn struct{}
 func (npc *nopPacketConn) WriteTo(b []byte, addr net.Addr) (n int, err error) { return len(b), nil }
 func (npc *nopPacketConn) ReadFrom(b []byte) (int, net.Addr, error)           { return 0, nil, io.EOF }
 func (npc *nopPacketConn) Close() error                                       { return nil }
-func (npc *nopPacketConn) LocalAddr() net.Addr                                { return &net.UDPAddr{IP: net.IPv4zero, Port: 0} }
-func (npc *nopPacketConn) SetDeadline(time.Time) error                        { return nil }
-func (npc *nopPacketConn) SetReadDeadline(time.Time) error                    { return nil }
-func (npc *nopPacketConn) SetWriteDeadline(time.Time) error                   { return nil }
+func (npc *nopPacketConn) LocalAddr() net.Addr {
+	return net.UDPAddrFromAddrPort(netip.AddrPortFrom(netip.IPv4Unspecified(), 0))
+}
+func (npc *nopPacketConn) SetDeadline(time.Time) error      { return nil }
+func (npc *nopPacketConn) SetReadDeadline(time.Time) error  { return nil }
+func (npc *nopPacketConn) SetWriteDeadline(time.Time) error { return nil }

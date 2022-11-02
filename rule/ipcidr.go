@@ -1,7 +1,7 @@
 package rules
 
 import (
-	"net"
+	"net/netip"
 
 	C "github.com/Dreamacro/clash/constant"
 )
@@ -21,7 +21,7 @@ func WithIPCIDRNoResolve(noResolve bool) IPCIDROption {
 }
 
 type IPCIDR struct {
-	ipnet       *net.IPNet
+	ipnet       netip.Prefix
 	adapter     string
 	isSourceIP  bool
 	noResolveIP bool
@@ -39,7 +39,7 @@ func (i *IPCIDR) Match(metadata *C.Metadata) bool {
 	if i.isSourceIP {
 		ip = metadata.SrcIP
 	}
-	return ip != nil && i.ipnet.Contains(ip)
+	return ip.IsValid() && i.ipnet.Contains(ip)
 }
 
 func (i *IPCIDR) Adapter() string {
@@ -59,7 +59,7 @@ func (i *IPCIDR) ShouldFindProcess() bool {
 }
 
 func NewIPCIDR(s string, adapter string, opts ...IPCIDROption) (*IPCIDR, error) {
-	_, ipnet, err := net.ParseCIDR(s)
+	ipnet, err := netip.ParsePrefix(s)
 	if err != nil {
 		return nil, errPayload
 	}

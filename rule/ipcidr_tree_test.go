@@ -2,7 +2,7 @@ package rules
 
 import (
 	"errors"
-	"net"
+	"net/netip"
 	"testing"
 
 	"github.com/Dreamacro/clash/constant"
@@ -29,7 +29,8 @@ func TestIpv4AddFail(t *testing.T) {
 }
 
 func match(tree *IpCidrTree, ip string) bool {
-	return tree.Match(&constant.Metadata{DstIP: net.ParseIP(ip)})
+	dstIp, _ := netip.ParseAddr(ip)
+	return tree.Match(&constant.Metadata{DstIP: dstIp})
 }
 
 func TestIpv4Match(t *testing.T) {

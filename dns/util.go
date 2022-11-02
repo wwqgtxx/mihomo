@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/netip"
 	"time"
 
 	"github.com/Dreamacro/clash/common/cache"
@@ -93,15 +94,19 @@ func handleMsgWithEmptyAnswer(r *D.Msg) *D.Msg {
 	return msg
 }
 
-func msgToIP(msg *D.Msg) []net.IP {
-	ips := []net.IP{}
+func msgToIP(msg *D.Msg) []netip.Addr {
+	ips := []netip.Addr{}
 
 	for _, answer := range msg.Answer {
 		switch ans := answer.(type) {
 		case *D.AAAA:
-			ips = append(ips, ans.AAAA)
+			if ip, ok := netip.AddrFromSlice(ans.AAAA); ok {
+				ips = append(ips, ip)
+			}
 		case *D.A:
-			ips = append(ips, ans.A)
+			if ip, ok := netip.AddrFromSlice(ans.A); ok {
+				ips = append(ips, ip)
+			}
 		}
 	}
 

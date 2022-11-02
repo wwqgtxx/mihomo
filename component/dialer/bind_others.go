@@ -4,27 +4,28 @@ package dialer
 
 import (
 	"net"
+	"net/netip"
 	"strconv"
 	"strings"
 
 	"github.com/Dreamacro/clash/component/iface"
 )
 
-func lookupLocalAddr(ifaceName string, network string, destination net.IP, port int) (net.Addr, error) {
+func lookupLocalAddr(ifaceName string, network string, destination netip.Addr, port int) (net.Addr, error) {
 	ifaceObj, err := iface.ResolveInterface(ifaceName)
 	if err != nil {
 		return nil, err
 	}
 
-	var addr *net.IPNet
+	var addr netip.Prefix
 	switch network {
 	case "udp4", "tcp4":
 		addr, err = ifaceObj.PickIPv4Addr(destination)
 	case "tcp6", "udp6":
 		addr, err = ifaceObj.PickIPv6Addr(destination)
 	default:
-		if destination != nil {
-			if destination.To4() != nil {
+		if destination.IsValid() {
+			if destination.Is4() {
 				addr, err = ifaceObj.PickIPv4Addr(destination)
 			} else {
 				addr, err = ifaceObj.PickIPv6Addr(destination)
@@ -36,23 +37,18 @@ func lookupLocalAddr(ifaceName string, network string, destination net.IP, port 
 	if err != nil {
 		return nil, err
 	}
+	addrPort := netip.AddrPortFrom(addr.Addr(), uint16(port))
 
 	if strings.HasPrefix(network, "tcp") {
-		return &net.TCPAddr{
-			IP:   addr.IP,
-			Port: port,
-		}, nil
+		return net.TCPAddrFromAddrPort(addrPort), nil
 	} else if strings.HasPrefix(network, "udp") {
-		return &net.UDPAddr{
-			IP:   addr.IP,
-			Port: port,
-		}, nil
+		return net.UDPAddrFromAddrPort(addrPort), nil
 	}
 
 	return nil, iface.ErrAddrNotFound
 }
 
-func bindIfaceToDialer(ifaceName string, dialer *net.Dialer, network string, destination net.IP) error {
+func bindIfaceToDialer(ifaceName string, dialer *net.Dialer, network string, destination netip.Addr) error {
 	if !destination.IsGlobalUnicast() {
 		return nil
 	}
@@ -83,7 +79,7 @@ func bindIfaceToListenConfig(ifaceName string, _ *net.ListenConfig, network, add
 
 	local, _ := strconv.ParseUint(port, 10, 16)
 
-	addr, err := lookupLocalAddr(ifaceName, network, nil, int(local))
+	addr, err := lookupLocalAddr(ifaceName, network, netip.Addr{}, int(local))
 	if err != nil {
 		return "", err
 	}

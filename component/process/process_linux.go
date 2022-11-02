@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"net"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"strings"
@@ -57,7 +57,7 @@ type inetDiagResponse struct {
 	INode   uint32
 }
 
-func findProcessName(network string, ip net.IP, srcPort int) (string, error) {
+func findProcessName(network string, ip netip.Addr, srcPort int) (string, error) {
 	inode, uid, err := resolveSocketByNetlink(network, ip, srcPort)
 	if err != nil {
 		return "", err
@@ -66,13 +66,13 @@ func findProcessName(network string, ip net.IP, srcPort int) (string, error) {
 	return resolveProcessNameByProcSearch(inode, uid)
 }
 
-func resolveSocketByNetlink(network string, ip net.IP, srcPort int) (uint32, uint32, error) {
+func resolveSocketByNetlink(network string, ip netip.Addr, srcPort int) (uint32, uint32, error) {
 	request := &inetDiagRequest{
 		States: 0xffffffff,
 		Cookie: [2]uint32{0xffffffff, 0xffffffff},
 	}
 
-	if ip.To4() != nil {
+	if ip.Is4() {
 		request.Family = unix.AF_INET
 	} else {
 		request.Family = unix.AF_INET6
@@ -86,11 +86,7 @@ func resolveSocketByNetlink(network string, ip net.IP, srcPort int) (uint32, uin
 		return 0, 0, ErrInvalidNetwork
 	}
 
-	if v4 := ip.To4(); v4 != nil {
-		copy(request.Src[:], v4)
-	} else {
-		copy(request.Src[:], ip)
-	}
+	copy(request.Src[:], ip.AsSlice())
 
 	binary.BigEndian.PutUint16(request.SrcPort[:], uint16(srcPort))
 

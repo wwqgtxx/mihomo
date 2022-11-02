@@ -3,7 +3,6 @@ package tunnel
 import (
 	"context"
 	"fmt"
-	"net"
 	"net/netip"
 	"path/filepath"
 	"runtime"
@@ -161,12 +160,12 @@ func process() {
 }
 
 func needLookupIP(metadata *C.Metadata) bool {
-	return resolver.MappingEnabled() && metadata.Host == "" && metadata.DstIP != nil
+	return resolver.MappingEnabled() && metadata.Host == "" && metadata.DstIP.IsValid()
 }
 
 func preHandleMetadata(metadata *C.Metadata) error {
 	// handle IP string on host
-	if ip := net.ParseIP(metadata.Host); ip != nil {
+	if ip, err := netip.ParseAddr(metadata.Host); err == nil {
 		metadata.DstIP = ip
 		metadata.Host = ""
 	}
@@ -178,11 +177,11 @@ func preHandleMetadata(metadata *C.Metadata) error {
 			metadata.Host = host
 			metadata.DNSMode = C.DNSMapping
 			if resolver.FakeIPEnabled() {
-				metadata.DstIP = nil
+				metadata.DstIP = netip.Addr{}
 				metadata.DNSMode = C.DNSFakeIP
 			} else if node := resolver.DefaultHosts.Search(host); node != nil {
 				// redir-host should lookup the hosts
-				metadata.DstIP = node.Data.(net.IP)
+				metadata.DstIP = node.Data.(netip.Addr)
 			}
 		} else if resolver.IsFakeIP(metadata.DstIP) {
 			return fmt.Errorf("fake DNS record %s missing", metadata.DstIP)
@@ -215,7 +214,7 @@ func handleUDPConn(packet *inbound.PacketAdapter) {
 	// make a fAddr if request ip is fakeip
 	var fAddr netip.Addr
 	if resolver.IsExistFakeIP(metadata.DstIP) {
-		fAddr, _ = netip.AddrFromSlice(metadata.DstIP)
+		fAddr = metadata.DstIP
 		fAddr = fAddr.Unmap()
 	}
 
@@ -325,7 +324,7 @@ func handleUDPConn(packet *inbound.PacketAdapter) {
 			)
 		}
 
-		oAddr, _ := netip.AddrFromSlice(metadata.DstIP)
+		oAddr := metadata.DstIP
 		oAddr = oAddr.Unmap()
 		go handleUDPToLocal(packet.UDPPacket, pc, key, oAddr, fAddr)
 
@@ -361,7 +360,7 @@ func handleTCPConn(connCtx C.ConnContext) {
 	dialMetadata := metadata
 	if len(metadata.Host) > 0 {
 		if node := resolver.DefaultHosts.Search(metadata.Host); node != nil {
-			dialMetadata.DstIP = node.Data.(net.IP)
+			dialMetadata.DstIP = node.Data.(netip.Addr)
 			dialMetadata.DNSMode = C.DNSHosts
 			dialMetadata = dialMetadata.Pure()
 		}
@@ -422,7 +421,7 @@ func handleTCPConn(connCtx C.ConnContext) {
 }
 
 func shouldResolveIP(rule C.Rule, metadata *C.Metadata) bool {
-	return rule.ShouldResolveIP() && metadata.Host != "" && metadata.DstIP == nil
+	return rule.ShouldResolveIP() && metadata.Host != "" && !metadata.DstIP.IsValid()
 }
 
 func match(metadata *C.Metadata) (C.Proxy, C.Rule, error) {
@@ -433,7 +432,7 @@ func match(metadata *C.Metadata) (C.Proxy, C.Rule, error) {
 	var processFound bool
 
 	if node := resolver.DefaultHosts.Search(metadata.Host); node != nil {
-		ip := node.Data.(net.IP)
+		ip := node.Data.(netip.Addr)
 		metadata.DstIP = ip
 		resolved = true
 	}
@@ -444,7 +443,7 @@ func match(metadata *C.Metadata) (C.Proxy, C.Rule, error) {
 			if err != nil {
 				log.Infoln("[DNS] resolve %s error: %s", metadata.Host, err.Error())
 			} else {
-				record, _ := mmdb.Instance().Country(ip)
+				record, _ := mmdb.Instance().Country(ip.AsSlice())
 				if len(record.Country.IsoCode) > 0 {
 					log.Infoln("[DNS] %s --> %s [GEO=%s]", metadata.Host, ip.String(), record.Country.IsoCode)
 				} else {

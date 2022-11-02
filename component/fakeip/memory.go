@@ -1,7 +1,7 @@
 package fakeip
 
 import (
-	"net"
+	"net/netip"
 
 	"github.com/Dreamacro/clash/common/cache"
 )
@@ -11,26 +11,26 @@ type memoryStore struct {
 }
 
 // GetByHost implements store.GetByHost
-func (m *memoryStore) GetByHost(host string) (net.IP, bool) {
+func (m *memoryStore) GetByHost(host string) (netip.Addr, bool) {
 	if elm, exist := m.cache.Get(host); exist {
-		ip := elm.(net.IP)
+		ip := elm.(netip.Addr)
 
 		// ensure ip --> host on head of linked list
-		m.cache.Get(ipToUint(ip.To4()))
+		m.cache.Get(ipToUint(ip))
 		return ip, true
 	}
 
-	return nil, false
+	return netip.Addr{}, false
 }
 
 // PutByHost implements store.PutByHost
-func (m *memoryStore) PutByHost(host string, ip net.IP) {
+func (m *memoryStore) PutByHost(host string, ip netip.Addr) {
 	m.cache.Set(host, ip)
 }
 
 // GetByIP implements store.GetByIP
-func (m *memoryStore) GetByIP(ip net.IP) (string, bool) {
-	if elm, exist := m.cache.Get(ipToUint(ip.To4())); exist {
+func (m *memoryStore) GetByIP(ip netip.Addr) (string, bool) {
+	if elm, exist := m.cache.Get(ipToUint(ip)); exist {
 		host := elm.(string)
 
 		// ensure host --> ip on head of linked list
@@ -42,13 +42,13 @@ func (m *memoryStore) GetByIP(ip net.IP) (string, bool) {
 }
 
 // PutByIP implements store.PutByIP
-func (m *memoryStore) PutByIP(ip net.IP, host string) {
-	m.cache.Set(ipToUint(ip.To4()), host)
+func (m *memoryStore) PutByIP(ip netip.Addr, host string) {
+	m.cache.Set(ipToUint(ip), host)
 }
 
 // DelByIP implements store.DelByIP
-func (m *memoryStore) DelByIP(ip net.IP) {
-	ipNum := ipToUint(ip.To4())
+func (m *memoryStore) DelByIP(ip netip.Addr) {
+	ipNum := ipToUint(ip)
 	if elm, exist := m.cache.Get(ipNum); exist {
 		m.cache.Delete(elm.(string))
 	}
@@ -56,8 +56,8 @@ func (m *memoryStore) DelByIP(ip net.IP) {
 }
 
 // Exist implements store.Exist
-func (m *memoryStore) Exist(ip net.IP) bool {
-	return m.cache.Exist(ipToUint(ip.To4()))
+func (m *memoryStore) Exist(ip netip.Addr) bool {
+	return m.cache.Exist(ipToUint(ip))
 }
 
 // CloneTo implements store.CloneTo

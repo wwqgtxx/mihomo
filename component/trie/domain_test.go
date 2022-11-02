@@ -1,13 +1,13 @@
 package trie
 
 import (
-	"net"
+	"net/netip"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-var localIP = net.IP{127, 0, 0, 1}
+var localIP = netip.AddrFrom4([4]byte{127, 0, 0, 1})
 
 func TestTrie_Basic(t *testing.T) {
 	tree := New()
@@ -23,7 +23,7 @@ func TestTrie_Basic(t *testing.T) {
 
 	node := tree.Search("example.com")
 	assert.NotNil(t, node)
-	assert.True(t, node.Data.(net.IP).Equal(localIP))
+	assert.Equal(t, node.Data.(netip.Addr), localIP)
 	assert.NotNil(t, tree.Insert("", localIP))
 	assert.Nil(t, tree.Search(""))
 	assert.NotNil(t, tree.Search("localhost"))

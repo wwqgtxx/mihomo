@@ -13,6 +13,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"sync"
 	"time"
@@ -149,8 +150,12 @@ func (g *Conn) Close() error {
 	return g.writer.Close()
 }
 
-func (g *Conn) LocalAddr() net.Addr                { return &net.TCPAddr{IP: net.IPv4zero, Port: 0} }
-func (g *Conn) RemoteAddr() net.Addr               { return &net.TCPAddr{IP: net.IPv4zero, Port: 0} }
+func (g *Conn) LocalAddr() net.Addr {
+	return net.TCPAddrFromAddrPort(netip.AddrPortFrom(netip.IPv4Unspecified(), 0))
+}
+func (g *Conn) RemoteAddr() net.Addr {
+	return net.TCPAddrFromAddrPort(netip.AddrPortFrom(netip.IPv4Unspecified(), 0))
+}
 func (g *Conn) SetReadDeadline(t time.Time) error  { return g.SetDeadline(t) }
 func (g *Conn) SetWriteDeadline(t time.Time) error { return g.SetDeadline(t) }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net"
+	"net/netip"
 
 	"github.com/Dreamacro/clash/component/iface"
 
@@ -15,14 +16,14 @@ var (
 	ErrNotFound      = errors.New("DNS option not found")
 )
 
-func ResolveDNSFromDHCP(context context.Context, ifaceName string) ([]net.IP, error) {
+func ResolveDNSFromDHCP(context context.Context, ifaceName string) ([]netip.Addr, error) {
 	conn, err := ListenDHCPClient(context, ifaceName)
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
 
-	result := make(chan []net.IP, 1)
+	result := make(chan []netip.Addr, 1)
 
 	ifaceObj, err := iface.ResolveInterface(ifaceName)
 	if err != nil {
@@ -52,7 +53,7 @@ func ResolveDNSFromDHCP(context context.Context, ifaceName string) ([]net.IP, er
 	}
 }
 
-func receiveOffer(conn net.PacketConn, id dhcpv4.TransactionID, result chan<- []net.IP) {
+func receiveOffer(conn net.PacketConn, id dhcpv4.TransactionID, result chan<- []netip.Addr) {
 	defer close(result)
 
 	buf := make([]byte, dhcpv4.MaxMessageSize)
@@ -81,7 +82,14 @@ func receiveOffer(conn net.PacketConn, id dhcpv4.TransactionID, result chan<- []
 			return
 		}
 
-		result <- dns
+		results := make([]netip.Addr, 0, len(dns))
+		for _, ip := range dns {
+			if addr, ok := netip.AddrFromSlice(ip); ok {
+				results = append(results, addr)
+			}
+		}
+
+		result <- results
 
 		return
 	}

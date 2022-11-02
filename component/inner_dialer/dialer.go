@@ -35,7 +35,6 @@ func (d RemoteDialer) DialContext(ctx context.Context, network, addr string) (ne
 	metadata := &C.Metadata{
 		NetWork: C.TCP,
 		Host:    host,
-		DstIP:   nil,
 		DstPort: port,
 	}
 	metadata.Type = d.mType

@@ -3,6 +3,7 @@ package constant
 import (
 	"encoding/json"
 	"net"
+	"net/netip"
 	"strconv"
 
 	"github.com/Dreamacro/clash/transport/socks5"
@@ -85,18 +86,18 @@ func (t Type) MarshalJSON() ([]byte, error) {
 
 // Metadata is used to store connection address
 type Metadata struct {
-	NetWork     NetWork `json:"network"`
-	Type        Type    `json:"type"`
-	SrcIP       net.IP  `json:"sourceIP"`
-	DstIP       net.IP  `json:"destinationIP"`
-	SrcPort     string  `json:"sourcePort"`
-	DstPort     string  `json:"destinationPort"`
-	InIP        net.IP  `json:"inboundIP"`
-	InPort      string  `json:"inboundPort"`
-	Host        string  `json:"host"`
-	DNSMode     DNSMode `json:"dnsMode"`
-	Process     string  `json:"process"`
-	ProcessPath string  `json:"processPath"`
+	NetWork     NetWork    `json:"network"`
+	Type        Type       `json:"type"`
+	SrcIP       netip.Addr `json:"sourceIP"`
+	DstIP       netip.Addr `json:"destinationIP"`
+	SrcPort     string     `json:"sourcePort"`
+	DstPort     string     `json:"destinationPort"`
+	InIP        netip.Addr `json:"inboundIP"`
+	InPort      string     `json:"inboundPort"`
+	Host        string     `json:"host"`
+	DNSMode     DNSMode    `json:"dnsMode"`
+	Process     string     `json:"process"`
+	ProcessPath string     `json:"processPath"`
 }
 
 func (m *Metadata) RemoteAddress() string {
@@ -104,7 +105,7 @@ func (m *Metadata) RemoteAddress() string {
 }
 
 func (m *Metadata) SourceAddress() string {
-	if len(m.SrcIP) == 0 {
+	if !m.SrcIP.IsValid() {
 		return m.Type.String()
 	}
 	return net.JoinHostPort(m.SrcIP.String(), m.SrcPort)
@@ -112,9 +113,9 @@ func (m *Metadata) SourceAddress() string {
 
 func (m *Metadata) AddrType() int {
 	switch true {
-	case m.Host != "" || m.DstIP == nil:
+	case m.Host != "" || !m.DstIP.IsValid():
 		return socks5.AtypDomainName
-	case m.DstIP.To4() != nil:
+	case m.DstIP.Is4():
 		return socks5.AtypIPv4
 	default:
 		return socks5.AtypIPv6
@@ -122,13 +123,13 @@ func (m *Metadata) AddrType() int {
 }
 
 func (m *Metadata) Resolved() bool {
-	return m.DstIP != nil
+	return m.DstIP.IsValid()
 }
 
 // Pure is used to solve unexpected behavior
 // when dialing proxy connection in DNSMapping mode.
 func (m *Metadata) Pure() *Metadata {
-	if (m.DNSMode == DNSMapping || m.DNSMode == DNSHosts) && m.DstIP != nil {
+	if (m.DNSMode == DNSMapping || m.DNSMode == DNSHosts) && m.DstIP.IsValid() {
 		copy := *m
 		copy.Host = ""
 		return &copy
@@ -138,20 +139,17 @@ func (m *Metadata) Pure() *Metadata {
 }
 
 func (m *Metadata) UDPAddr() *net.UDPAddr {
-	if m.NetWork != UDP || m.DstIP == nil {
+	if m.NetWork != UDP || !m.DstIP.IsValid() {
 		return nil
 	}
 	port, _ := strconv.ParseUint(m.DstPort, 10, 16)
-	return &net.UDPAddr{
-		IP:   m.DstIP,
-		Port: int(port),
-	}
+	return net.UDPAddrFromAddrPort(netip.AddrPortFrom(m.DstIP, uint16(port)))
 }
 
 func (m *Metadata) String() string {
 	if m.Host != "" {
 		return m.Host
-	} else if m.DstIP != nil {
+	} else if m.DstIP.IsValid() {
 		return m.DstIP.String()
 	} else {
 		return "<nil>"
@@ -159,5 +157,5 @@ func (m *Metadata) String() string {
 }
 
 func (m *Metadata) Valid() bool {
-	return m.Host != "" || m.DstIP != nil
+	return m.Host != "" || m.DstIP.IsValid()
 }

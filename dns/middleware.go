@@ -2,6 +2,7 @@ package dns
 
 import (
 	"net"
+	"net/netip"
 	"strings"
 	"time"
 
@@ -34,19 +35,19 @@ func withHosts(hosts *trie.DomainTrie) middleware {
 				return next(ctx, r)
 			}
 
-			ip := record.Data.(net.IP)
+			ip := record.Data.(netip.Addr)
 			msg := r.Copy()
 
-			if v4 := ip.To4(); v4 != nil && q.Qtype == D.TypeA {
+			if ip.Is4() && q.Qtype == D.TypeA {
 				rr := &D.A{}
 				rr.Hdr = D.RR_Header{Name: q.Name, Rrtype: D.TypeA, Class: D.ClassINET, Ttl: dnsDefaultTTL}
-				rr.A = v4
+				rr.A = ip.AsSlice()
 
 				msg.Answer = []D.RR{rr}
-			} else if v6 := ip.To16(); v6 != nil && q.Qtype == D.TypeAAAA {
+			} else if ip.Is6() && q.Qtype == D.TypeAAAA {
 				rr := &D.AAAA{}
 				rr.Hdr = D.RR_Header{Name: q.Name, Rrtype: D.TypeAAAA, Class: D.ClassINET, Ttl: dnsDefaultTTL}
-				rr.AAAA = v6
+				rr.AAAA = ip.AsSlice()
 
 				msg.Answer = []D.RR{rr}
 			} else {
@@ -124,7 +125,7 @@ func withFakeIP(fakePool *fakeip.Pool) middleware {
 			rr := &D.A{}
 			rr.Hdr = D.RR_Header{Name: q.Name, Rrtype: D.TypeA, Class: D.ClassINET, Ttl: dnsDefaultTTL}
 			ip := fakePool.Lookup(host)
-			rr.A = ip
+			rr.A = ip.AsSlice()
 			msg := r.Copy()
 			msg.Answer = []D.RR{rr}
 

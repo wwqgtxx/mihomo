@@ -92,10 +92,10 @@ type DNS struct {
 
 // FallbackFilter config
 type FallbackFilter struct {
-	GeoIP     bool         `yaml:"geoip"`
-	GeoIPCode string       `yaml:"geoip-code"`
-	IPCIDR    []*net.IPNet `yaml:"ipcidr"`
-	Domain    []string     `yaml:"domain"`
+	GeoIP     bool           `yaml:"geoip"`
+	GeoIPCode string         `yaml:"geoip-code"`
+	IPCIDR    []netip.Prefix `yaml:"ipcidr"`
+	Domain    []string       `yaml:"domain"`
 }
 
 // Profile config
@@ -665,14 +665,14 @@ func parseHosts(cfg *RawConfig) (*trie.DomainTrie, error) {
 	tree := trie.New()
 
 	// add default hosts
-	if err := tree.Insert("localhost", net.IP{127, 0, 0, 1}); err != nil {
+	if err := tree.Insert("localhost", netip.AddrFrom4([4]byte{127, 0, 0, 1})); err != nil {
 		log.Errorln("insert localhost to host error: %s", err.Error())
 	}
 
 	if len(cfg.Hosts) != 0 {
 		for domain, ipStr := range cfg.Hosts {
-			ip := net.ParseIP(ipStr)
-			if ip == nil {
+			ip, err := netip.ParseAddr(ipStr)
+			if err != nil {
 				return nil, fmt.Errorf("%s is not a valid IP", ipStr)
 			}
 			tree.Insert(domain, ip)
@@ -795,11 +795,11 @@ func parseNameServerPolicy(nsPolicy map[string]string, useRemoteDnsDefault bool)
 	return policy, nil
 }
 
-func parseFallbackIPCIDR(ips []string) ([]*net.IPNet, error) {
-	ipNets := []*net.IPNet{}
+func parseFallbackIPCIDR(ips []string) ([]netip.Prefix, error) {
+	ipNets := []netip.Prefix{}
 
 	for idx, ip := range ips {
-		_, ipnet, err := net.ParseCIDR(ip)
+		ipnet, err := netip.ParsePrefix(ip)
 		if err != nil {
 			return nil, fmt.Errorf("DNS FallbackIP[%d] format error: %s", idx, err.Error())
 		}
@@ -821,7 +821,7 @@ func parseDNS(rawCfg *RawConfig, hosts *trie.DomainTrie) (*DNS, error) {
 		IPv6:         cfg.IPv6,
 		EnhancedMode: cfg.EnhancedMode,
 		FallbackFilter: FallbackFilter{
-			IPCIDR: []*net.IPNet{},
+			IPCIDR: []netip.Prefix{},
 		},
 	}
 	var err error
@@ -852,7 +852,7 @@ func parseDNS(rawCfg *RawConfig, hosts *trie.DomainTrie) (*DNS, error) {
 	}
 
 	if cfg.EnhancedMode == C.DNSFakeIP {
-		_, ipnet, err := net.ParseCIDR(cfg.FakeIPRange)
+		ipnet, err := netip.ParsePrefix(cfg.FakeIPRange)
 		if err != nil {
 			return nil, err
 		}

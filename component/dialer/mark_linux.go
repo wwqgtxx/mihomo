@@ -4,10 +4,11 @@ package dialer
 
 import (
 	"net"
+	"net/netip"
 	"syscall"
 )
 
-func bindMarkToDialer(mark int, dialer *net.Dialer, _ string, _ net.IP) {
+func bindMarkToDialer(mark int, dialer *net.Dialer, _ string, _ netip.Addr) {
 	dialer.Control = bindMarkToControl(mark, dialer.Control)
 }
 

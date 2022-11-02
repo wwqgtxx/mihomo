@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"net/netip"
 	"strings"
 
 	"github.com/Dreamacro/clash/component/dialer"
@@ -33,12 +34,12 @@ func (c *client) Exchange(m *D.Msg) (*D.Msg, error) {
 
 func (c *client) ExchangeContext(ctx context.Context, m *D.Msg) (*D.Msg, error) {
 	var (
-		ip  net.IP
+		ip  netip.Addr
 		err error
 	)
 	if c.r == nil {
 		// a default ip dns
-		if ip = net.ParseIP(c.host); ip == nil {
+		if ip, err = netip.ParseAddr(c.host); err != nil {
 			return nil, fmt.Errorf("dns %s not a valid ip", c.host)
 		}
 	} else {

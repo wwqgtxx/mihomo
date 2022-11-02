@@ -19,14 +19,14 @@ func (g *GEOIP) RuleType() C.RuleType {
 
 func (g *GEOIP) Match(metadata *C.Metadata) bool {
 	ip := metadata.DstIP
-	if ip == nil {
+	if !ip.IsValid() {
 		return false
 	}
 
 	if strings.EqualFold(g.country, "LAN") {
 		return ip.IsPrivate()
 	}
-	record, _ := mmdb.Instance().Country(ip)
+	record, _ := mmdb.Instance().Country(ip.AsSlice())
 	return strings.EqualFold(record.Country.IsoCode, g.country)
 }
 

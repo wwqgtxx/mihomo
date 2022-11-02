@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/netip"
 	"sync"
 
 	"github.com/Dreamacro/clash/component/resolver"
@@ -78,7 +79,7 @@ func GetDial() bool {
 	return tcpConcurrent
 }
 
-func dialContext(ctx context.Context, network string, destination net.IP, port string, options []Option) (net.Conn, error) {
+func dialContext(ctx context.Context, network string, destination netip.Addr, port string, options []Option) (net.Conn, error) {
 	opt := &option{
 		interfaceName: DefaultInterface.Load(),
 		routingMark:   int(DefaultRoutingMark.Load()),
@@ -111,7 +112,7 @@ func singleDialContext(ctx context.Context, network, address string, options []O
 		return nil, err
 	}
 
-	var ip net.IP
+	var ip netip.Addr
 	switch network {
 	case "tcp4", "udp4":
 		ip, err = resolver.ResolveIPv4WithResolver(host, resolver.DialerResolver)
@@ -156,7 +157,7 @@ func dualStackDialContext(ctx context.Context, network, address string, options 
 			}
 		}()
 
-		var ip net.IP
+		var ip netip.Addr
 		if ipv6 {
 			ip, result.error = resolver.ResolveIPv6WithResolver(host, resolver.DialerResolver)
 		} else {
@@ -198,7 +199,7 @@ func dualStackDialContext(ctx context.Context, network, address string, options 
 	return nil, errors.New("never touched")
 }
 
-func concurrentDialContext(ctx context.Context, network string, destinations []net.IP, port string, options []Option) (net.Conn, error) {
+func concurrentDialContext(ctx context.Context, network string, destinations []netip.Addr, port string, options []Option) (net.Conn, error) {
 	returned := make(chan struct{})
 	defer close(returned)
 
@@ -209,7 +210,7 @@ func concurrentDialContext(ctx context.Context, network string, destinations []n
 	}
 	results := make(chan dialResult)
 
-	startRacer := func(ctx context.Context, network string, destination net.IP, port string) {
+	startRacer := func(ctx context.Context, network string, destination netip.Addr, port string) {
 		result := dialResult{done: true}
 		defer func() {
 			select {
@@ -254,7 +255,7 @@ func concurrentSingleDialContext(ctx context.Context, network, address string, o
 		return nil, err
 	}
 
-	var ips []net.IP
+	var ips []netip.Addr
 	switch network {
 	case "tcp4", "udp4":
 		ips, err = resolver.LookupIPv4WithResolver(ctx, host, resolver.DialerResolver)
@@ -299,7 +300,7 @@ func concurrentDualStackDialContext(ctx context.Context, network, address string
 			}
 		}()
 
-		var ips []net.IP
+		var ips []netip.Addr
 		if ipv6 {
 			ips, result.error = resolver.LookupIPv6WithResolver(ctx, host, resolver.DialerResolver)
 		} else {

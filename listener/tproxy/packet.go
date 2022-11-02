@@ -31,7 +31,7 @@ func (c *packet) WriteBack(b []byte, addr net.Addr) (n int, err error) {
 
 // LocalAddr returns the source IP/Port of UDP Packet
 func (c *packet) LocalAddr() net.Addr {
-	return &net.UDPAddr{IP: c.lAddr.Addr().AsSlice(), Port: int(c.lAddr.Port()), Zone: c.lAddr.Addr().Zone()}
+	return net.UDPAddrFromAddrPort(c.lAddr)
 }
 
 func (c *packet) Drop() {

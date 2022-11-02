@@ -3,6 +3,7 @@ package mtproxy
 import (
 	"errors"
 	"net"
+	"net/netip"
 	"strings"
 
 	N "github.com/Dreamacro/clash/common/net"
@@ -132,18 +133,17 @@ func (l *Listener) HandleConn(conn net.Conn, in chan<- C.ConnContext) {
 			conn1, conn2 := net.Pipe()
 			host, port, _ := net.SplitHostPort(addr)
 			remoteHost, remotePort, _ := net.SplitHostPort(conn.RemoteAddr().String())
-			remoteIp := net.ParseIP(remoteHost)
+			remoteIp, _ := netip.ParseAddr(remoteHost)
 			metadata := &C.Metadata{
 				NetWork: C.TCP,
 				Host:    host,
-				DstIP:   nil,
 				DstPort: port,
 				SrcIP:   remoteIp,
 				SrcPort: remotePort,
 			}
 			metadata.Type = C.MTPROXY
 			if host, port, err := net.SplitHostPort(conn.LocalAddr().String()); err == nil {
-				ip := net.ParseIP(host)
+				ip, _ := netip.ParseAddr(host)
 				metadata.InIP = ip
 				metadata.InPort = port
 			}

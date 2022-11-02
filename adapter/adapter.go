@@ -221,7 +221,6 @@ func urlToMetadata(rawURL string) (addr C.Metadata, err error) {
 
 	addr = C.Metadata{
 		Host:    u.Hostname(),
-		DstIP:   nil,
 		DstPort: port,
 	}
 	return

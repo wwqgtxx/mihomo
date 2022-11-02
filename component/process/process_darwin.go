@@ -2,7 +2,7 @@ package process
 
 import (
 	"encoding/binary"
-	"net"
+	"net/netip"
 	"strconv"
 	"strings"
 	"syscall"
@@ -33,7 +33,7 @@ var structSize = func() int {
 	}
 }()
 
-func findProcessName(network string, ip net.IP, port int) (string, error) {
+func findProcessName(network string, ip netip.Addr, port int) (string, error) {
 	var spath string
 	switch network {
 	case TCP:
@@ -44,7 +44,7 @@ func findProcessName(network string, ip net.IP, port int) (string, error) {
 		return "", ErrInvalidNetwork
 	}
 
-	isIPv4 := ip.To4() != nil
+	isIPv4 := ip.Is4()
 
 	value, err := syscall.Sysctl(spath)
 	if err != nil {
@@ -73,22 +73,22 @@ func findProcessName(network string, ip net.IP, port int) (string, error) {
 		flag := buf[inp+44]
 
 		var (
-			srcIP     net.IP
+			srcIP     netip.Addr
 			srcIsIPv4 bool
 		)
 		switch {
 		case flag&0x1 > 0 && isIPv4:
 			// ipv4
-			srcIP = net.IP(buf[inp+76 : inp+80])
+			srcIP, _ = netip.AddrFromSlice(buf[inp+76 : inp+80])
 			srcIsIPv4 = true
 		case flag&0x2 > 0 && !isIPv4:
 			// ipv6
-			srcIP = net.IP(buf[inp+64 : inp+80])
+			srcIP, _ = netip.AddrFromSlice(buf[inp+64 : inp+80])
 		default:
 			continue
 		}
 
-		if ip.Equal(srcIP) {
+		if ip == srcIP {
 			// xsocket_n.so_last_pid
 			pid := readNativeUint32(buf[so+68 : so+72])
 			return getExecPathFromPID(pid)

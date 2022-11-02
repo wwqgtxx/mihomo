@@ -27,7 +27,7 @@ func (i *IpCidrTree) Match(metadata *C.Metadata) bool {
 	if i.isSourceIP {
 		ip = metadata.SrcIP
 	}
-	if ip == nil {
+	if !ip.IsValid() {
 		return false
 	}
 	v4, v6, _ := patricia.ParseIPFromString(ip.String())

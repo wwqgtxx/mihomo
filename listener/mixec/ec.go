@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net"
 	"net/http"
+	"net/netip"
 	"sync"
 
 	C "github.com/Dreamacro/clash/constant"
@@ -85,7 +86,7 @@ func GetChanListener(in chan<- C.ConnContext) ChanListener {
 	once.Do(func() {
 		_chanListener = &chanListener{
 			make(chan net.Conn),
-			&net.TCPAddr{IP: net.IP{0, 0, 0, 0}, Port: 0},
+			net.TCPAddrFromAddrPort(netip.AddrPortFrom(netip.IPv4Unspecified(), 0)),
 			atomic.NewBool(false),
 		}
 		go http.Serve(_chanListener, ecHandler{C.GetECHandler(), in})

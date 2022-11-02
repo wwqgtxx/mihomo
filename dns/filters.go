@@ -1,7 +1,7 @@
 package dns
 
 import (
-	"net"
+	"net/netip"
 	"strings"
 
 	"github.com/Dreamacro/clash/component/mmdb"
@@ -9,23 +9,23 @@ import (
 )
 
 type fallbackIPFilter interface {
-	Match(net.IP) bool
+	Match(netip.Addr) bool
 }
 
 type geoipFilter struct {
 	code string
 }
 
-func (gf *geoipFilter) Match(ip net.IP) bool {
-	record, _ := mmdb.Instance().Country(ip)
+func (gf *geoipFilter) Match(ip netip.Addr) bool {
+	record, _ := mmdb.Instance().Country(ip.AsSlice())
 	return !strings.EqualFold(record.Country.IsoCode, gf.code) && !ip.IsPrivate()
 }
 
 type ipnetFilter struct {
-	ipnet *net.IPNet
+	ipnet netip.Prefix
 }
 
-func (inf *ipnetFilter) Match(ip net.IP) bool {
+func (inf *ipnetFilter) Match(ip netip.Addr) bool {
 	return inf.ipnet.Contains(ip)
 }
 

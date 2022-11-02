@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"net/netip"
 	"strings"
 	"time"
 
@@ -37,26 +38,25 @@ var (
 )
 
 type Resolver interface {
-	LookupIP(ctx context.Context, host string) ([]net.IP, error)
-	LookupIPv4(ctx context.Context, host string) ([]net.IP, error)
-	LookupIPv6(ctx context.Context, host string) ([]net.IP, error)
-	ResolveIP(host string) (ip net.IP, err error)
-	ResolveIPv4(host string) (ip net.IP, err error)
-	ResolveIPv6(host string) (ip net.IP, err error)
+	LookupIP(ctx context.Context, host string) ([]netip.Addr, error)
+	LookupIPv4(ctx context.Context, host string) ([]netip.Addr, error)
+	LookupIPv6(ctx context.Context, host string) ([]netip.Addr, error)
+	ResolveIP(host string) (ip netip.Addr, err error)
+	ResolveIPv4(host string) (ip netip.Addr, err error)
+	ResolveIPv6(host string) (ip netip.Addr, err error)
 }
 
 // LookupIPv4WithResolver same as LookupIPv4, but with a resolver
-func LookupIPv4WithResolver(ctx context.Context, host string, r Resolver) ([]net.IP, error) {
+func LookupIPv4WithResolver(ctx context.Context, host string, r Resolver) ([]netip.Addr, error) {
 	if node := DefaultHosts.Search(host); node != nil {
-		if ip := node.Data.(net.IP).To4(); ip != nil {
-			return []net.IP{ip}, nil
+		if ip := node.Data.(netip.Addr); ip.Is4() {
+			return []netip.Addr{ip}, nil
 		}
 	}
 
-	ip := net.ParseIP(host)
-	if ip != nil {
+	if ip, err := netip.ParseAddr(host); err == nil {
 		if !strings.Contains(host, ":") {
-			return []net.IP{ip}, nil
+			return []netip.Addr{ip}, nil
 		}
 		return nil, ErrIPVersion
 	}
@@ -71,7 +71,7 @@ func LookupIPv4WithResolver(ctx context.Context, host string, r Resolver) ([]net
 
 	ctx, cancel := context.WithTimeout(context.Background(), DefaultDNSTimeout)
 	defer cancel()
-	ipAddrs, err := net.DefaultResolver.LookupIP(ctx, "ip4", host)
+	ipAddrs, err := net.DefaultResolver.LookupNetIP(ctx, "ip4", host)
 	if err != nil {
 		return nil, err
 	} else if len(ipAddrs) == 0 {
@@ -82,42 +82,41 @@ func LookupIPv4WithResolver(ctx context.Context, host string, r Resolver) ([]net
 }
 
 // LookupIPv4 with a host, return ipv4 list
-func LookupIPv4(ctx context.Context, host string) ([]net.IP, error) {
+func LookupIPv4(ctx context.Context, host string) ([]netip.Addr, error) {
 	return LookupIPv4WithResolver(ctx, host, nil)
 }
 
 // ResolveIPv4WithResolver same as ResolveIPv4, but with a resolver
-func ResolveIPv4WithResolver(host string, r Resolver) (net.IP, error) {
+func ResolveIPv4WithResolver(host string, r Resolver) (netip.Addr, error) {
 	ips, err := LookupIPv4WithResolver(context.Background(), host, r)
 	if err != nil {
-		return nil, err
+		return netip.Addr{}, err
 	} else if len(ips) == 0 {
-		return nil, fmt.Errorf("%w: %s", ErrIPNotFound, host)
+		return netip.Addr{}, fmt.Errorf("%w: %s", ErrIPNotFound, host)
 	}
 	return ips[rand.Intn(len(ips))], nil
 }
 
 // ResolveIPv4 with a host, return ipv4
-func ResolveIPv4(host string) (net.IP, error) {
+func ResolveIPv4(host string) (netip.Addr, error) {
 	return ResolveIPv4WithResolver(host, DefaultResolver)
 }
 
 // LookupIPv6WithResolver same as LookupIPv6, but with a resolver
-func LookupIPv6WithResolver(ctx context.Context, host string, r Resolver) ([]net.IP, error) {
+func LookupIPv6WithResolver(ctx context.Context, host string, r Resolver) ([]netip.Addr, error) {
 	if DisableIPv6 {
 		return nil, ErrIPv6Disabled
 	}
 
 	if node := DefaultHosts.Search(host); node != nil {
-		if ip := node.Data.(net.IP).To16(); ip != nil {
-			return []net.IP{ip}, nil
+		if ip := node.Data.(netip.Addr); ip.Is6() {
+			return []netip.Addr{ip}, nil
 		}
 	}
 
-	ip := net.ParseIP(host)
-	if ip != nil {
+	if ip, err := netip.ParseAddr(host); err == nil {
 		if strings.Contains(host, ":") {
-			return []net.IP{ip}, nil
+			return []netip.Addr{ip}, nil
 		}
 		return nil, ErrIPVersion
 	}
@@ -131,7 +130,7 @@ func LookupIPv6WithResolver(ctx context.Context, host string, r Resolver) ([]net
 
 	ctx, cancel := context.WithTimeout(context.Background(), DefaultDNSTimeout)
 	defer cancel()
-	ipAddrs, err := net.DefaultResolver.LookupIP(ctx, "ip6", host)
+	ipAddrs, err := net.DefaultResolver.LookupNetIP(ctx, "ip6", host)
 	if err != nil {
 		return nil, err
 	} else if len(ipAddrs) == 0 {
@@ -142,29 +141,29 @@ func LookupIPv6WithResolver(ctx context.Context, host string, r Resolver) ([]net
 }
 
 // LookupIPv6 with a host, return ipv6 list
-func LookupIPv6(ctx context.Context, host string) ([]net.IP, error) {
+func LookupIPv6(ctx context.Context, host string) ([]netip.Addr, error) {
 	return LookupIPv6WithResolver(ctx, host, DefaultResolver)
 }
 
 // ResolveIPv6WithResolver same as ResolveIPv6, but with a resolver
-func ResolveIPv6WithResolver(host string, r Resolver) (net.IP, error) {
+func ResolveIPv6WithResolver(host string, r Resolver) (netip.Addr, error) {
 	ips, err := LookupIPv6WithResolver(context.Background(), host, r)
 	if err != nil {
-		return nil, err
+		return netip.Addr{}, err
 	} else if len(ips) == 0 {
-		return nil, fmt.Errorf("%w: %s", ErrIPNotFound, host)
+		return netip.Addr{}, fmt.Errorf("%w: %s", ErrIPNotFound, host)
 	}
 	return ips[rand.Intn(len(ips))], nil
 }
 
-func ResolveIPv6(host string) (net.IP, error) {
+func ResolveIPv6(host string) (netip.Addr, error) {
 	return ResolveIPv6WithResolver(host, DefaultResolver)
 }
 
 // LookupIPWithResolver same as LookupIP, but with a resolver
-func LookupIPWithResolver(ctx context.Context, host string, r Resolver) ([]net.IP, error) {
+func LookupIPWithResolver(ctx context.Context, host string, r Resolver) ([]netip.Addr, error) {
 	if node := DefaultHosts.Search(host); node != nil {
-		return []net.IP{node.Data.(net.IP)}, nil
+		return []netip.Addr{node.Data.(netip.Addr)}, nil
 	}
 
 	if r != nil {
@@ -176,12 +175,11 @@ func LookupIPWithResolver(ctx context.Context, host string, r Resolver) ([]net.I
 		return LookupIPv4(ctx, host)
 	}
 
-	ip := net.ParseIP(host)
-	if ip != nil {
-		return []net.IP{ip}, nil
+	if ip, err := netip.ParseAddr(host); err == nil {
+		return []netip.Addr{ip}, nil
 	}
 
-	ips, err := net.DefaultResolver.LookupIP(ctx, "ip", host)
+	ips, err := net.DefaultResolver.LookupNetIP(ctx, "ip", host)
 	if err != nil {
 		return nil, err
 	} else if len(ips) == 0 {
@@ -192,22 +190,22 @@ func LookupIPWithResolver(ctx context.Context, host string, r Resolver) ([]net.I
 }
 
 // LookupIP with a host, return ip
-func LookupIP(ctx context.Context, host string) ([]net.IP, error) {
+func LookupIP(ctx context.Context, host string) ([]netip.Addr, error) {
 	return LookupIPWithResolver(ctx, host, DefaultResolver)
 }
 
 // ResolveIPWithResolver same as ResolveIP, but with a resolver
-func ResolveIPWithResolver(host string, r Resolver) (net.IP, error) {
+func ResolveIPWithResolver(host string, r Resolver) (netip.Addr, error) {
 	ips, err := LookupIPWithResolver(context.Background(), host, r)
 	if err != nil {
-		return nil, err
+		return netip.Addr{}, err
 	} else if len(ips) == 0 {
-		return nil, fmt.Errorf("%w: %s", ErrIPNotFound, host)
+		return netip.Addr{}, fmt.Errorf("%w: %s", ErrIPNotFound, host)
 	}
 	return ips[rand.Intn(len(ips))], nil
 }
 
 // ResolveIP with a host, return ip
-func ResolveIP(host string) (net.IP, error) {
+func ResolveIP(host string) (netip.Addr, error) {
 	return ResolveIPWithResolver(host, DefaultResolver)
 }

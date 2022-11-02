@@ -3,6 +3,7 @@ package inbound
 import (
 	"net"
 	"net/http"
+	"net/netip"
 	"strconv"
 	"strings"
 
@@ -19,12 +20,10 @@ func parseSocksAddr(target socks5.Addr) *C.Metadata {
 		metadata.Host = strings.TrimRight(string(target[2:2+target[1]]), ".")
 		metadata.DstPort = strconv.Itoa((int(target[2+target[1]]) << 8) | int(target[2+target[1]+1]))
 	case socks5.AtypIPv4:
-		ip := net.IP(target[1 : 1+net.IPv4len])
-		metadata.DstIP = ip
+		metadata.DstIP, _ = netip.AddrFromSlice(target[1 : 1+net.IPv4len])
 		metadata.DstPort = strconv.Itoa((int(target[1+net.IPv4len]) << 8) | int(target[1+net.IPv4len+1]))
 	case socks5.AtypIPv6:
-		ip := net.IP(target[1 : 1+net.IPv6len])
-		metadata.DstIP = ip
+		metadata.DstIP, _ = netip.AddrFromSlice(target[1 : 1+net.IPv6len])
 		metadata.DstPort = strconv.Itoa((int(target[1+net.IPv6len]) << 8) | int(target[1+net.IPv6len+1]))
 	}
 
@@ -44,23 +43,25 @@ func parseHTTPAddr(request *http.Request) *C.Metadata {
 	metadata := &C.Metadata{
 		NetWork: C.TCP,
 		Host:    host,
-		DstIP:   nil,
 		DstPort: port,
 	}
 
-	if ip := net.ParseIP(host); ip != nil {
+	if ip, err := netip.ParseAddr(host); err == nil {
 		metadata.DstIP = ip
 	}
 
 	return metadata
 }
 
-func parseAddr(addr string) (net.IP, string, error) {
+func parseAddr(addr string) (netip.Addr, string, error) {
 	host, port, err := net.SplitHostPort(addr)
 	if err != nil {
-		return nil, "", err
+		return netip.Addr{}, "", err
 	}
 
-	ip := net.ParseIP(host)
+	ip, err := netip.ParseAddr(host)
+	if err != nil {
+		return netip.Addr{}, port, nil
+	}
 	return ip, port, nil
 }

@@ -4,32 +4,35 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/netip"
 	"syscall"
 
 	"golang.org/x/net/route"
 )
 
-func defaultRouteIP() (net.IP, error) {
+func defaultRouteIP() (netip.Addr, error) {
 	idx, err := defaultRouteInterfaceIndex()
 	if err != nil {
-		return nil, err
+		return netip.Addr{}, err
 	}
 	iface, err := net.InterfaceByIndex(idx)
 	if err != nil {
-		return nil, err
+		return netip.Addr{}, err
 	}
 	addrs, err := iface.Addrs()
 	if err != nil {
-		return nil, err
+		return netip.Addr{}, err
 	}
 	for _, addr := range addrs {
 		ip := addr.(*net.IPNet).IP
 		if ip.To4() != nil {
-			return ip, nil
+			if ip, ok := netip.AddrFromSlice(ip); ok {
+				return ip, nil
+			}
 		}
 	}
 
-	return nil, errors.New("no ipv4 addr")
+	return netip.Addr{}, errors.New("no ipv4 addr")
 }
 
 func defaultRouteInterfaceIndex() (int, error) {

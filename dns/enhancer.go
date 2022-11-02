@@ -1,7 +1,7 @@
 package dns
 
 import (
-	"net"
+	"net/netip"
 
 	"github.com/Dreamacro/clash/common/cache"
 	"github.com/Dreamacro/clash/component/fakeip"
@@ -22,7 +22,7 @@ func (h *ResolverEnhancer) MappingEnabled() bool {
 	return h.mode == C.DNSFakeIP || h.mode == C.DNSMapping
 }
 
-func (h *ResolverEnhancer) IsExistFakeIP(ip net.IP) bool {
+func (h *ResolverEnhancer) IsExistFakeIP(ip netip.Addr) bool {
 	if !h.FakeIPEnabled() {
 		return false
 	}
@@ -34,19 +34,19 @@ func (h *ResolverEnhancer) IsExistFakeIP(ip net.IP) bool {
 	return false
 }
 
-func (h *ResolverEnhancer) IsFakeIP(ip net.IP) bool {
+func (h *ResolverEnhancer) IsFakeIP(ip netip.Addr) bool {
 	if !h.FakeIPEnabled() {
 		return false
 	}
 
 	if pool := h.fakePool; pool != nil {
-		return pool.IPNet().Contains(ip) && !pool.Gateway().Equal(ip)
+		return pool.IPNet().Contains(ip) && pool.Gateway() != ip
 	}
 
 	return false
 }
 
-func (h *ResolverEnhancer) FindHostByIP(ip net.IP) (string, bool) {
+func (h *ResolverEnhancer) FindHostByIP(ip netip.Addr) (string, bool) {
 	if pool := h.fakePool; pool != nil {
 		if host, existed := pool.LookBack(ip); existed {
 			return host, true

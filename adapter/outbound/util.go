@@ -30,10 +30,10 @@ func serializesSocksAddr(metadata *C.Metadata) []byte {
 		host := []byte(metadata.Host)
 		buf = [][]byte{{aType, len}, host, port}
 	case socks5.AtypIPv4:
-		host := metadata.DstIP.To4()
+		host := metadata.DstIP.AsSlice()
 		buf = [][]byte{{aType}, host, port}
 	case socks5.AtypIPv6:
-		host := metadata.DstIP.To16()
+		host := metadata.DstIP.AsSlice()
 		buf = [][]byte{{aType}, host, port}
 	}
 	return bytes.Join(buf, nil)

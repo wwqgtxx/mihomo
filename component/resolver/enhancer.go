@@ -1,7 +1,7 @@
 package resolver
 
 import (
-	"net"
+	"net/netip"
 )
 
 var DefaultHostMapper Enhancer
@@ -9,9 +9,9 @@ var DefaultHostMapper Enhancer
 type Enhancer interface {
 	FakeIPEnabled() bool
 	MappingEnabled() bool
-	IsFakeIP(net.IP) bool
-	IsExistFakeIP(net.IP) bool
-	FindHostByIP(net.IP) (string, bool)
+	IsFakeIP(netip.Addr) bool
+	IsExistFakeIP(netip.Addr) bool
+	FindHostByIP(netip.Addr) (string, bool)
 }
 
 func FakeIPEnabled() bool {
@@ -30,7 +30,7 @@ func MappingEnabled() bool {
 	return false
 }
 
-func IsFakeIP(ip net.IP) bool {
+func IsFakeIP(ip netip.Addr) bool {
 	if mapper := DefaultHostMapper; mapper != nil {
 		return mapper.IsFakeIP(ip)
 	}
@@ -38,7 +38,7 @@ func IsFakeIP(ip net.IP) bool {
 	return false
 }
 
-func IsExistFakeIP(ip net.IP) bool {
+func IsExistFakeIP(ip netip.Addr) bool {
 	if mapper := DefaultHostMapper; mapper != nil {
 		return mapper.IsExistFakeIP(ip)
 	}
@@ -46,7 +46,7 @@ func IsExistFakeIP(ip net.IP) bool {
 	return false
 }
 
-func FindHostByIP(ip net.IP) (string, bool) {
+func FindHostByIP(ip netip.Addr) (string, bool) {
 	if mapper := DefaultHostMapper; mapper != nil {
 		return mapper.FindHostByIP(ip)
 	}

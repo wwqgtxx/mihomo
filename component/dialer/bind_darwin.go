@@ -2,6 +2,7 @@ package dialer
 
 import (
 	"net"
+	"net/netip"
 	"syscall"
 
 	"github.com/Dreamacro/clash/component/iface"
@@ -45,7 +46,7 @@ func bindControl(ifaceIdx int, chain controlFn) controlFn {
 	}
 }
 
-func bindIfaceToDialer(ifaceName string, dialer *net.Dialer, _ string, _ net.IP) error {
+func bindIfaceToDialer(ifaceName string, dialer *net.Dialer, _ string, _ netip.Addr) error {
 	ifaceObj, err := iface.ResolveInterface(ifaceName)
 	if err != nil {
 		return err

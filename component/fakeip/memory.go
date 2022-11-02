@@ -7,16 +7,15 @@ import (
 )
 
 type memoryStore struct {
-	cache *cache.LruCache
+	cacheIP   *cache.LruCache[string, netip.Addr]
+	cacheHost *cache.LruCache[netip.Addr, string]
 }
 
 // GetByHost implements store.GetByHost
 func (m *memoryStore) GetByHost(host string) (netip.Addr, bool) {
-	if elm, exist := m.cache.Get(host); exist {
-		ip := elm.(netip.Addr)
-
+	if ip, exist := m.cacheIP.Get(host); exist {
 		// ensure ip --> host on head of linked list
-		m.cache.Get(ipToUint(ip))
+		m.cacheHost.Get(ip)
 		return ip, true
 	}
 
@@ -25,16 +24,14 @@ func (m *memoryStore) GetByHost(host string) (netip.Addr, bool) {
 
 // PutByHost implements store.PutByHost
 func (m *memoryStore) PutByHost(host string, ip netip.Addr) {
-	m.cache.Set(host, ip)
+	m.cacheIP.Set(host, ip)
 }
 
 // GetByIP implements store.GetByIP
 func (m *memoryStore) GetByIP(ip netip.Addr) (string, bool) {
-	if elm, exist := m.cache.Get(ipToUint(ip)); exist {
-		host := elm.(string)
-
+	if host, exist := m.cacheHost.Get(ip); exist {
 		// ensure host --> ip on head of linked list
-		m.cache.Get(host)
+		m.cacheIP.Get(host)
 		return host, true
 	}
 
@@ -43,27 +40,40 @@ func (m *memoryStore) GetByIP(ip netip.Addr) (string, bool) {
 
 // PutByIP implements store.PutByIP
 func (m *memoryStore) PutByIP(ip netip.Addr, host string) {
-	m.cache.Set(ipToUint(ip), host)
+	m.cacheHost.Set(ip, host)
 }
 
 // DelByIP implements store.DelByIP
 func (m *memoryStore) DelByIP(ip netip.Addr) {
-	ipNum := ipToUint(ip)
-	if elm, exist := m.cache.Get(ipNum); exist {
-		m.cache.Delete(elm.(string))
+	if host, exist := m.cacheHost.Get(ip); exist {
+		m.cacheIP.Delete(host)
 	}
-	m.cache.Delete(ipNum)
+	m.cacheHost.Delete(ip)
 }
 
 // Exist implements store.Exist
 func (m *memoryStore) Exist(ip netip.Addr) bool {
-	return m.cache.Exist(ipToUint(ip))
+	return m.cacheHost.Exist(ip)
 }
 
 // CloneTo implements store.CloneTo
 // only for memoryStore to memoryStore
 func (m *memoryStore) CloneTo(store store) {
 	if ms, ok := store.(*memoryStore); ok {
-		m.cache.CloneTo(ms.cache)
+		m.cacheIP.CloneTo(ms.cacheIP)
+		m.cacheHost.CloneTo(ms.cacheHost)
+	}
+}
+
+// FlushFakeIP implements store.FlushFakeIP
+func (m *memoryStore) FlushFakeIP() error {
+	_ = m.cacheIP.Clear()
+	return m.cacheHost.Clear()
+}
+
+func newMemoryStore(size int) *memoryStore {
+	return &memoryStore{
+		cacheIP:   cache.New[string, netip.Addr](cache.WithSize[string, netip.Addr](size)),
+		cacheHost: cache.New[netip.Addr, string](cache.WithSize[netip.Addr, string](size)),
 	}
 }

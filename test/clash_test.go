@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -39,7 +40,7 @@ const (
 
 var (
 	waitTime = time.Second
-	localIP  = net.ParseIP("127.0.0.1")
+	localIP  = netip.MustParseAddr("127.0.0.1")
 
 	defaultExposedPorts = nat.PortSet{
 		"10002/tcp": struct{}{},
@@ -295,7 +296,7 @@ func testPingPongWithPacketConn(t *testing.T, pc net.PacketConn) error {
 	require.NoError(t, err)
 	defer l.Close()
 
-	rAddr := &net.UDPAddr{IP: localIP, Port: 10001}
+	rAddr := &net.UDPAddr{IP: localIP.AsSlice(), Port: 10001}
 
 	pingCh, pongCh, test := newPingPongPair()
 	go func() {
@@ -430,7 +431,7 @@ func testLargeDataWithPacketConn(t *testing.T, pc net.PacketConn) error {
 	require.NoError(t, err)
 	defer l.Close()
 
-	rAddr := &net.UDPAddr{IP: localIP, Port: 10001}
+	rAddr := &net.UDPAddr{IP: localIP.AsSlice(), Port: 10001}
 
 	times := 50
 	chunkSize := int64(1024)

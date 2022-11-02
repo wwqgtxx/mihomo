@@ -10,7 +10,7 @@ import (
 var localIP = netip.AddrFrom4([4]byte{127, 0, 0, 1})
 
 func TestTrie_Basic(t *testing.T) {
-	tree := New()
+	tree := New[netip.Addr]()
 	domains := []string{
 		"example.com",
 		"google.com",
@@ -23,7 +23,7 @@ func TestTrie_Basic(t *testing.T) {
 
 	node := tree.Search("example.com")
 	assert.NotNil(t, node)
-	assert.Equal(t, node.Data.(netip.Addr), localIP)
+	assert.Equal(t, node.Data(), localIP)
 	assert.NotNil(t, tree.Insert("", localIP))
 	assert.Nil(t, tree.Search(""))
 	assert.NotNil(t, tree.Search("localhost"))
@@ -31,7 +31,7 @@ func TestTrie_Basic(t *testing.T) {
 }
 
 func TestTrie_Wildcard(t *testing.T) {
-	tree := New()
+	tree := New[netip.Addr]()
 	domains := []string{
 		"*.example.com",
 		"sub.*.example.com",
@@ -64,7 +64,7 @@ func TestTrie_Wildcard(t *testing.T) {
 }
 
 func TestTrie_Priority(t *testing.T) {
-	tree := New()
+	tree := New[int]()
 	domains := []string{
 		".dev",
 		"example.dev",
@@ -75,7 +75,7 @@ func TestTrie_Priority(t *testing.T) {
 	assertFn := func(domain string, data int) {
 		node := tree.Search(domain)
 		assert.NotNil(t, node)
-		assert.Equal(t, data, node.Data)
+		assert.Equal(t, data, node.Data())
 	}
 
 	for idx, domain := range domains {
@@ -90,7 +90,7 @@ func TestTrie_Priority(t *testing.T) {
 }
 
 func TestTrie_Boundary(t *testing.T) {
-	tree := New()
+	tree := New[netip.Addr]()
 	tree.Insert("*.dev", localIP)
 
 	assert.NotNil(t, tree.Insert(".", localIP))
@@ -99,7 +99,7 @@ func TestTrie_Boundary(t *testing.T) {
 }
 
 func TestTrie_WildcardBoundary(t *testing.T) {
-	tree := New()
+	tree := New[netip.Addr]()
 	tree.Insert("+.*", localIP)
 	tree.Insert("stun.*.*.*", localIP)
 

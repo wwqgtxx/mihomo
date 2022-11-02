@@ -1,7 +1,6 @@
 package dns
 
 import (
-	"net"
 	"net/netip"
 	"strings"
 	"time"
@@ -21,7 +20,7 @@ type (
 	middleware func(next handler) handler
 )
 
-func withHosts(hosts *trie.DomainTrie) middleware {
+func withHosts(hosts *trie.DomainTrie[netip.Addr]) middleware {
 	return func(next handler) handler {
 		return func(ctx *context.DNSContext, r *D.Msg) (*D.Msg, error) {
 			q := r.Question[0]
@@ -35,7 +34,7 @@ func withHosts(hosts *trie.DomainTrie) middleware {
 				return next(ctx, r)
 			}
 
-			ip := record.Data.(netip.Addr)
+			ip := record.Data()
 			msg := r.Copy()
 
 			if ip.Is4() && q.Qtype == D.TypeA {
@@ -64,7 +63,7 @@ func withHosts(hosts *trie.DomainTrie) middleware {
 	}
 }
 
-func withMapping(mapping *cache.LruCache) middleware {
+func withMapping(mapping *cache.LruCache[netip.Addr, string]) middleware {
 	return func(next handler) handler {
 		return func(ctx *context.DNSContext, r *D.Msg) (*D.Msg, error) {
 			q := r.Question[0]
@@ -81,21 +80,21 @@ func withMapping(mapping *cache.LruCache) middleware {
 			host := strings.TrimRight(q.Name, ".")
 
 			for _, ans := range msg.Answer {
-				var ip net.IP
+				var ip netip.Addr
 				var ttl uint32
 
 				switch a := ans.(type) {
 				case *D.A:
-					ip = a.A
+					ip, _ = netip.AddrFromSlice(a.A)
 					ttl = a.Hdr.Ttl
 				case *D.AAAA:
-					ip = a.AAAA
+					ip, _ = netip.AddrFromSlice(a.AAAA)
 					ttl = a.Hdr.Ttl
 				default:
 					continue
 				}
 
-				mapping.SetWithExpire(ip.String(), host, time.Now().Add(time.Second*time.Duration(ttl)))
+				mapping.SetWithExpire(ip, host, time.Now().Add(time.Second*time.Duration(ttl)))
 			}
 
 			return msg, nil

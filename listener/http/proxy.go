@@ -14,7 +14,7 @@ import (
 	"github.com/Dreamacro/clash/log"
 )
 
-func HandleConn(c net.Conn, in chan<- C.ConnContext, cache *cache.LruCache) {
+func HandleConn(c net.Conn, in chan<- C.ConnContext, cache *cache.LruCache[string, bool]) {
 	client := newClient(c.RemoteAddr(), in)
 	defer client.CloseIdleConnections()
 
@@ -98,7 +98,7 @@ func HandleConn(c net.Conn, in chan<- C.ConnContext, cache *cache.LruCache) {
 	conn.Close()
 }
 
-func authenticate(request *http.Request, cache *cache.LruCache) *http.Response {
+func authenticate(request *http.Request, cache *cache.LruCache[string, bool]) *http.Response {
 	authenticator := authStore.Authenticator()
 	if authenticator != nil {
 		credential := parseBasicProxyAuthorization(request)
@@ -114,7 +114,7 @@ func authenticate(request *http.Request, cache *cache.LruCache) *http.Response {
 			authed = err == nil && authenticator.Verify(user, pass)
 			cache.Set(credential, authed)
 		}
-		if !authed.(bool) {
+		if !authed {
 			log.Infoln("Auth failed from %s", request.RemoteAddr)
 
 			return responseWith(request, http.StatusForbidden)

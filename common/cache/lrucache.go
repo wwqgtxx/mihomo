@@ -3,49 +3,51 @@ package cache
 // Modified by https://github.com/die-net/lrucache
 
 import (
-	"container/list"
 	"sync"
 	"time"
+
+	"github.com/Dreamacro/clash/common/generics/list"
+	"github.com/Dreamacro/clash/common/generics/zero"
 )
 
 // Option is part of Functional Options Pattern
-type Option func(*LruCache)
+type Option[K comparable, V any] func(*LruCache[K, V])
 
 // EvictCallback is used to get a callback when a cache entry is evicted
-type EvictCallback = func(key any, value any)
+type EvictCallback[K comparable, V any] func(key K, value V)
 
 // WithEvict set the evict callback
-func WithEvict(cb EvictCallback) Option {
-	return func(l *LruCache) {
+func WithEvict[K comparable, V any](cb EvictCallback[K, V]) Option[K, V] {
+	return func(l *LruCache[K, V]) {
 		l.onEvict = cb
 	}
 }
 
 // WithUpdateAgeOnGet update expires when Get element
-func WithUpdateAgeOnGet() Option {
-	return func(l *LruCache) {
+func WithUpdateAgeOnGet[K comparable, V any]() Option[K, V] {
+	return func(l *LruCache[K, V]) {
 		l.updateAgeOnGet = true
 	}
 }
 
 // WithAge defined element max age (second)
-func WithAge(maxAge int64) Option {
-	return func(l *LruCache) {
+func WithAge[K comparable, V any](maxAge int64) Option[K, V] {
+	return func(l *LruCache[K, V]) {
 		l.maxAge = maxAge
 	}
 }
 
 // WithSize defined max length of LruCache
-func WithSize(maxSize int) Option {
-	return func(l *LruCache) {
+func WithSize[K comparable, V any](maxSize int) Option[K, V] {
+	return func(l *LruCache[K, V]) {
 		l.maxSize = maxSize
 	}
 }
 
 // WithStale decide whether Stale return is enabled.
 // If this feature is enabled, element will not get Evicted according to `WithAge`.
-func WithStale(stale bool) Option {
-	return func(l *LruCache) {
+func WithStale[K comparable, V any](stale bool) Option[K, V] {
+	return func(l *LruCache[K, V]) {
 		l.staleReturn = stale
 	}
 }
@@ -53,22 +55,22 @@ func WithStale(stale bool) Option {
 // LruCache is a thread-safe, in-memory lru-cache that evicts the
 // least recently used entries from memory when (if set) the entries are
 // older than maxAge (in seconds).  Use the New constructor to create one.
-type LruCache struct {
+type LruCache[K comparable, V any] struct {
 	maxAge         int64
 	maxSize        int
 	mu             sync.Mutex
-	cache          map[any]*list.Element
-	lru            *list.List // Front is least-recent
+	cache          map[K]*list.Element[*entry[K, V]]
+	lru            *list.List[*entry[K, V]] // Front is least-recent
 	updateAgeOnGet bool
 	staleReturn    bool
-	onEvict        EvictCallback
+	onEvict        EvictCallback[K, V]
 }
 
 // New creates an LruCache
-func New(options ...Option) *LruCache {
-	lc := &LruCache{
-		lru:   list.New(),
-		cache: make(map[any]*list.Element),
+func New[K comparable, V any](options ...Option[K, V]) *LruCache[K, V] {
+	lc := &LruCache[K, V]{
+		lru:   list.New[*entry[K, V]](),
+		cache: make(map[K]*list.Element[*entry[K, V]]),
 	}
 
 	for _, option := range options {
@@ -80,12 +82,12 @@ func New(options ...Option) *LruCache {
 
 // Get returns the any representation of a cached response and a bool
 // set to true if the key was found.
-func (c *LruCache) Get(key any) (any, bool) {
-	entry := c.get(key)
-	if entry == nil {
-		return nil, false
+func (c *LruCache[K, V]) Get(key K) (V, bool) {
+	el := c.get(key)
+	if el == nil {
+		return zero.GetZero[V](), false
 	}
-	value := entry.value
+	value := el.value
 
 	return value, true
 }
@@ -94,17 +96,17 @@ func (c *LruCache) Get(key any) (any, bool) {
 // a time.Time Give expected expires,
 // and a bool set to true if the key was found.
 // This method will NOT check the maxAge of element and will NOT update the expires.
-func (c *LruCache) GetWithExpire(key any) (any, time.Time, bool) {
-	entry := c.get(key)
-	if entry == nil {
-		return nil, time.Time{}, false
+func (c *LruCache[K, V]) GetWithExpire(key K) (V, time.Time, bool) {
+	el := c.get(key)
+	if el == nil {
+		return zero.GetZero[V](), time.Time{}, false
 	}
 
-	return entry.value, time.Unix(entry.expires, 0), true
+	return el.value, time.Unix(el.expires, 0), true
 }
 
 // Exist returns if key exist in cache but not put item to the head of linked list
-func (c *LruCache) Exist(key any) bool {
+func (c *LruCache[K, V]) Exist(key K) bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -113,7 +115,7 @@ func (c *LruCache) Exist(key any) bool {
 }
 
 // Set stores the any representation of a response for a given key.
-func (c *LruCache) Set(key any, value any) {
+func (c *LruCache[K, V]) Set(key K, value V) {
 	expires := int64(0)
 	if c.maxAge > 0 {
 		expires = time.Now().Unix() + c.maxAge
@@ -123,21 +125,21 @@ func (c *LruCache) Set(key any, value any) {
 
 // SetWithExpire stores the any representation of a response for a given key and given expires.
 // The expires time will round to second.
-func (c *LruCache) SetWithExpire(key any, value any, expires time.Time) {
+func (c *LruCache[K, V]) SetWithExpire(key K, value V, expires time.Time) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	if le, ok := c.cache[key]; ok {
 		c.lru.MoveToBack(le)
-		e := le.Value.(*entry)
+		e := le.Value
 		e.value = value
 		e.expires = expires.Unix()
 	} else {
-		e := &entry{key: key, value: value, expires: expires.Unix()}
+		e := &entry[K, V]{key: key, value: value, expires: expires.Unix()}
 		c.cache[key] = c.lru.PushBack(e)
 
 		if c.maxSize > 0 {
-			if len := c.lru.Len(); len > c.maxSize {
+			if elLen := c.lru.Len(); elLen > c.maxSize {
 				c.deleteElement(c.lru.Front())
 			}
 		}
@@ -147,23 +149,23 @@ func (c *LruCache) SetWithExpire(key any, value any, expires time.Time) {
 }
 
 // CloneTo clone and overwrite elements to another LruCache
-func (c *LruCache) CloneTo(n *LruCache) {
+func (c *LruCache[K, V]) CloneTo(n *LruCache[K, V]) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	n.mu.Lock()
 	defer n.mu.Unlock()
 
-	n.lru = list.New()
-	n.cache = make(map[any]*list.Element)
+	n.lru = list.New[*entry[K, V]]()
+	n.cache = make(map[K]*list.Element[*entry[K, V]])
 
 	for e := c.lru.Front(); e != nil; e = e.Next() {
-		elm := e.Value.(*entry)
+		elm := e.Value
 		n.cache[elm.key] = n.lru.PushBack(elm)
 	}
 }
 
-func (c *LruCache) get(key any) *entry {
+func (c *LruCache[K, V]) get(key K) *entry[K, V] {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -172,7 +174,7 @@ func (c *LruCache) get(key any) *entry {
 		return nil
 	}
 
-	if !c.staleReturn && c.maxAge > 0 && le.Value.(*entry).expires <= time.Now().Unix() {
+	if !c.staleReturn && c.maxAge > 0 && le.Value.expires <= time.Now().Unix() {
 		c.deleteElement(le)
 		c.maybeDeleteOldest()
 
@@ -180,15 +182,15 @@ func (c *LruCache) get(key any) *entry {
 	}
 
 	c.lru.MoveToBack(le)
-	entry := le.Value.(*entry)
+	el := le.Value
 	if c.maxAge > 0 && c.updateAgeOnGet {
-		entry.expires = time.Now().Unix() + c.maxAge
+		el.expires = time.Now().Unix() + c.maxAge
 	}
-	return entry
+	return el
 }
 
 // Delete removes the value associated with a key.
-func (c *LruCache) Delete(key any) {
+func (c *LruCache[K, V]) Delete(key K) {
 	c.mu.Lock()
 
 	if le, ok := c.cache[key]; ok {
@@ -198,26 +200,35 @@ func (c *LruCache) Delete(key any) {
 	c.mu.Unlock()
 }
 
-func (c *LruCache) maybeDeleteOldest() {
+func (c *LruCache[K, V]) maybeDeleteOldest() {
 	if !c.staleReturn && c.maxAge > 0 {
 		now := time.Now().Unix()
-		for le := c.lru.Front(); le != nil && le.Value.(*entry).expires <= now; le = c.lru.Front() {
+		for le := c.lru.Front(); le != nil && le.Value.expires <= now; le = c.lru.Front() {
 			c.deleteElement(le)
 		}
 	}
 }
 
-func (c *LruCache) deleteElement(le *list.Element) {
+func (c *LruCache[K, V]) deleteElement(le *list.Element[*entry[K, V]]) {
 	c.lru.Remove(le)
-	e := le.Value.(*entry)
+	e := le.Value
 	delete(c.cache, e.key)
 	if c.onEvict != nil {
 		c.onEvict(e.key, e.value)
 	}
 }
 
-type entry struct {
-	key     any
-	value   any
+func (c *LruCache[K, V]) Clear() error {
+	c.mu.Lock()
+
+	c.cache = make(map[K]*list.Element[*entry[K, V]])
+
+	c.mu.Unlock()
+	return nil
+}
+
+type entry[K comparable, V any] struct {
+	key     K
+	value   V
 	expires int64
 }

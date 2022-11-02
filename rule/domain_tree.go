@@ -11,7 +11,7 @@ import (
 type DomainTree struct {
 	domain  string
 	adapter string
-	dt      *trie.DomainTrie
+	dt      *trie.DomainTrie[struct{}]
 	insertN int
 }
 
@@ -48,7 +48,7 @@ func (d *DomainTree) ShouldFindProcess() bool {
 
 func (d *DomainTree) Insert(domain string) error {
 	domain = strings.ToLower(domain)
-	err := d.dt.Insert(domain, "")
+	err := d.dt.Insert(domain, struct{}{})
 	if err != nil {
 		return err
 	}
@@ -57,7 +57,7 @@ func (d *DomainTree) Insert(domain string) error {
 }
 
 func newEmptyDomainTree() *DomainTree {
-	dt := trie.New()
+	dt := trie.New[struct{}]()
 	return &DomainTree{
 		dt:      dt,
 		insertN: 0,

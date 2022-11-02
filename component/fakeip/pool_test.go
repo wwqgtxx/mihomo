@@ -117,8 +117,8 @@ func TestPool_CycleUsed(t *testing.T) {
 
 func TestPool_Skip(t *testing.T) {
 	ipnet := netip.MustParsePrefix("192.168.0.1/30")
-	tree := trie.New()
-	tree.Insert("example.com", tree)
+	tree := trie.New[struct{}]()
+	tree.Insert("example.com", struct{}{})
 	pools, tempfile, err := createPools(Options{
 		IPNet: ipnet,
 		Size:  10,
@@ -187,8 +187,8 @@ func TestPool_Clone(t *testing.T) {
 
 	first := pool.Lookup("foo.com")
 	last := pool.Lookup("bar.com")
-	assert.True(t, first == netip.AddrFrom4([4]byte{192, 168, 0, 4}))
-	assert.True(t, last == netip.AddrFrom4([4]byte{192, 168, 0, 5}))
+	assert.Equal(t, first, netip.AddrFrom4([4]byte{192, 168, 0, 4}))
+	assert.Equal(t, last, netip.AddrFrom4([4]byte{192, 168, 0, 5}))
 
 	newPool, _ := New(Options{
 		IPNet: ipnet,

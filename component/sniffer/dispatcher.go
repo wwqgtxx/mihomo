@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Dreamacro/clash/common/generics/cache"
+	"github.com/Dreamacro/clash/common/cache"
 	"github.com/Dreamacro/clash/common/generics/utils"
 	N "github.com/Dreamacro/clash/common/net"
 	"github.com/Dreamacro/clash/component/trie"
@@ -31,8 +31,8 @@ type SnifferDispatcher struct {
 
 	sniffers []sniffer.Sniffer
 
-	forceDomain *trie.DomainTrie
-	skipSNI     *trie.DomainTrie
+	forceDomain *trie.DomainTrie[struct{}]
+	skipSNI     *trie.DomainTrie[struct{}]
 	portRanges  *[]utils.Range[uint16]
 	skipList    *cache.LruCache[string, uint8]
 	rwMux       sync.RWMutex
@@ -188,15 +188,15 @@ func NewCloseSnifferDispatcher() (*SnifferDispatcher, error) {
 	return &dispatcher, nil
 }
 
-func NewSnifferDispatcher(needSniffer []sniffer.Type, forceDomain *trie.DomainTrie,
-	skipSNI *trie.DomainTrie, ports *[]utils.Range[uint16],
+func NewSnifferDispatcher(needSniffer []sniffer.Type, forceDomain *trie.DomainTrie[struct{}],
+	skipSNI *trie.DomainTrie[struct{}], ports *[]utils.Range[uint16],
 	forceDnsMapping bool, parsePureIp bool) (*SnifferDispatcher, error) {
 	dispatcher := SnifferDispatcher{
 		enable:          true,
 		forceDomain:     forceDomain,
 		skipSNI:         skipSNI,
 		portRanges:      ports,
-		skipList:        cache.NewLRUCache[string, uint8](cache.WithSize[string, uint8](128), cache.WithAge[string, uint8](600)),
+		skipList:        cache.New[string, uint8](cache.WithSize[string, uint8](128), cache.WithAge[string, uint8](600)),
 		forceDnsMapping: forceDnsMapping,
 		parsePureIp:     parsePureIp,
 	}

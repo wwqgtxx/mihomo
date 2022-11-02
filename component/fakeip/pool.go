@@ -6,7 +6,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Dreamacro/clash/common/cache"
 	"github.com/Dreamacro/clash/component/profile/cachefile"
 	"github.com/Dreamacro/clash/component/trie"
 )
@@ -28,7 +27,7 @@ type Pool struct {
 	gateway uint32
 	offset  uint32
 	mux     sync.Mutex
-	host    *trie.DomainTrie
+	host    *trie.DomainTrie[struct{}]
 	ipnet   netip.Prefix
 	store   store
 }
@@ -133,7 +132,7 @@ func uintToIP(v uint32) netip.Addr {
 
 type Options struct {
 	IPNet netip.Prefix
-	Host  *trie.DomainTrie
+	Host  *trie.DomainTrie[struct{}]
 
 	// Size sets the maximum number of entries in memory
 	// and does not work if Persistence is true
@@ -168,9 +167,7 @@ func New(options Options) (*Pool, error) {
 			cache: cachefile.Cache(),
 		}
 	} else {
-		pool.store = &memoryStore{
-			cache: cache.New(cache.WithSize(options.Size * 2)),
-		}
+		pool.store = newMemoryStore(options.Size)
 	}
 
 	return pool, nil

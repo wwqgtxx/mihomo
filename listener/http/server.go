@@ -39,9 +39,9 @@ func NewWithAuthenticate(addr string, in chan<- C.ConnContext, authenticate bool
 		return nil, err
 	}
 
-	var c *cache.LruCache
+	var c *cache.LruCache[string, bool]
 	if authenticate {
-		c = cache.New(cache.WithAge(30))
+		c = cache.New[string, bool](cache.WithAge[string, bool](30))
 	}
 
 	hl := &Listener{

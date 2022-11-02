@@ -53,14 +53,14 @@ type result struct {
 
 type Resolver struct {
 	ipv6                  bool
-	hosts                 *trie.DomainTrie
+	hosts                 *trie.DomainTrie[netip.Addr]
 	main                  []dnsClient
 	fallback              []dnsClient
 	fallbackDomainFilters []fallbackDomainFilter
 	fallbackIPFilters     []fallbackIPFilter
 	group                 singleflight.Group
-	lruCache              *cache.LruCache
-	policy                *trie.DomainTrie
+	lruCache              *cache.LruCache[string, *D.Msg]
+	policy                *trie.DomainTrie[[]dnsClient]
 }
 
 // LookupIP request with TypeA and TypeAAAA, priority return TypeA
@@ -159,7 +159,7 @@ func (r *Resolver) ExchangeContext(ctx context.Context, m *D.Msg) (msg *D.Msg, e
 	cache, expireTime, hit := r.lruCache.GetWithExpire(q.String())
 	if hit {
 		now := time.Now()
-		msg = cache.(*D.Msg).Copy()
+		msg = cache.Copy()
 		if expireTime.Before(now) {
 			setMsgTTL(msg, uint32(1)) // Continue fetch
 			go r.exchangeWithoutCache(ctx, m)
@@ -229,7 +229,7 @@ func (r *Resolver) matchPolicy(m *D.Msg) []dnsClient {
 		return nil
 	}
 
-	return record.Data.([]dnsClient)
+	return record.Data()
 }
 
 func (r *Resolver) shouldOnlyQueryFallback(m *D.Msg) bool {
@@ -356,20 +356,20 @@ type Config struct {
 	EnhancedMode   C.DNSMode
 	FallbackFilter FallbackFilter
 	Pool           *fakeip.Pool
-	Hosts          *trie.DomainTrie
+	Hosts          *trie.DomainTrie[netip.Addr]
 	Policy         map[string]NameServer
 }
 
 func NewResolver(config Config) (*Resolver, *Resolver) {
 	defaultResolver := &Resolver{
 		main:     transform(config.Default, nil),
-		lruCache: cache.New(cache.WithSize(4096), cache.WithStale(true)),
+		lruCache: cache.New[string, *D.Msg](cache.WithSize[string, *D.Msg](4096), cache.WithStale[string, *D.Msg](true)),
 	}
 
 	r := &Resolver{
 		ipv6:     config.IPv6,
 		main:     transform(config.Main, defaultResolver),
-		lruCache: cache.New(cache.WithSize(4096), cache.WithStale(true)),
+		lruCache: cache.New[string, *D.Msg](cache.WithSize[string, *D.Msg](4096), cache.WithStale[string, *D.Msg](true)),
 		hosts:    config.Hosts,
 	}
 
@@ -378,7 +378,7 @@ func NewResolver(config Config) (*Resolver, *Resolver) {
 	}
 
 	if len(config.Policy) != 0 {
-		r.policy = trie.New()
+		r.policy = trie.New[[]dnsClient]()
 		for domain, nameserver := range config.Policy {
 			r.policy.Insert(domain, transform([]NameServer{nameserver}, defaultResolver))
 		}

@@ -2,6 +2,7 @@ package executor
 
 import (
 	"fmt"
+	"net/netip"
 	"os"
 	"sync"
 
@@ -204,7 +205,7 @@ func updateDNS(c *config.DNS) {
 	dns.ReCreateServer(c.Listen, r, m)
 }
 
-func updateHosts(tree *trie.DomainTrie) {
+func updateHosts(tree *trie.DomainTrie[netip.Addr]) {
 	resolver.DefaultHosts = tree
 }
 

@@ -25,7 +25,7 @@ var (
 	DisableIPv6 = true
 
 	// DefaultHosts aim to resolve hosts
-	DefaultHosts = trie.New()
+	DefaultHosts = trie.New[netip.Addr]()
 
 	// DefaultDNSTimeout defined the default dns request timeout
 	DefaultDNSTimeout = time.Second * 5
@@ -49,7 +49,7 @@ type Resolver interface {
 // LookupIPv4WithResolver same as LookupIPv4, but with a resolver
 func LookupIPv4WithResolver(ctx context.Context, host string, r Resolver) ([]netip.Addr, error) {
 	if node := DefaultHosts.Search(host); node != nil {
-		if ip := node.Data.(netip.Addr); ip.Is4() {
+		if ip := node.Data(); ip.Is4() {
 			return []netip.Addr{ip}, nil
 		}
 	}
@@ -109,7 +109,7 @@ func LookupIPv6WithResolver(ctx context.Context, host string, r Resolver) ([]net
 	}
 
 	if node := DefaultHosts.Search(host); node != nil {
-		if ip := node.Data.(netip.Addr); ip.Is6() {
+		if ip := node.Data(); ip.Is6() {
 			return []netip.Addr{ip}, nil
 		}
 	}
@@ -163,7 +163,7 @@ func ResolveIPv6(host string) (netip.Addr, error) {
 // LookupIPWithResolver same as LookupIP, but with a resolver
 func LookupIPWithResolver(ctx context.Context, host string, r Resolver) ([]netip.Addr, error) {
 	if node := DefaultHosts.Search(host); node != nil {
-		return []netip.Addr{node.Data.(netip.Addr)}, nil
+		return []netip.Addr{node.Data()}, nil
 	}
 
 	if r != nil {

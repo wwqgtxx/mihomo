@@ -34,13 +34,13 @@ type fallbackDomainFilter interface {
 }
 
 type domainFilter struct {
-	tree *trie.DomainTrie
+	tree *trie.DomainTrie[struct{}]
 }
 
 func NewDomainFilter(domains []string) *domainFilter {
-	df := domainFilter{tree: trie.New()}
+	df := domainFilter{tree: trie.New[struct{}]()}
 	for _, domain := range domains {
-		df.tree.Insert(domain, "")
+		df.tree.Insert(domain, struct{}{})
 	}
 	return &df
 }

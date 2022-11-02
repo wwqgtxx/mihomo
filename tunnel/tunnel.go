@@ -181,7 +181,7 @@ func preHandleMetadata(metadata *C.Metadata) error {
 				metadata.DNSMode = C.DNSFakeIP
 			} else if node := resolver.DefaultHosts.Search(host); node != nil {
 				// redir-host should lookup the hosts
-				metadata.DstIP = node.Data.(netip.Addr)
+				metadata.DstIP = node.Data()
 			}
 		} else if resolver.IsFakeIP(metadata.DstIP) {
 			return fmt.Errorf("fake DNS record %s missing", metadata.DstIP)
@@ -360,7 +360,7 @@ func handleTCPConn(connCtx C.ConnContext) {
 	dialMetadata := metadata
 	if len(metadata.Host) > 0 {
 		if node := resolver.DefaultHosts.Search(metadata.Host); node != nil {
-			dialMetadata.DstIP = node.Data.(netip.Addr)
+			dialMetadata.DstIP = node.Data()
 			dialMetadata.DNSMode = C.DNSHosts
 			dialMetadata = dialMetadata.Pure()
 		}
@@ -432,8 +432,7 @@ func match(metadata *C.Metadata) (C.Proxy, C.Rule, error) {
 	var processFound bool
 
 	if node := resolver.DefaultHosts.Search(metadata.Host); node != nil {
-		ip := node.Data.(netip.Addr)
-		metadata.DstIP = ip
+		metadata.DstIP = node.Data()
 		resolved = true
 	}
 

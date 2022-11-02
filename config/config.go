@@ -86,7 +86,7 @@ type DNS struct {
 	EnhancedMode      C.DNSMode        `yaml:"enhanced-mode"`
 	DefaultNameserver []dns.NameServer `yaml:"default-nameserver"`
 	FakeIPRange       *fakeip.Pool
-	Hosts             *trie.DomainTrie
+	Hosts             *trie.DomainTrie[netip.Addr]
 	NameServerPolicy  map[string]dns.NameServer
 }
 
@@ -188,9 +188,9 @@ func (p ListenPrefix) Build() netip.Prefix {
 type Sniffer struct {
 	Enable          bool
 	Sniffers        []sniffer.Type
-	Reverses        *trie.DomainTrie
-	ForceDomain     *trie.DomainTrie
-	SkipDomain      *trie.DomainTrie
+	Reverses        *trie.DomainTrie[struct{}]
+	ForceDomain     *trie.DomainTrie[struct{}]
+	SkipDomain      *trie.DomainTrie[struct{}]
 	Ports           *[]utils.Range[uint16]
 	ForceDnsMapping bool
 	ParsePureIp     bool
@@ -204,7 +204,7 @@ type Config struct {
 	General        *General
 	DNS            *DNS
 	Experimental   *Experimental
-	Hosts          *trie.DomainTrie
+	Hosts          *trie.DomainTrie[netip.Addr]
 	Profile        *Profile
 	Rules          []C.Rule
 	RulesProviders map[string]R.RuleProvider
@@ -661,8 +661,8 @@ func parseRules(cfg *RawConfig, proxies map[string]C.Proxy) (rules []C.Rule, pro
 	return rules, providersMap, nil
 }
 
-func parseHosts(cfg *RawConfig) (*trie.DomainTrie, error) {
-	tree := trie.New()
+func parseHosts(cfg *RawConfig) (*trie.DomainTrie[netip.Addr], error) {
+	tree := trie.New[netip.Addr]()
 
 	// add default hosts
 	if err := tree.Insert("localhost", netip.AddrFrom4([4]byte{127, 0, 0, 1})); err != nil {
@@ -809,7 +809,7 @@ func parseFallbackIPCIDR(ips []string) ([]netip.Prefix, error) {
 	return ipNets, nil
 }
 
-func parseDNS(rawCfg *RawConfig, hosts *trie.DomainTrie) (*DNS, error) {
+func parseDNS(rawCfg *RawConfig, hosts *trie.DomainTrie[netip.Addr]) (*DNS, error) {
 	cfg := rawCfg.DNS
 	if cfg.Enable && len(cfg.NameServer) == 0 {
 		return nil, fmt.Errorf("if DNS configuration is turned on, NameServer cannot be empty")
@@ -857,12 +857,12 @@ func parseDNS(rawCfg *RawConfig, hosts *trie.DomainTrie) (*DNS, error) {
 			return nil, err
 		}
 
-		var host *trie.DomainTrie
+		var host *trie.DomainTrie[struct{}]
 		// fake ip skip host filter
 		if len(cfg.FakeIPFilter) != 0 {
-			host = trie.New()
+			host = trie.New[struct{}]()
 			for _, domain := range cfg.FakeIPFilter {
-				host.Insert(domain, true)
+				host.Insert(domain, struct{}{})
 			}
 		}
 
@@ -958,17 +958,17 @@ func parseSniffer(snifferRaw RawSniffer) (*Sniffer, error) {
 	for st := range loadSniffer {
 		sniffer.Sniffers = append(sniffer.Sniffers, st)
 	}
-	sniffer.ForceDomain = trie.New()
+	sniffer.ForceDomain = trie.New[struct{}]()
 	for _, domain := range snifferRaw.ForceDomain {
-		err := sniffer.ForceDomain.Insert(domain, true)
+		err := sniffer.ForceDomain.Insert(domain, struct{}{})
 		if err != nil {
 			return nil, fmt.Errorf("error domian[%s] in force-domain, error:%v", domain, err)
 		}
 	}
 
-	sniffer.SkipDomain = trie.New()
+	sniffer.SkipDomain = trie.New[struct{}]()
 	for _, domain := range snifferRaw.SkipDomain {
-		err := sniffer.SkipDomain.Insert(domain, true)
+		err := sniffer.SkipDomain.Insert(domain, struct{}{})
 		if err != nil {
 			return nil, fmt.Errorf("error domian[%s] in force-domain, error:%v", domain, err)
 		}

@@ -61,7 +61,7 @@ var (
 	udpTunMux sync.Mutex
 	mtpMux    sync.Mutex
 
-	tunConfig config.Tun
+	LastTunConf config.Tun
 )
 
 type Ports struct {
@@ -80,7 +80,7 @@ type Ports struct {
 
 func Tun() config.Tun {
 	if tunLister == nil {
-		return tunConfig
+		return LastTunConf
 	}
 	return tunLister.Config()
 }
@@ -504,7 +504,7 @@ func ReCreateTun(conf config.Tun, tcpIn chan<- C.ConnContext, udpIn chan<- *inbo
 	shouldIgnore := false
 
 	if tunLister != nil {
-		if tunLister.Config().String() != conf.String() {
+		if LastTunConf.String() != conf.String() {
 			tunLister.Close()
 			tunLister = nil
 		} else {
@@ -517,7 +517,7 @@ func ReCreateTun(conf config.Tun, tcpIn chan<- C.ConnContext, udpIn chan<- *inbo
 		return
 	}
 
-	tunConfig = conf
+	LastTunConf = conf
 
 	generalInterface := dialer.GeneralInterface.Load()
 	defaultInterface := dialer.DefaultInterface.Load()

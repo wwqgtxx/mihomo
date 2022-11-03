@@ -41,6 +41,7 @@ func New(options config.Tun, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.P
 	tunName := options.InterfaceName
 	if tunName == "" {
 		tunName = tun.CalculateInterfaceName(InterfaceName)
+		options.InterfaceName = tunName
 	}
 	tunMTU := options.MTU
 	if tunMTU == 0 {

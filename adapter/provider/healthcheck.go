@@ -70,7 +70,7 @@ func (hc *HealthCheck) lazyCheck() bool {
 		hc.check()
 		return true
 	} else {
-		log.Infoln("Skip once health check because we are lazy (%s)", hc.gName)
+		log.Debugln("Skip once health check because we are lazy (%s)", hc.gName)
 		return false
 	}
 }

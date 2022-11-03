@@ -137,7 +137,7 @@ func patchConfigs(w http.ResponseWriter, r *http.Request) {
 	P.ReCreateRedir(pointerOrDefault(general.RedirPort, ports.RedirPort), tcpIn, udpIn)
 	P.ReCreateTProxy(pointerOrDefault(general.TProxyPort, ports.TProxyPort), tcpIn, udpIn)
 	P.ReCreateMixed(pointerOrDefault(general.MixedPort, ports.MixedPort), tcpIn, udpIn)
-	P.ReCreateTun(pointerOrDefaultTun(general.Tun, P.Tun()), tcpIn, udpIn)
+	P.ReCreateTun(pointerOrDefaultTun(general.Tun, P.LastTunConf), tcpIn, udpIn)
 	P.ReCreateMixEC(pointerOrDefaultString(general.MixECConfig, ports.MixECConfig), tcpIn, udpIn)
 	P.ReCreateShadowSocks(pointerOrDefaultString(general.ShadowSocksConfig, ports.ShadowSocksConfig), tcpIn, udpIn)
 	P.ReCreateVmess(pointerOrDefaultString(general.VmessConfig, ports.VmessConfig), tcpIn, udpIn)

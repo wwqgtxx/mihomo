@@ -107,6 +107,7 @@ type Profile struct {
 // Tun config
 type Tun struct {
 	Enable              bool     `yaml:"enable" json:"enable"`
+	Device              string   `yaml:"device" json:"device"`
 	Stack               string   `yaml:"stack" json:"stack"`
 	DNSHijack           []string `yaml:"dns-hijack" json:"dns-hijack"`
 	AutoDetectInterface bool     `yaml:"auto-detect-interface" json:"auto-detect-interface"`
@@ -128,11 +129,6 @@ type Tun struct {
 	ExcludePackage         []string       `yaml:"exclude-package" json:"exclude_package,omitempty"`
 	EndpointIndependentNat bool           `yaml:"endpoint-independent-nat" json:"endpoint_independent_nat,omitempty"`
 	UDPTimeout             int64          `yaml:"udp-timeout" json:"udp_timeout,omitempty"`
-}
-
-func (t Tun) String() string {
-	b, _ := json.Marshal(t)
-	return string(b)
 }
 
 type ListenPrefix netip.Prefix

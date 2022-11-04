@@ -2,8 +2,10 @@ package proxy
 
 import (
 	"fmt"
+	"golang.org/x/exp/slices"
 	"net"
 	"runtime"
+	"sort"
 	"strconv"
 	"sync"
 
@@ -502,9 +504,10 @@ func ReCreateTun(conf config.Tun, tcpIn chan<- C.ConnContext, udpIn chan<- *inbo
 	}()
 
 	shouldIgnore := false
+	changed := hasTunConfigChange(&conf)
 
 	if tunLister != nil {
-		if LastTunConf.String() != conf.String() {
+		if changed {
 			tunLister.Close()
 			tunLister = nil
 		} else {
@@ -684,6 +687,89 @@ func genAddr(host string, port int, allowLan bool) string {
 	}
 
 	return fmt.Sprintf("127.0.0.1:%d", port)
+}
+
+func hasTunConfigChange(tunConf *config.Tun) bool {
+	if LastTunConf.Enable != tunConf.Enable ||
+		LastTunConf.Device != tunConf.Device ||
+		LastTunConf.Stack != tunConf.Stack ||
+		LastTunConf.AutoRoute != tunConf.AutoRoute ||
+		LastTunConf.AutoDetectInterface != tunConf.AutoDetectInterface ||
+		LastTunConf.MTU != tunConf.MTU ||
+		LastTunConf.StrictRoute != tunConf.StrictRoute ||
+		LastTunConf.EndpointIndependentNat != tunConf.EndpointIndependentNat ||
+		LastTunConf.UDPTimeout != tunConf.UDPTimeout {
+		return true
+	}
+
+	if len(LastTunConf.DNSHijack) != len(tunConf.DNSHijack) {
+		return true
+	}
+
+	sort.Slice(tunConf.DNSHijack, func(i, j int) bool {
+		return tunConf.DNSHijack[i] < tunConf.DNSHijack[j]
+	})
+
+	sort.Slice(tunConf.Inet4Address, func(i, j int) bool {
+		return tunConf.Inet4Address[i].Build().String() < tunConf.Inet4Address[j].Build().String()
+	})
+
+	sort.Slice(tunConf.Inet6Address, func(i, j int) bool {
+		return tunConf.Inet6Address[i].Build().String() < tunConf.Inet6Address[j].Build().String()
+	})
+
+	sort.Slice(tunConf.Inet4RouteAddress, func(i, j int) bool {
+		return tunConf.Inet4RouteAddress[i].Build().String() < tunConf.Inet4RouteAddress[j].Build().String()
+	})
+
+	sort.Slice(tunConf.Inet6RouteAddress, func(i, j int) bool {
+		return tunConf.Inet6RouteAddress[i].Build().String() < tunConf.Inet6RouteAddress[j].Build().String()
+	})
+
+	sort.Slice(tunConf.IncludeUID, func(i, j int) bool {
+		return tunConf.IncludeUID[i] < tunConf.IncludeUID[j]
+	})
+
+	sort.Slice(tunConf.IncludeUIDRange, func(i, j int) bool {
+		return tunConf.IncludeUIDRange[i] < tunConf.IncludeUIDRange[j]
+	})
+
+	sort.Slice(tunConf.ExcludeUID, func(i, j int) bool {
+		return tunConf.ExcludeUID[i] < tunConf.ExcludeUID[j]
+	})
+
+	sort.Slice(tunConf.ExcludeUIDRange, func(i, j int) bool {
+		return tunConf.ExcludeUIDRange[i] < tunConf.ExcludeUIDRange[j]
+	})
+
+	sort.Slice(tunConf.IncludeAndroidUser, func(i, j int) bool {
+		return tunConf.IncludeAndroidUser[i] < tunConf.IncludeAndroidUser[j]
+	})
+
+	sort.Slice(tunConf.IncludePackage, func(i, j int) bool {
+		return tunConf.IncludePackage[i] < tunConf.IncludePackage[j]
+	})
+
+	sort.Slice(tunConf.ExcludePackage, func(i, j int) bool {
+		return tunConf.ExcludePackage[i] < tunConf.ExcludePackage[j]
+	})
+
+	if !slices.Equal(tunConf.DNSHijack, LastTunConf.DNSHijack) ||
+		!slices.Equal(tunConf.Inet4Address, LastTunConf.Inet4Address) ||
+		!slices.Equal(tunConf.Inet6Address, LastTunConf.Inet6Address) ||
+		!slices.Equal(tunConf.Inet4RouteAddress, LastTunConf.Inet4RouteAddress) ||
+		!slices.Equal(tunConf.Inet6RouteAddress, LastTunConf.Inet6RouteAddress) ||
+		!slices.Equal(tunConf.IncludeUID, LastTunConf.IncludeUID) ||
+		!slices.Equal(tunConf.IncludeUIDRange, LastTunConf.IncludeUIDRange) ||
+		!slices.Equal(tunConf.ExcludeUID, LastTunConf.ExcludeUID) ||
+		!slices.Equal(tunConf.ExcludeUIDRange, LastTunConf.ExcludeUIDRange) ||
+		!slices.Equal(tunConf.IncludeAndroidUser, LastTunConf.IncludeAndroidUser) ||
+		!slices.Equal(tunConf.IncludePackage, LastTunConf.IncludePackage) ||
+		!slices.Equal(tunConf.ExcludePackage, LastTunConf.ExcludePackage) {
+		return true
+	}
+
+	return false
 }
 
 // CleanUp clean up something

@@ -36,7 +36,7 @@ var (
 	ruleProviders  map[string]R.RuleProvider
 	proxies        = make(map[string]C.Proxy)
 	providers      map[string]provider.ProxyProvider
-	sniffingEnable bool
+	sniffingEnable = false
 	configMux      sync.RWMutex
 
 	// Outbound Rule
@@ -59,7 +59,7 @@ func SetSniffing(b bool) {
 func UpdateSniffer(dispatcher *sniffer.SnifferDispatcher) {
 	configMux.Lock()
 	sniffer.Dispatcher = dispatcher
-	sniffingEnable = true
+	sniffingEnable = dispatcher.Enable()
 	configMux.Unlock()
 }
 

@@ -21,6 +21,7 @@ const (
 	Http
 	Vmess
 	Trojan
+	WireGuard
 
 	Relay
 	Selector
@@ -147,6 +148,8 @@ func (at AdapterType) String() string {
 		return "Vmess"
 	case Trojan:
 		return "Trojan"
+	case WireGuard:
+		return "WireGuard"
 
 	case Relay:
 		return "Relay"

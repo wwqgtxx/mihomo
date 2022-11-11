@@ -26,9 +26,9 @@ func serializesSocksAddr(metadata *C.Metadata) []byte {
 	port := []byte{uint8(p >> 8), uint8(p & 0xff)}
 	switch addrType {
 	case socks5.AtypDomainName:
-		len := uint8(len(metadata.Host))
+		lenM := uint8(len(metadata.Host))
 		host := []byte(metadata.Host)
-		buf = [][]byte{{aType, len}, host, port}
+		buf = [][]byte{{aType, lenM}, host, port}
 	case socks5.AtypIPv4:
 		host := metadata.DstIP.AsSlice()
 		buf = [][]byte{{aType}, host, port}

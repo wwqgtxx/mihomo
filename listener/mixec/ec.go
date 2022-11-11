@@ -63,7 +63,7 @@ func (h ecHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return
 		}
-		if !sing_vmess.HandleVmess(conn) {
+		if !sing_vmess.HandleVmess(conn, h.in) {
 			_ = conn.Close()
 		}
 		return
@@ -73,7 +73,7 @@ func (h ecHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return
 		}
-		if !sing_shadowsocks.HandleShadowSocks(conn) {
+		if !sing_shadowsocks.HandleShadowSocks(conn, h.in) {
 			_ = conn.Close()
 		}
 		return

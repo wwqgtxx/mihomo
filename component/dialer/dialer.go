@@ -115,9 +115,9 @@ func singleDialContext(ctx context.Context, network, address string, options []O
 	var ip netip.Addr
 	switch network {
 	case "tcp4", "udp4":
-		ip, err = resolver.ResolveIPv4WithResolver(host, resolver.DialerResolver)
+		ip, err = resolver.ResolveIPv4WithResolver(ctx, host, resolver.DialerResolver)
 	default:
-		ip, err = resolver.ResolveIPv6WithResolver(host, resolver.DialerResolver)
+		ip, err = resolver.ResolveIPv6WithResolver(ctx, host, resolver.DialerResolver)
 	}
 	if err != nil {
 		return nil, err
@@ -159,9 +159,9 @@ func dualStackDialContext(ctx context.Context, network, address string, options 
 
 		var ip netip.Addr
 		if ipv6 {
-			ip, result.error = resolver.ResolveIPv6WithResolver(host, resolver.DialerResolver)
+			ip, result.error = resolver.ResolveIPv6WithResolver(ctx, host, resolver.DialerResolver)
 		} else {
-			ip, result.error = resolver.ResolveIPv4WithResolver(host, resolver.DialerResolver)
+			ip, result.error = resolver.ResolveIPv4WithResolver(ctx, host, resolver.DialerResolver)
 		}
 		if result.error != nil {
 			return

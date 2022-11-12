@@ -2,6 +2,7 @@ package outbound
 
 import (
 	"bytes"
+	"context"
 	"net"
 	"strconv"
 	"time"
@@ -39,13 +40,13 @@ func serializesSocksAddr(metadata *C.Metadata) []byte {
 	return bytes.Join(buf, nil)
 }
 
-func resolveUDPAddr(network, address string) (*net.UDPAddr, error) {
+func resolveUDPAddr(ctx context.Context, network, address string) (*net.UDPAddr, error) {
 	host, port, err := net.SplitHostPort(address)
 	if err != nil {
 		return nil, err
 	}
 
-	ip, err := resolver.ResolveIPWithResolver(host, resolver.DialerResolver)
+	ip, err := resolver.ResolveIPWithResolver(ctx, host, resolver.DialerResolver)
 	if err != nil {
 		return nil, err
 	}

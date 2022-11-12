@@ -450,20 +450,24 @@ func match(metadata *C.Metadata) (C.Proxy, C.Rule, error) {
 
 	checkResolved := func(rule C.Rule) {
 		if !resolved && shouldResolveIP(rule, metadata) {
-			ip, err := resolver.ResolveIP(metadata.Host)
-			if err != nil {
-				log.Infoln("[DNS] resolve %s error: %s", metadata.Host, err.Error())
-			} else {
-				record, _ := mmdb.Instance().Country(ip.AsSlice())
-				if len(record.Country.IsoCode) > 0 {
-					log.Infoln("[DNS] %s --> %s [GEO=%s]", metadata.Host, ip.String(), record.Country.IsoCode)
+			func() {
+				ctx, cancel := context.WithTimeout(context.Background(), resolver.DefaultDNSTimeout)
+				defer cancel()
+				ip, err := resolver.ResolveIP(ctx, metadata.Host)
+				if err != nil {
+					log.Infoln("[DNS] resolve %s error: %s", metadata.Host, err.Error())
 				} else {
-					log.Infoln("[DNS] %s --> %s", metadata.Host, ip.String())
-				}
+					record, _ := mmdb.Instance().Country(ip.AsSlice())
+					if len(record.Country.IsoCode) > 0 {
+						log.Infoln("[DNS] %s --> %s [GEO=%s]", metadata.Host, ip.String(), record.Country.IsoCode)
+					} else {
+						log.Infoln("[DNS] %s --> %s", metadata.Host, ip.String())
+					}
 
-				metadata.DstIP = ip
-			}
-			resolved = true
+					metadata.DstIP = ip
+				}
+				resolved = true
+			}()
 		}
 	}
 

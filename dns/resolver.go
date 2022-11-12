@@ -93,8 +93,8 @@ func (r *Resolver) LookupIP(ctx context.Context, host string) (ip []netip.Addr, 
 }
 
 // ResolveIP request with TypeA and TypeAAAA, priority return TypeA
-func (r *Resolver) ResolveIP(host string) (ip netip.Addr, err error) {
-	ips, err := r.LookupIP(context.Background(), host)
+func (r *Resolver) ResolveIP(ctx context.Context, host string) (ip netip.Addr, err error) {
+	ips, err := r.LookupIP(ctx, host)
 	if err != nil {
 		return netip.Addr{}, err
 	} else if len(ips) == 0 {
@@ -109,8 +109,8 @@ func (r *Resolver) LookupIPv4(ctx context.Context, host string) ([]netip.Addr, e
 }
 
 // ResolveIPv4 request with TypeA
-func (r *Resolver) ResolveIPv4(host string) (ip netip.Addr, err error) {
-	ips, err := r.lookupIP(context.Background(), host, D.TypeA)
+func (r *Resolver) ResolveIPv4(ctx context.Context, host string) (ip netip.Addr, err error) {
+	ips, err := r.lookupIP(ctx, host, D.TypeA)
 	if err != nil {
 		return netip.Addr{}, err
 	} else if len(ips) == 0 {
@@ -125,8 +125,8 @@ func (r *Resolver) LookupIPv6(ctx context.Context, host string) ([]netip.Addr, e
 }
 
 // ResolveIPv6 request with TypeAAAA
-func (r *Resolver) ResolveIPv6(host string) (ip netip.Addr, err error) {
-	ips, err := r.lookupIP(context.Background(), host, D.TypeAAAA)
+func (r *Resolver) ResolveIPv6(ctx context.Context, host string) (ip netip.Addr, err error) {
+	ips, err := r.lookupIP(ctx, host, D.TypeAAAA)
 	if err != nil {
 		return netip.Addr{}, err
 	} else if len(ips) == 0 {

@@ -63,8 +63,8 @@ type Resolver struct {
 	policy                *trie.DomainTrie[[]dnsClient]
 }
 
-// LookupIP request with TypeA and TypeAAAA, priority return TypeA
-func (r *Resolver) LookupIP(ctx context.Context, host string) (ip []netip.Addr, err error) {
+// LookupIPPrimaryIPv4 request with TypeA and TypeAAAA, priority return TypeA
+func (r *Resolver) LookupIPPrimaryIPv4(ctx context.Context, host string) (ip []netip.Addr, err error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -92,9 +92,40 @@ func (r *Resolver) LookupIP(ctx context.Context, host string) (ip []netip.Addr, 
 	return ip, nil
 }
 
+// LookupIP request with TypeA and TypeAAAA
+func (r *Resolver) LookupIP(ctx context.Context, host string) (ip []netip.Addr, err error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	ch := make(chan []netip.Addr, 1)
+
+	go func() {
+		defer close(ch)
+		ip, err := r.lookupIP(ctx, host, D.TypeAAAA)
+		if err != nil {
+			return
+		}
+		ch <- ip
+	}()
+
+	ip, err = r.lookupIP(ctx, host, D.TypeA)
+
+	select {
+	case ipv6s, open := <-ch:
+		if !open && err != nil {
+			return nil, resolver.ErrIPNotFound
+		}
+		ip = append(ip, ipv6s...)
+	case <-time.After(30 * time.Millisecond):
+		// wait ipv6 result
+	}
+
+	return ip, nil
+}
+
 // ResolveIP request with TypeA and TypeAAAA, priority return TypeA
 func (r *Resolver) ResolveIP(ctx context.Context, host string) (ip netip.Addr, err error) {
-	ips, err := r.LookupIP(ctx, host)
+	ips, err := r.LookupIPPrimaryIPv4(ctx, host)
 	if err != nil {
 		return netip.Addr{}, err
 	} else if len(ips) == 0 {

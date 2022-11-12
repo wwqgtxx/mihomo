@@ -154,6 +154,16 @@ func (r *Resolver) ExchangeContext(ctx context.Context, m *D.Msg) (msg *D.Msg, e
 	if len(m.Question) == 0 {
 		return nil, errors.New("should have one question at least")
 	}
+	continueFetch := false
+	defer func() {
+		if continueFetch || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			ctx, cancel := context.WithTimeout(context.Background(), resolver.DefaultDNSTimeout)
+			defer cancel()
+			go func() {
+				_, _ = r.exchangeWithoutCache(ctx, m) // ignore result, just for putMsgToCache
+			}()
+		}
+	}()
 
 	q := m.Question[0]
 	cache, expireTime, hit := r.lruCache.GetWithExpire(q.String())
@@ -162,7 +172,7 @@ func (r *Resolver) ExchangeContext(ctx context.Context, m *D.Msg) (msg *D.Msg, e
 		msg = cache.Copy()
 		if expireTime.Before(now) {
 			setMsgTTL(msg, uint32(1)) // Continue fetch
-			go r.exchangeWithoutCache(ctx, m)
+			continueFetch = true
 		} else {
 			setMsgTTL(msg, uint32(time.Until(expireTime).Seconds()))
 		}

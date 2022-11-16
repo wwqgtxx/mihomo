@@ -18,7 +18,7 @@ require (
 	github.com/oschwald/geoip2-golang v1.8.0
 	github.com/sagernet/netlink v0.0.0-20220905062125-8043b4a9aa97
 	github.com/sagernet/sing v0.0.0-20221008120626-60a9910eefe4
-	github.com/sagernet/sing-shadowsocks v0.0.0-20220819002358-7461bb09a8f6
+	github.com/sagernet/sing-shadowsocks v0.0.0-20221112030934-e55284e180ea
 	github.com/sagernet/sing-tun v0.0.0-20221104121441-66c48a57776f
 	github.com/sagernet/sing-vmess v0.0.0-20221109021549-b446d5bdddf0
 	github.com/sagernet/wireguard-go v0.0.0-20221108054404-7c2acadba17c
@@ -27,13 +27,17 @@ require (
 	go.etcd.io/bbolt v1.3.6
 	go.uber.org/atomic v1.10.0
 	go.uber.org/automaxprocs v1.5.1
-	golang.org/x/crypto v0.1.1-0.20221104140620-334521b960a2
+	golang.org/x/crypto v0.2.0
 	golang.org/x/exp v0.0.0-20221031165847-c99f073a8326
-	golang.org/x/net v0.1.1-0.20221104221306-15e1b255657f
+	golang.org/x/net v0.2.0
 	golang.org/x/sync v0.1.0
-	golang.org/x/sys v0.1.1-0.20221102194838-fc697a31fa06
+	golang.org/x/sys v0.2.0
 	gopkg.in/yaml.v3 v3.0.1
 )
+
+replace github.com/sagernet/sing-tun => github.com/MetaCubeX/sing-tun v0.0.0-20221105124245-542e9b56a6dc
+
+replace github.com/sagernet/sing-shadowsocks => github.com/MetaCubeX/sing-shadowsocks v0.0.0-20221116103607-48a7095182b1
 
 require (
 	github.com/ajg/form v1.5.1 // indirect

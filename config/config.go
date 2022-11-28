@@ -62,8 +62,6 @@ type Inbound struct {
 	MixECConfig       string     `json:"mixec-config"`
 	ShadowSocksConfig string     `json:"ss-config"`
 	VmessConfig       string     `json:"vmess-config"`
-	TcpTunConfig      string     `json:"tcptun-config"`
-	UdpTunConfig      string     `json:"udptun-config"`
 	MTProxyConfig     string     `json:"mtproxy-config"`
 	Authentication    []string   `json:"authentication"`
 	AllowLan          bool       `json:"allow-lan"`

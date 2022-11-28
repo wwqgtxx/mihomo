@@ -319,7 +319,7 @@ func handleUDPConn(packet *inbound.PacketAdapter) {
 
 		switch true {
 		case metadata.SpecialProxy != "":
-			log.Infoln("[UDP] %s --> %s using %s", metadata.SourceAddress(), metadata.RemoteAddress(), metadata.SpecialProxy)
+			log.Infoln("[UDP] %s(%s) --> %s using %s", metadata.SourceAddress(), metadata.Process, metadata.RemoteAddress(), metadata.SpecialProxy)
 		case rule != nil:
 			log.Infoln(
 				"[%s][UDP] %s(%s) --> %s match %s(%s) using %s",
@@ -416,7 +416,7 @@ func handleTCPConn(connCtx C.ConnContext) {
 
 	switch true {
 	case metadata.SpecialProxy != "":
-		log.Infoln("[TCP] %s --> %s using %s", metadata.SourceAddress(), metadata.RemoteAddress(), metadata.SpecialProxy)
+		log.Infoln("[TCP] %s(%s) --> %s using %s", metadata.SourceAddress(), metadata.Process, metadata.RemoteAddress(), metadata.SpecialProxy)
 	case rule != nil:
 		log.Infoln(
 			"[%s][TCP] %s(%s) --> %s match %s(%s) using %s",

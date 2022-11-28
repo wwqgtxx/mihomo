@@ -150,7 +150,7 @@ func (t *Tunnel) UnmarshalYAML(unmarshal func(any) error) error {
 	parts := lo.Map(strings.Split(tp, ","), func(s string, _ int) string {
 		return strings.TrimSpace(s)
 	})
-	if len(parts) != 4 {
+	if len(parts) != 3 && len(parts) != 4 {
 		return fmt.Errorf("invalid tunnel config %s", tp)
 	}
 	network := strings.Split(parts[0], "/")
@@ -177,8 +177,10 @@ func (t *Tunnel) UnmarshalYAML(unmarshal func(any) error) error {
 		Network: network,
 		Address: address,
 		Target:  target,
-		Proxy:   parts[3],
 	})
+	if len(parts) == 4 {
+		t.Proxy = parts[3]
+	}
 	return nil
 }
 
@@ -301,8 +303,10 @@ func ParseRawConfig(rawCfg *RawConfig) (*Config, error) {
 	config.Tunnels = rawCfg.Tunnels
 	// verify tunnels
 	for _, t := range config.Tunnels {
-		if _, ok := config.Proxies[t.Proxy]; !ok {
-			return nil, fmt.Errorf("tunnel proxy %s not found", t.Proxy)
+		if len(t.Proxy) > 0 {
+			if _, ok := config.Proxies[t.Proxy]; !ok {
+				return nil, fmt.Errorf("tunnel proxy %s not found", t.Proxy)
+			}
 		}
 	}
 

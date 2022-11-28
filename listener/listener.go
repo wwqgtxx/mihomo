@@ -1,4 +1,4 @@
-package proxy
+package listener
 
 import (
 	"fmt"
@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/Dreamacro/clash/adapter/inbound"
@@ -27,6 +28,8 @@ import (
 	"github.com/Dreamacro/clash/listener/tuic"
 	"github.com/Dreamacro/clash/listener/tunnel"
 	"github.com/Dreamacro/clash/log"
+
+	"github.com/samber/lo"
 )
 
 var (
@@ -46,10 +49,10 @@ var (
 	mixECListener       *mixec.Listener
 	shadowSocksListener C.AdvanceListener
 	vmessListener       *sing_vmess.Listener
-	tcpTunListener      *tunnel.Listener
-	udpTunListener      *tunnel.UdpListener
 	tuicListener        *tuic.Listener
 	mtpListener         *mtproxy.Listener
+	tunnelTCPListeners  = map[string]*tunnel.Listener{}
+	tunnelUDPListeners  = map[string]*tunnel.PacketConn{}
 
 	// lock for recreate function
 	socksMux  sync.Mutex
@@ -57,12 +60,11 @@ var (
 	redirMux  sync.Mutex
 	tproxyMux sync.Mutex
 	mixedMux  sync.Mutex
+	tunnelMux sync.Mutex
 	tunMux    sync.Mutex
 	mixECMux  sync.Mutex
 	ssMux     sync.Mutex
 	vmessMux  sync.Mutex
-	tcpTunMux sync.Mutex
-	udpTunMux sync.Mutex
 	tuicMux   sync.Mutex
 	mtpMux    sync.Mutex
 
@@ -321,76 +323,6 @@ func ReCreateVmess(vmessConfig string, tcpIn chan<- C.ConnContext, udpIn chan<- 
 	}
 
 	vmessListener = listener
-
-	return
-}
-
-func ReCreateTcpTun(config string, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.PacketAdapter) {
-	tcpTunMux.Lock()
-	defer tcpTunMux.Unlock()
-	shouldIgnore := false
-
-	var err error
-	defer func() {
-		if err != nil {
-			log.Errorln("Start TcpTun server error: %s", err.Error())
-		}
-	}()
-
-	if tcpTunListener != nil {
-		if tcpTunListener.Config() != config {
-			tcpTunListener.Close()
-			tcpTunListener = nil
-		} else {
-			shouldIgnore = true
-		}
-	}
-
-	if shouldIgnore {
-		return
-	}
-
-	tcpListener, err := tunnel.New(config, tcpIn)
-	if err != nil {
-		return
-	}
-
-	tcpTunListener = tcpListener
-
-	return
-}
-
-func ReCreateUdpTun(config string, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.PacketAdapter) {
-	udpTunMux.Lock()
-	defer udpTunMux.Unlock()
-	shouldIgnore := false
-
-	var err error
-	defer func() {
-		if err != nil {
-			log.Errorln("Start UdpTun server error: %s", err.Error())
-		}
-	}()
-
-	if udpTunListener != nil {
-		if udpTunListener.Config() != config {
-			udpTunListener.Close()
-			udpTunListener = nil
-		} else {
-			shouldIgnore = true
-		}
-	}
-
-	if shouldIgnore {
-		return
-	}
-
-	udpListener, err := tunnel.NewUdp(config, udpIn)
-	if err != nil {
-		return
-	}
-
-	udpTunListener = udpListener
 
 	return
 }
@@ -659,6 +591,95 @@ func ReCreateMTProxy(config string, tcpIn chan<- C.ConnContext, udpIn chan<- *in
 	return
 }
 
+func PatchTunnel(tunnels []config.Tunnel, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.PacketAdapter) {
+	tunnelMux.Lock()
+	defer tunnelMux.Unlock()
+
+	type addrProxy struct {
+		network string
+		addr    string
+		target  string
+		proxy   string
+	}
+
+	tcpOld := lo.Map(
+		lo.Keys(tunnelTCPListeners),
+		func(key string, _ int) addrProxy {
+			parts := strings.Split(key, "/")
+			return addrProxy{
+				network: "tcp",
+				addr:    parts[0],
+				target:  parts[1],
+				proxy:   parts[2],
+			}
+		},
+	)
+	udpOld := lo.Map(
+		lo.Keys(tunnelUDPListeners),
+		func(key string, _ int) addrProxy {
+			parts := strings.Split(key, "/")
+			return addrProxy{
+				network: "udp",
+				addr:    parts[0],
+				target:  parts[1],
+				proxy:   parts[2],
+			}
+		},
+	)
+	oldElm := lo.Union(tcpOld, udpOld)
+
+	newElm := lo.FlatMap(
+		tunnels,
+		func(tunnel config.Tunnel, _ int) []addrProxy {
+			return lo.Map(
+				tunnel.Network,
+				func(network string, _ int) addrProxy {
+					return addrProxy{
+						network: network,
+						addr:    tunnel.Address,
+						target:  tunnel.Target,
+						proxy:   tunnel.Proxy,
+					}
+				},
+			)
+		},
+	)
+
+	needClose, needCreate := lo.Difference(oldElm, newElm)
+
+	for _, elm := range needClose {
+		key := fmt.Sprintf("%s/%s/%s", elm.addr, elm.target, elm.proxy)
+		if elm.network == "tcp" {
+			tunnelTCPListeners[key].Close()
+			delete(tunnelTCPListeners, key)
+		} else {
+			tunnelUDPListeners[key].Close()
+			delete(tunnelUDPListeners, key)
+		}
+	}
+
+	for _, elm := range needCreate {
+		key := fmt.Sprintf("%s/%s/%s", elm.addr, elm.target, elm.proxy)
+		if elm.network == "tcp" {
+			l, err := tunnel.New(elm.addr, elm.target, elm.proxy, tcpIn)
+			if err != nil {
+				log.Errorln("Start tunnel %s error: %s", elm.target, err.Error())
+				continue
+			}
+			tunnelTCPListeners[key] = l
+			log.Infoln("Tunnel(tcp/%s) proxy %s listening at: %s", elm.target, elm.proxy, tunnelTCPListeners[key].Address())
+		} else {
+			l, err := tunnel.NewUDP(elm.addr, elm.target, elm.proxy, udpIn)
+			if err != nil {
+				log.Errorln("Start tunnel %s error: %s", elm.target, err.Error())
+				continue
+			}
+			tunnelUDPListeners[key] = l
+			log.Infoln("Tunnel(udp/%s) proxy %s listening at: %s", elm.target, elm.proxy, tunnelUDPListeners[key].Address())
+		}
+	}
+}
+
 // GetPorts return the ports of proxy servers
 func GetPorts() *Ports {
 	ports := &Ports{}
@@ -703,14 +724,6 @@ func GetPorts() *Ports {
 
 	if vmessListener != nil {
 		ports.VmessConfig = vmessListener.Config()
-	}
-
-	if tcpTunListener != nil {
-		ports.TcpTunConfig = tcpTunListener.Config()
-	}
-
-	if udpTunListener != nil {
-		ports.UdpTunConfig = udpTunListener.Config()
 	}
 
 	return ports

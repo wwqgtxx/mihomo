@@ -202,6 +202,15 @@ func preHandleMetadata(metadata *C.Metadata) error {
 }
 
 func resolveMetadata(ctx C.PlainContext, metadata *C.Metadata) (proxy C.Proxy, rule C.Rule, err error) {
+	if metadata.SpecialProxy != "" {
+		var exist bool
+		proxy, exist = proxies[metadata.SpecialProxy]
+		if !exist {
+			err = fmt.Errorf("proxy %s not found", metadata.SpecialProxy)
+		}
+		return
+	}
+
 	switch mode {
 	case Direct:
 		proxy = proxies["DIRECT"]
@@ -309,6 +318,8 @@ func handleUDPConn(packet *inbound.PacketAdapter) {
 		pc := statistic.NewUDPTracker(rawPc, statistic.DefaultManager, metadata, rule)
 
 		switch true {
+		case metadata.SpecialProxy != "":
+			log.Infoln("[UDP] %s --> %s using %s", metadata.SourceAddress(), metadata.RemoteAddress(), metadata.SpecialProxy)
 		case rule != nil:
 			log.Infoln(
 				"[%s][UDP] %s(%s) --> %s match %s(%s) using %s",
@@ -404,6 +415,8 @@ func handleTCPConn(connCtx C.ConnContext) {
 	defer remoteConn.Close()
 
 	switch true {
+	case metadata.SpecialProxy != "":
+		log.Infoln("[TCP] %s --> %s using %s", metadata.SourceAddress(), metadata.RemoteAddress(), metadata.SpecialProxy)
 	case rule != nil:
 		log.Infoln(
 			"[%s][TCP] %s(%s) --> %s match %s(%s) using %s",

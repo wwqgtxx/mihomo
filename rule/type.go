@@ -30,10 +30,8 @@ func NewType(network, adapter string) (*Type, error) {
 		ntType.type_ = C.REDIR
 	case "TPROXY":
 		ntType.type_ = C.TPROXY
-	case "TCPTUN":
-		ntType.type_ = C.TCPTUN
-	case "UDPTUN":
-		ntType.type_ = C.UDPTUN
+	case "TUNNEL":
+		ntType.type_ = C.TUNNEL
 	case "MTPROXY":
 		ntType.type_ = C.MTPROXY
 	case "TUN":

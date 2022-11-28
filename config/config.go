@@ -28,6 +28,7 @@ import (
 	R "github.com/Dreamacro/clash/rule"
 	T "github.com/Dreamacro/clash/tunnel"
 
+	"github.com/samber/lo"
 	"gopkg.in/yaml.v3"
 )
 
@@ -226,6 +227,7 @@ type Config struct {
 	Users          []auth.AuthUser
 	Proxies        map[string]C.Proxy
 	Providers      map[string]providerTypes.ProxyProvider
+	Tunnels        []Tunnel
 	Sniffer        *Sniffer
 }
 
@@ -251,6 +253,64 @@ type RawFallbackFilter struct {
 	Domain    []string `yaml:"domain"`
 }
 
+type tunnel struct {
+	Network []string `yaml:"network"`
+	Address string   `yaml:"address"`
+	Target  string   `yaml:"target"`
+	Proxy   string   `yaml:"proxy"`
+}
+
+type Tunnel tunnel
+
+// UnmarshalYAML implements yaml.Unmarshaler
+func (t *Tunnel) UnmarshalYAML(unmarshal func(any) error) error {
+	var tp string
+	if err := unmarshal(&tp); err != nil {
+		var inner tunnel
+		if err := unmarshal(&inner); err != nil {
+			return err
+		}
+
+		*t = Tunnel(inner)
+		return nil
+	}
+
+	// parse udp/tcp,address,target,proxy
+	parts := lo.Map(strings.Split(tp, ","), func(s string, _ int) string {
+		return strings.TrimSpace(s)
+	})
+	if len(parts) != 4 {
+		return fmt.Errorf("invalid tunnel config %s", tp)
+	}
+	network := strings.Split(parts[0], "/")
+
+	// validate network
+	for _, n := range network {
+		switch n {
+		case "tcp", "udp":
+		default:
+			return fmt.Errorf("invalid tunnel network %s", n)
+		}
+	}
+
+	// validate address and target
+	address := parts[1]
+	target := parts[2]
+	for _, addr := range []string{address, target} {
+		if _, _, err := net.SplitHostPort(addr); err != nil {
+			return fmt.Errorf("invalid tunnel target or address %s", addr)
+		}
+	}
+
+	*t = Tunnel(tunnel{
+		Network: network,
+		Address: address,
+		Target:  target,
+		Proxy:   parts[3],
+	})
+	return nil
+}
+
 type RawConfig struct {
 	Port                   int          `yaml:"port"`
 	SocksPort              int          `yaml:"socks-port"`
@@ -260,8 +320,6 @@ type RawConfig struct {
 	MixECConfig            string       `yaml:"mixec-config"`
 	ShadowSocksConfig      string       `yaml:"ss-config"`
 	VmessConfig            string       `yaml:"vmess-config"`
-	TcpTunConfig           string       `yaml:"tcptun-config"`
-	UdpTunConfig           string       `yaml:"udptun-config"`
 	MTProxyConfig          string       `yaml:"mtproxy-config"`
 	Authentication         []string     `yaml:"authentication"`
 	AllowLan               bool         `yaml:"allow-lan"`
@@ -274,6 +332,7 @@ type RawConfig struct {
 	Secret                 string       `yaml:"secret"`
 	Interface              string       `yaml:"interface-name"`
 	RoutingMark            int          `yaml:"routing-mark"`
+	Tunnels                []Tunnel     `yaml:"tunnels"`
 	UseRemoteDnsDefault    bool         `yaml:"use-remote-dns-default"`
 	UseSystemDnsDial       bool         `yaml:"use-system-dns-dial"`
 	HealthCheckURL         string       `yaml:"health-check-url"`
@@ -443,6 +502,14 @@ func ParseRawConfig(rawCfg *RawConfig) (*Config, error) {
 
 	config.Users = parseAuthentication(rawCfg.Authentication)
 
+	config.Tunnels = rawCfg.Tunnels
+	// verify tunnels
+	for _, t := range config.Tunnels {
+		if _, ok := config.Proxies[t.Proxy]; !ok {
+			return nil, fmt.Errorf("tunnel proxy %s not found", t.Proxy)
+		}
+	}
+
 	config.Sniffer, err = parseSniffer(rawCfg.Sniffer)
 	if err != nil {
 		return nil, err
@@ -475,8 +542,6 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 			MixECConfig:       cfg.MixECConfig,
 			ShadowSocksConfig: cfg.ShadowSocksConfig,
 			VmessConfig:       cfg.VmessConfig,
-			TcpTunConfig:      cfg.TcpTunConfig,
-			UdpTunConfig:      cfg.UdpTunConfig,
 			MTProxyConfig:     cfg.MTProxyConfig,
 			AllowLan:          cfg.AllowLan,
 			BindAddress:       cfg.BindAddress,

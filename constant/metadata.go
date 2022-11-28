@@ -22,8 +22,7 @@ const (
 	VMESS
 	REDIR
 	TPROXY
-	TCPTUN
-	UDPTUN
+	TUNNEL
 	MTPROXY
 	TUN
 	TUIC
@@ -64,10 +63,8 @@ func (t Type) String() string {
 		return "Redir"
 	case TPROXY:
 		return "TProxy"
-	case TCPTUN:
-		return "TcpTun"
-	case UDPTUN:
-		return "UdpTun"
+	case TUNNEL:
+		return "Tunnel"
 	case MTPROXY:
 		return "MTProxy"
 	case TUN:
@@ -89,18 +86,19 @@ func (t Type) MarshalJSON() ([]byte, error) {
 
 // Metadata is used to store connection address
 type Metadata struct {
-	NetWork     NetWork    `json:"network"`
-	Type        Type       `json:"type"`
-	SrcIP       netip.Addr `json:"sourceIP"`
-	DstIP       netip.Addr `json:"destinationIP"`
-	SrcPort     string     `json:"sourcePort"`
-	DstPort     string     `json:"destinationPort"`
-	InIP        netip.Addr `json:"inboundIP"`
-	InPort      string     `json:"inboundPort"`
-	Host        string     `json:"host"`
-	DNSMode     DNSMode    `json:"dnsMode"`
-	Process     string     `json:"process"`
-	ProcessPath string     `json:"processPath"`
+	NetWork      NetWork    `json:"network"`
+	Type         Type       `json:"type"`
+	SrcIP        netip.Addr `json:"sourceIP"`
+	DstIP        netip.Addr `json:"destinationIP"`
+	SrcPort      string     `json:"sourcePort"`
+	DstPort      string     `json:"destinationPort"`
+	InIP         netip.Addr `json:"inboundIP"`
+	InPort       string     `json:"inboundPort"`
+	Host         string     `json:"host"`
+	DNSMode      DNSMode    `json:"dnsMode"`
+	Process      string     `json:"process"`
+	ProcessPath  string     `json:"processPath"`
+	SpecialProxy string     `json:"specialProxy"`
 }
 
 func (m *Metadata) RemoteAddress() string {

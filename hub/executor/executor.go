@@ -22,7 +22,7 @@ import (
 	C "github.com/Dreamacro/clash/constant"
 	providerTypes "github.com/Dreamacro/clash/constant/provider"
 	"github.com/Dreamacro/clash/dns"
-	P "github.com/Dreamacro/clash/listener"
+	"github.com/Dreamacro/clash/listener"
 	authStore "github.com/Dreamacro/clash/listener/auth"
 	"github.com/Dreamacro/clash/log"
 	R "github.com/Dreamacro/clash/rule"
@@ -82,12 +82,12 @@ func ApplyConfig(cfg *config.Config, force bool) {
 	updateDNS(cfg.DNS)
 	updateTun(cfg.General)
 	updateExperimental(cfg)
-
 	loadProvider(cfg.RulesProviders, cfg.Providers)
+	updateTunnels(cfg.Tunnels)
 }
 
 func GetGeneral() *config.General {
-	ports := P.GetPorts()
+	ports := listener.GetPorts()
 	authenticator := []string{}
 	if auth := authStore.Authenticator(); auth != nil {
 		authenticator = auth.Users()
@@ -99,17 +99,15 @@ func GetGeneral() *config.General {
 			SocksPort:         ports.SocksPort,
 			RedirPort:         ports.RedirPort,
 			MixedPort:         ports.MixedPort,
-			Tun:               P.Tun(),
+			Tun:               listener.Tun(),
 			MixECConfig:       ports.MixECConfig,
 			TProxyPort:        ports.TProxyPort,
 			ShadowSocksConfig: ports.ShadowSocksConfig,
 			VmessConfig:       ports.VmessConfig,
-			TcpTunConfig:      ports.TcpTunConfig,
-			UdpTunConfig:      ports.UdpTunConfig,
 			MTProxyConfig:     ports.MTProxyConfig,
 			Authentication:    authenticator,
-			AllowLan:          P.AllowLan(),
-			BindAddress:       P.BindAddress(),
+			AllowLan:          listener.AllowLan(),
+			BindAddress:       listener.BindAddress(),
 		},
 		Mode:                   tunnel.Mode(),
 		LogLevel:               log.Level(),
@@ -223,7 +221,7 @@ func updateTun(general *config.General) {
 	}
 	tcpIn := tunnel.TCPIn()
 	udpIn := tunnel.UDPIn()
-	P.ReCreateTun(general.Tun, tcpIn, udpIn)
+	listener.ReCreateTun(general.Tun, tcpIn, udpIn)
 }
 
 func updateSniffer(sniffer *config.Sniffer) {
@@ -247,6 +245,10 @@ func updateSniffer(sniffer *config.Sniffer) {
 		tunnel.UpdateSniffer(dispatcher)
 		log.Infoln("Sniffer is closed")
 	}
+}
+
+func updateTunnels(tunnels []config.Tunnel) {
+	listener.PatchTunnel(tunnels, tunnel.TCPIn(), tunnel.UDPIn())
 }
 
 func updateGeneral(general *config.General, force bool) {
@@ -275,26 +277,24 @@ func updateGeneral(general *config.General, force bool) {
 	}
 
 	allowLan := general.AllowLan
-	P.SetAllowLan(allowLan)
+	listener.SetAllowLan(allowLan)
 
 	bindAddress := general.BindAddress
-	P.SetBindAddress(bindAddress)
+	listener.SetBindAddress(bindAddress)
 
 	tcpIn := tunnel.TCPIn()
 	udpIn := tunnel.UDPIn()
 
-	P.ReCreateHTTP(general.Port, tcpIn)
-	P.ReCreateSocks(general.SocksPort, tcpIn, udpIn)
-	P.ReCreateRedir(general.RedirPort, tcpIn, udpIn)
-	P.ReCreateTProxy(general.TProxyPort, tcpIn, udpIn)
-	P.ReCreateMixed(general.MixedPort, tcpIn, udpIn)
-	P.ReCreateMixEC(general.MixECConfig, tcpIn, udpIn)
-	P.ReCreateShadowSocks(general.ShadowSocksConfig, tcpIn, udpIn)
-	P.ReCreateVmess(general.VmessConfig, tcpIn, udpIn)
-	P.ReCreateTcpTun(general.TcpTunConfig, tcpIn, udpIn)
-	P.ReCreateUdpTun(general.UdpTunConfig, tcpIn, udpIn)
-	P.ReCreateMTProxy(general.MTProxyConfig, tcpIn, udpIn)
-	P.ReCreateTuic(general.TuicServer, tcpIn, udpIn)
+	listener.ReCreateHTTP(general.Port, tcpIn)
+	listener.ReCreateSocks(general.SocksPort, tcpIn, udpIn)
+	listener.ReCreateRedir(general.RedirPort, tcpIn, udpIn)
+	listener.ReCreateTProxy(general.TProxyPort, tcpIn, udpIn)
+	listener.ReCreateMixed(general.MixedPort, tcpIn, udpIn)
+	listener.ReCreateMixEC(general.MixECConfig, tcpIn, udpIn)
+	listener.ReCreateShadowSocks(general.ShadowSocksConfig, tcpIn, udpIn)
+	listener.ReCreateVmess(general.VmessConfig, tcpIn, udpIn)
+	listener.ReCreateMTProxy(general.MTProxyConfig, tcpIn, udpIn)
+	listener.ReCreateTuic(general.TuicServer, tcpIn, udpIn)
 }
 
 func updateUsers(users []auth.AuthUser) {
@@ -368,5 +368,5 @@ func patchSelectGroupPlain(proxies map[string]C.Proxy) {
 }
 
 func CleanUp() {
-	P.CleanUp()
+	listener.CleanUp()
 }

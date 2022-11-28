@@ -51,21 +51,22 @@ type General struct {
 
 // Inbound
 type Inbound struct {
-	Port              int      `json:"port"`
-	SocksPort         int      `json:"socks-port"`
-	RedirPort         int      `json:"redir-port"`
-	TProxyPort        int      `json:"tproxy-port"`
-	MixedPort         int      `json:"mixed-port"`
-	Tun               Tun      `json:"tun"`
-	MixECConfig       string   `json:"mixec-config"`
-	ShadowSocksConfig string   `json:"ss-config"`
-	VmessConfig       string   `json:"vmess-config"`
-	TcpTunConfig      string   `json:"tcptun-config"`
-	UdpTunConfig      string   `json:"udptun-config"`
-	MTProxyConfig     string   `json:"mtproxy-config"`
-	Authentication    []string `json:"authentication"`
-	AllowLan          bool     `json:"allow-lan"`
-	BindAddress       string   `json:"bind-address"`
+	Port              int        `json:"port"`
+	SocksPort         int        `json:"socks-port"`
+	RedirPort         int        `json:"redir-port"`
+	TProxyPort        int        `json:"tproxy-port"`
+	MixedPort         int        `json:"mixed-port"`
+	Tun               Tun        `json:"tun"`
+	TuicServer        TuicServer `json:"tuic-server"`
+	MixECConfig       string     `json:"mixec-config"`
+	ShadowSocksConfig string     `json:"ss-config"`
+	VmessConfig       string     `json:"vmess-config"`
+	TcpTunConfig      string     `json:"tcptun-config"`
+	UdpTunConfig      string     `json:"udptun-config"`
+	MTProxyConfig     string     `json:"mtproxy-config"`
+	Authentication    []string   `json:"authentication"`
+	AllowLan          bool       `json:"allow-lan"`
+	BindAddress       string     `json:"bind-address"`
 }
 
 // Controller
@@ -102,6 +103,24 @@ type FallbackFilter struct {
 type Profile struct {
 	StoreSelected bool `yaml:"store-selected"`
 	StoreFakeIP   bool `yaml:"store-fake-ip"`
+}
+
+type TuicServer struct {
+	Enable                bool     `yaml:"enable" json:"enable"`
+	Listen                string   `yaml:"listen" json:"listen"`
+	Token                 []string `yaml:"token" json:"token"`
+	Certificate           string   `yaml:"certificate" json:"certificate"`
+	PrivateKey            string   `yaml:"private-key" json:"private-key"`
+	CongestionController  string   `yaml:"congestion-controller" json:"congestion-controller,omitempty"`
+	MaxIdleTime           int      `yaml:"max-idle-time" json:"max-idle-time,omitempty"`
+	AuthenticationTimeout int      `yaml:"authentication-timeout" json:"authentication-timeout,omitempty"`
+	ALPN                  []string `yaml:"alpn" json:"alpn,omitempty"`
+	MaxUdpRelayPacketSize int      `yaml:"max-udp-relay-packet-size" json:"max-udp-relay-packet-size,omitempty"`
+}
+
+func (t TuicServer) String() string {
+	b, _ := json.Marshal(t)
+	return string(b)
 }
 
 // Tun config
@@ -269,6 +288,7 @@ type RawConfig struct {
 	Hosts         map[string]string         `yaml:"hosts"`
 	DNS           RawDNS                    `yaml:"dns"`
 	Tun           Tun                       `yaml:"tun"`
+	TuicServer    TuicServer                `yaml:"tuic-server"`
 	Experimental  Experimental              `yaml:"experimental"`
 	Profile       Profile                   `yaml:"profile"`
 	Proxy         []map[string]any          `yaml:"proxies"`
@@ -323,6 +343,18 @@ func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 			AutoRoute:           true,
 			Inet4Address:        []ListenPrefix{ListenPrefix(netip.MustParsePrefix("198.18.0.1/30"))},
 			Inet6Address:        []ListenPrefix{ListenPrefix(netip.MustParsePrefix("fdfe:dcba:9876::1/126"))},
+		},
+		TuicServer: TuicServer{
+			Enable:                false,
+			Token:                 nil,
+			Certificate:           "",
+			PrivateKey:            "",
+			Listen:                "",
+			CongestionController:  "",
+			MaxIdleTime:           15000,
+			AuthenticationTimeout: 1000,
+			ALPN:                  []string{"h3"},
+			MaxUdpRelayPacketSize: 1500,
 		},
 		Sniffer: RawSniffer{
 			Enable:          true,
@@ -439,6 +471,7 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 			TProxyPort:        cfg.TProxyPort,
 			MixedPort:         cfg.MixedPort,
 			Tun:               cfg.Tun,
+			TuicServer:        cfg.TuicServer,
 			MixECConfig:       cfg.MixECConfig,
 			ShadowSocksConfig: cfg.ShadowSocksConfig,
 			VmessConfig:       cfg.VmessConfig,

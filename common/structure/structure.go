@@ -13,6 +13,7 @@ import (
 type Option struct {
 	TagName          string
 	WeaklyTypedInput bool
+	KeyReplacer      *strings.Replacer
 }
 
 // Decoder is the core of structure
@@ -49,6 +50,23 @@ func (d *Decoder) Decode(src map[string]any, dst any) error {
 		omitempty := found && omitKey == "omitempty"
 
 		value, ok := src[key]
+		if !ok {
+			if d.option.KeyReplacer != nil {
+				key = d.option.KeyReplacer.Replace(key)
+			}
+
+			for _strKey := range src {
+				strKey := _strKey
+				if d.option.KeyReplacer != nil {
+					strKey = d.option.KeyReplacer.Replace(strKey)
+				}
+				if strings.EqualFold(key, strKey) {
+					value = src[_strKey]
+					ok = true
+					break
+				}
+			}
+		}
 		if !ok || value == nil {
 			if omitempty {
 				continue
@@ -353,11 +371,17 @@ func (d *Decoder) decodeStructFromMap(name string, dataVal, val reflect.Value) e
 		if !rawMapVal.IsValid() {
 			// Do a slower search by iterating over each key and
 			// doing case-insensitive search.
+			if d.option.KeyReplacer != nil {
+				fieldName = d.option.KeyReplacer.Replace(fieldName)
+			}
 			for dataValKey := range dataValKeys {
 				mK, ok := dataValKey.Interface().(string)
 				if !ok {
 					// Not a string key
 					continue
+				}
+				if d.option.KeyReplacer != nil {
+					mK = d.option.KeyReplacer.Replace(mK)
 				}
 
 				if strings.EqualFold(mK, fieldName) {

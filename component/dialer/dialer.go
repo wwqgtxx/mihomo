@@ -79,7 +79,7 @@ func GetDial() bool {
 	return tcpConcurrent
 }
 
-func dialContext(ctx context.Context, network string, destination netip.Addr, port string, options []Option) (net.Conn, error) {
+func ApplyOptions(options ...Option) *option {
 	opt := &option{
 		interfaceName: DefaultInterface.Load(),
 		routingMark:   int(DefaultRoutingMark.Load()),
@@ -92,6 +92,12 @@ func dialContext(ctx context.Context, network string, destination netip.Addr, po
 	for _, o := range options {
 		o(opt)
 	}
+
+	return opt
+}
+
+func dialContext(ctx context.Context, network string, destination netip.Addr, port string, options []Option) (net.Conn, error) {
+	opt := ApplyOptions(options...)
 
 	dialer := &net.Dialer{}
 	if opt.interfaceName != "" {

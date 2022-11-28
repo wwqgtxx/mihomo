@@ -294,6 +294,7 @@ func updateGeneral(general *config.General, force bool) {
 	P.ReCreateTcpTun(general.TcpTunConfig, tcpIn, udpIn)
 	P.ReCreateUdpTun(general.UdpTunConfig, tcpIn, udpIn)
 	P.ReCreateMTProxy(general.MTProxyConfig, tcpIn, udpIn)
+	P.ReCreateTuic(general.TuicServer, tcpIn, udpIn)
 }
 
 func updateUsers(users []auth.AuthUser) {

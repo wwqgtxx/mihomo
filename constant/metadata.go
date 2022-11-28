@@ -26,6 +26,7 @@ const (
 	UDPTUN
 	MTPROXY
 	TUN
+	TUIC
 	DNS
 	PROVIDER
 )
@@ -71,6 +72,8 @@ func (t Type) String() string {
 		return "MTProxy"
 	case TUN:
 		return "TUN"
+	case TUIC:
+		return "TUIC"
 	case DNS:
 		return "DNS"
 	case PROVIDER:

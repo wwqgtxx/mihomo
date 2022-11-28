@@ -13,6 +13,7 @@ require (
 	github.com/jpillora/backoff v1.0.0
 	github.com/kentik/patricia v1.2.0
 	github.com/mdlayher/netlink v1.6.2
+	github.com/metacubex/quic-go v0.31.1-0.20221127023445-9f0ce65a734e
 	github.com/metacubex/sing-wireguard v0.0.0-20221109114053-16c22adda03c
 	github.com/miekg/dns v1.1.50
 	github.com/oschwald/geoip2-golang v1.8.0
@@ -33,6 +34,7 @@ require (
 	golang.org/x/sync v0.1.0
 	golang.org/x/sys v0.2.0
 	gopkg.in/yaml.v3 v3.0.1
+	lukechampine.com/blake3 v1.1.7
 )
 
 replace github.com/sagernet/sing-tun => github.com/MetaCubeX/sing-tun v0.0.0-20221105124245-542e9b56a6dc
@@ -43,12 +45,18 @@ require (
 	github.com/ajg/form v1.5.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
+	github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0 // indirect
+	github.com/golang/mock v1.6.0 // indirect
 	github.com/google/btree v1.1.2 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
+	github.com/google/pprof v0.0.0-20210407192527-94a9f03dee38 // indirect
 	github.com/josharian/native v1.0.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.1.2 // indirect
 	github.com/kr/text v0.2.0 // indirect
+	github.com/marten-seemann/qtls-go1-18 v0.1.3 // indirect
+	github.com/marten-seemann/qtls-go1-19 v0.1.1 // indirect
 	github.com/mdlayher/socket v0.2.3 // indirect
+	github.com/onsi/ginkgo/v2 v2.2.0 // indirect
 	github.com/oschwald/maxminddb-golang v1.10.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/sagernet/abx-go v0.0.0-20220819185957-dba1257d738e // indirect
@@ -60,5 +68,4 @@ require (
 	golang.org/x/time v0.1.0 // indirect
 	golang.org/x/tools v0.2.0 // indirect
 	gvisor.dev/gvisor v0.0.0-20220901235040-6ca97ef2ce1c // indirect
-	lukechampine.com/blake3 v1.1.7 // indirect
 )

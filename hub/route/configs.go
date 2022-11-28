@@ -35,6 +35,7 @@ type configSchema struct {
 	TProxyPort             *int               `json:"tproxy-port"`
 	MixedPort              *int               `json:"mixed-port"`
 	Tun                    *tunSchema         `json:"tun"`
+	TuicServer             *tuicServerSchema  `json:"tuic-server"`
 	MixECConfig            *string            `json:"mixec-config"`
 	ShadowSocksConfig      *string            `json:"ss-config"`
 	VmessConfig            *string            `json:"vmess-config"`
@@ -78,6 +79,19 @@ type tunSchema struct {
 	ExcludePackage         *[]string              `yaml:"exclude-package" json:"exclude-package,omitempty"`
 	EndpointIndependentNat *bool                  `yaml:"endpoint-independent-nat" json:"endpoint-independent-nat,omitempty"`
 	UDPTimeout             *int64                 `yaml:"udp-timeout" json:"udp-timeout,omitempty"`
+}
+
+type tuicServerSchema struct {
+	Enable                bool      `yaml:"enable" json:"enable"`
+	Listen                *string   `yaml:"listen" json:"listen"`
+	Token                 *[]string `yaml:"token" json:"token"`
+	Certificate           *string   `yaml:"certificate" json:"certificate"`
+	PrivateKey            *string   `yaml:"private-key" json:"private-key"`
+	CongestionController  *string   `yaml:"congestion-controller" json:"congestion-controller,omitempty"`
+	MaxIdleTime           *int      `yaml:"max-idle-time" json:"max-idle-time,omitempty"`
+	AuthenticationTimeout *int      `yaml:"authentication-timeout" json:"authentication-timeout,omitempty"`
+	ALPN                  *[]string `yaml:"alpn" json:"alpn,omitempty"`
+	MaxUdpRelayPacketSize *int      `yaml:"max-udp-relay-packet-size" json:"max-udp-relay-packet-size,omitempty"`
 }
 
 func getConfigs(w http.ResponseWriter, r *http.Request) {
@@ -159,6 +173,40 @@ func pointerOrDefaultTun(p *tunSchema, def config.Tun) config.Tun {
 	return def
 }
 
+func pointerOrDefaultTuicServer(p *tuicServerSchema, def config.TuicServer) config.TuicServer {
+	if p != nil {
+		def.Enable = p.Enable
+		if p.Listen != nil {
+			def.Listen = *p.Listen
+		}
+		if p.Token != nil {
+			def.Token = *p.Token
+		}
+		if p.Certificate != nil {
+			def.Certificate = *p.Certificate
+		}
+		if p.PrivateKey != nil {
+			def.PrivateKey = *p.PrivateKey
+		}
+		if p.CongestionController != nil {
+			def.CongestionController = *p.CongestionController
+		}
+		if p.MaxIdleTime != nil {
+			def.MaxIdleTime = *p.MaxIdleTime
+		}
+		if p.AuthenticationTimeout != nil {
+			def.AuthenticationTimeout = *p.AuthenticationTimeout
+		}
+		if p.ALPN != nil {
+			def.ALPN = *p.ALPN
+		}
+		if p.MaxUdpRelayPacketSize != nil {
+			def.MaxUdpRelayPacketSize = *p.MaxUdpRelayPacketSize
+		}
+	}
+	return def
+}
+
 func patchConfigs(w http.ResponseWriter, r *http.Request) {
 	general := &configSchema{}
 	if err := render.DecodeJSON(r.Body, general); err != nil {
@@ -199,6 +247,7 @@ func patchConfigs(w http.ResponseWriter, r *http.Request) {
 	P.ReCreateVmess(pointerOrDefaultString(general.VmessConfig, ports.VmessConfig), tcpIn, udpIn)
 	P.ReCreateTcpTun(pointerOrDefaultString(general.TcptunConfig, ports.TcpTunConfig), tcpIn, udpIn)
 	P.ReCreateUdpTun(pointerOrDefaultString(general.UdptunConfig, ports.UdpTunConfig), tcpIn, udpIn)
+	P.ReCreateTuic(pointerOrDefaultTuicServer(general.TuicServer, P.LastTuicConf), tcpIn, udpIn)
 
 	if general.Mode != nil {
 		tunnel.SetMode(*general.Mode)

@@ -22,6 +22,7 @@ const (
 	Vmess
 	Trojan
 	WireGuard
+	Tuic
 
 	Relay
 	Selector
@@ -150,6 +151,8 @@ func (at AdapterType) String() string {
 		return "Trojan"
 	case WireGuard:
 		return "WireGuard"
+	case Tuic:
+		return "Tuic"
 
 	case Relay:
 		return "Relay"

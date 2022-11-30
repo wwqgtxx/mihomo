@@ -57,7 +57,7 @@ func (d *DomainTree) Insert(domain string) error {
 }
 
 func (d *DomainTree) FinishInsert() {
-	d.dt.FinishInsert()
+	d.dt.Optimize()
 }
 
 func newEmptyDomainTree() *DomainTree {

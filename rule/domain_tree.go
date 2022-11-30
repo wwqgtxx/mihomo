@@ -56,6 +56,10 @@ func (d *DomainTree) Insert(domain string) error {
 	return nil
 }
 
+func (d *DomainTree) FinishInsert() {
+	d.dt.FinishInsert()
+}
+
 func newEmptyDomainTree() *DomainTree {
 	dt := trie.New[struct{}]()
 	return &DomainTree{

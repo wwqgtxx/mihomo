@@ -1,15 +1,18 @@
 package trie
 
-import "github.com/Dreamacro/clash/common/generics/zero"
+import "strings"
 
 // Node is the trie's node
 type Node[T any] struct {
 	children map[string]*Node[T]
-	data     T
 	inited   bool
+	data     T
 }
 
 func (n *Node[T]) getChild(s string) *Node[T] {
+	if n.children == nil {
+		return nil
+	}
 	return n.children[s]
 }
 
@@ -18,7 +21,46 @@ func (n *Node[T]) hasChild(s string) bool {
 }
 
 func (n *Node[T]) addChild(s string, child *Node[T]) {
+	if n.children == nil {
+		n.children = map[string]*Node[T]{}
+	}
 	n.children[s] = child
+}
+
+func (n *Node[T]) getOrNewChild(s string) *Node[T] {
+	node := n.getChild(s)
+	if node == nil {
+		node = newNode[T]()
+		n.addChild(s, node)
+	}
+	return node
+}
+
+func (n *Node[T]) finishAdd() {
+	if n.children == nil {
+		return
+	}
+	if len(n.children) == 0 {
+		n.children = nil
+	}
+	children := make(map[string]*Node[T], len(n.children)) // avoid map reallocate memory
+	for key := range n.children {
+		child := n.children[key]
+		if child == nil {
+			continue
+		}
+		switch key { // try to save string's memory
+		case wildcard:
+			key = wildcard
+		case dotWildcard:
+			key = dotWildcard
+		default:
+			key = strings.Clone(key)
+		}
+		children[key] = child
+		child.finishAdd()
+	}
+	n.children = children
 }
 
 func (n *Node[T]) isEmpty() bool {
@@ -39,8 +81,7 @@ func (n *Node[T]) Data() T {
 
 func newNode[T any]() *Node[T] {
 	return &Node[T]{
-		data:     zero.GetZero[T](),
-		children: map[string]*Node[T]{},
+		children: nil,
 		inited:   false,
 	}
 }

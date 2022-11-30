@@ -23,6 +23,7 @@ type RuleProvider interface {
 
 type RuleSchema struct {
 	Payload []string `yaml:"payload"`
+	Rules   []string `yaml:"rules"`
 }
 
 // for auto gc
@@ -82,6 +83,7 @@ type RuleTree interface {
 	C.Rule
 	InsertN() int
 	Insert(string) error
+	FinishInsert()
 }
 
 func rulesParse(buf []byte, behavior string) (any, error) {
@@ -90,6 +92,8 @@ func rulesParse(buf []byte, behavior string) (any, error) {
 	if err := yaml.Unmarshal(buf, schema); err != nil {
 		return nil, err
 	}
+
+	schema.Payload = append(schema.Payload, schema.Rules...)
 
 	if schema.Payload == nil {
 		return nil, errors.New("file must have a `payload` field")
@@ -151,6 +155,9 @@ func rulesParse(buf []byte, behavior string) (any, error) {
 			}
 			rules = append(rules, parsed)
 		}
+	}
+	if rt != nil {
+		rt.FinishInsert()
 	}
 
 	if len(rules) == 0 {

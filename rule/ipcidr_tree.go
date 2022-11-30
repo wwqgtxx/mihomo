@@ -55,6 +55,8 @@ func (i *IpCidrTree) Insert(ipCidr string) error {
 	return nil
 }
 
+func (i *IpCidrTree) FinishInsert() {}
+
 func newEmptyIPCIDRTrie() *IpCidrTree {
 	return &IpCidrTree{
 		IPCIDR:  &IPCIDR{},

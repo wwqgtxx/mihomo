@@ -87,6 +87,7 @@ type RuleTree interface {
 }
 
 func rulesParse(buf []byte, behavior string) (any, error) {
+	printMemStats("before")
 	schema := &RuleSchema{}
 
 	if err := yaml.Unmarshal(buf, schema); err != nil {
@@ -98,6 +99,7 @@ func rulesParse(buf []byte, behavior string) (any, error) {
 	if schema.Payload == nil {
 		return nil, errors.New("file must have a `payload` field")
 	}
+	printMemStats("unmarshal")
 
 	var rules []C.Rule
 	var rt RuleTree
@@ -164,7 +166,15 @@ func rulesParse(buf []byte, behavior string) (any, error) {
 		return nil, errors.New("file doesn't have any valid proxy")
 	}
 
+	printMemStats("after")
 	return rules, nil
+}
+
+func printMemStats(mag string) {
+	var m runtime.MemStats
+	//runtime.GC()
+	runtime.ReadMemStats(&m)
+	fmt.Printf("%v：memory = %vKB, GC Times = %v\n", mag, m.Alloc/1024, m.NumGC)
 }
 
 func (rp *ruleSetProvider) setRules(rules []C.Rule) {

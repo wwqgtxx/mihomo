@@ -13,9 +13,9 @@ func (r *RuleSet) RuleType() C.RuleType {
 	return C.RuleSet
 }
 
-func (r *RuleSet) Match(metadata *C.Metadata) bool {
+func (r *RuleSet) Match(metadata *C.Metadata) (bool, string) {
 	// parse in rule.go
-	return false
+	return false, ""
 }
 
 func (r *RuleSet) Adapter() string {

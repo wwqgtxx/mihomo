@@ -30,7 +30,8 @@ func TestIpv4AddFail(t *testing.T) {
 
 func match(tree *IpCidrTree, ip string) bool {
 	dstIp, _ := netip.ParseAddr(ip)
-	return tree.Match(&constant.Metadata{DstIP: dstIp})
+	b, _ := tree.Match(&constant.Metadata{DstIP: dstIp})
+	return b
 }
 
 func TestIpv4Match(t *testing.T) {

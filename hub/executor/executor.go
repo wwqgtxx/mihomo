@@ -74,7 +74,7 @@ func ApplyConfig(cfg *config.Config, force bool) {
 
 	updateUsers(cfg.Users)
 	updateProxies(cfg.Proxies, cfg.Providers)
-	updateRules(cfg.Rules, cfg.RulesProviders)
+	updateRules(cfg.Rules, cfg.SubRules, cfg.RulesProviders)
 	updateSniffer(cfg.Sniffer)
 	updateHosts(cfg.Hosts)
 	updateProfile(cfg)
@@ -211,8 +211,8 @@ func updateProxies(proxies map[string]C.Proxy, providers map[string]providerType
 	tunnel.UpdateProxies(proxies, providers)
 }
 
-func updateRules(rules []C.Rule, providers map[string]R.RuleProvider) {
-	tunnel.UpdateRules(rules, providers)
+func updateRules(rules []C.Rule, subRules map[string][]C.Rule, providers map[string]R.RuleProvider) {
+	tunnel.UpdateRules(rules, subRules, providers)
 }
 
 func updateTun(general *config.General) {

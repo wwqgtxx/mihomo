@@ -14,7 +14,7 @@ func trimArr(arr []string) (r []string) {
 	return
 }
 
-func ParseRule(tp, payload, target string, params []string) (C.Rule, error) {
+func ParseRule(tp, payload, target string, params []string, subRules map[string][]C.Rule) (C.Rule, error) {
 	var (
 		parseErr error
 		parsed   C.Rule
@@ -59,12 +59,14 @@ func ParseRule(tp, payload, target string, params []string) (C.Rule, error) {
 			break
 		}
 		parsed = NewRuleSet(payload, target)
+	case "SUB-RULE":
+		parsed, parseErr = NewSubRule(payload, target, subRules, ParseRule)
 	case "NOT":
-		parsed, parseErr = NewNOT(payload, target)
+		parsed, parseErr = NewNOT(payload, target, ParseRule)
 	case "AND":
-		parsed, parseErr = NewAND(payload, target)
+		parsed, parseErr = NewAND(payload, target, ParseRule)
 	case "OR":
-		parsed, parseErr = NewOR(payload, target)
+		parsed, parseErr = NewOR(payload, target, ParseRule)
 	default:
 		parseErr = fmt.Errorf("unsupported rule type %s", tp)
 	}

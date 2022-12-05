@@ -19,7 +19,7 @@ func (p *Port) RuleType() C.RuleType {
 	return p.ruleType
 }
 
-func (p *Port) Match(metadata *C.Metadata) bool {
+func (p *Port) Match(metadata *C.Metadata) (bool, string) {
 	targetPort := metadata.DstPort
 	switch p.ruleType {
 	case C.InPort:
@@ -28,13 +28,13 @@ func (p *Port) Match(metadata *C.Metadata) bool {
 		targetPort = metadata.SrcPort
 	}
 	if p.portL == p.portR {
-		return p.port == targetPort
+		return p.port == targetPort, p.adapter
 	}
 	port, err := strconv.Atoi(targetPort)
 	if err != nil {
-		return false
+		return false, ""
 	}
-	return port >= p.portL && port <= p.portR
+	return port >= p.portL && port <= p.portR, p.adapter
 }
 
 func (p *Port) Adapter() string {

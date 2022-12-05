@@ -33,6 +33,7 @@ var (
 	udpQueue       = channel.NewInfiniteChannel[*inbound.PacketAdapter]()
 	natTable       = nat.New()
 	rules          []C.Rule
+	subRules       map[string][]C.Rule
 	ruleProviders  map[string]R.RuleProvider
 	proxies        = make(map[string]C.Proxy)
 	providers      map[string]provider.ProxyProvider
@@ -111,9 +112,10 @@ func RuleProviders() map[string]R.RuleProvider {
 }
 
 // UpdateRules handle update rules
-func UpdateRules(newRules []C.Rule, newProviders map[string]R.RuleProvider) {
+func UpdateRules(newRules []C.Rule, newSubRules map[string][]C.Rule, newProviders map[string]R.RuleProvider) {
 	configMux.Lock()
 	rules = newRules
+	subRules = newSubRules
 	ruleProviders = newProviders
 	configMux.Unlock()
 }
@@ -484,7 +486,7 @@ func match(metadata *C.Metadata) (C.Proxy, C.Rule, error) {
 		}
 	}
 
-	for _, rule := range rules {
+	for _, rule := range getRules(metadata) {
 		if rule.RuleType() == C.RuleSet {
 			ruleProvider, ok := ruleProviders[rule.Payload()]
 			if !ok {
@@ -501,7 +503,7 @@ func match(metadata *C.Metadata) (C.Proxy, C.Rule, error) {
 
 			for _, subRule := range ruleProvider.Rules() {
 				checkResolved(subRule)
-				if subRule.Match(metadata) {
+				if ok, _ := subRule.Match(metadata); ok {
 					return adapter, rule, nil
 				}
 			}
@@ -526,8 +528,8 @@ func match(metadata *C.Metadata) (C.Proxy, C.Rule, error) {
 			}
 		}
 
-		if rule.Match(metadata) {
-			adapter, ok := proxies[rule.Adapter()]
+		if matched, ada := rule.Match(metadata); matched {
+			adapter, ok := proxies[ada]
 			if !ok {
 				continue
 			}
@@ -541,6 +543,16 @@ func match(metadata *C.Metadata) (C.Proxy, C.Rule, error) {
 	}
 
 	return proxies["DIRECT"], nil, nil
+}
+
+func getRules(metadata *C.Metadata) []C.Rule {
+	if sr, ok := subRules[metadata.SpecialRules]; ok {
+		log.Debugln("[Rule] use %s rules", metadata.SpecialRules)
+		return sr
+	} else {
+		log.Debugln("[Rule] use default rules")
+		return rules
+	}
 }
 
 func retry[T any](ctx context.Context, ft func(context.Context) (T, error), fe func(err error)) (t T, err error) {

@@ -22,13 +22,13 @@ func (i *IpCidrTree) RuleType() C.RuleType {
 	return C.IpCidrTree
 }
 
-func (i *IpCidrTree) Match(metadata *C.Metadata) bool {
+func (i *IpCidrTree) Match(metadata *C.Metadata) (bool, string) {
 	ip := metadata.DstIP
 	if i.isSourceIP {
 		ip = metadata.SrcIP
 	}
 	if !ip.IsValid() {
-		return false
+		return false, ""
 	}
 	found := false
 	if ip.Is4() {
@@ -38,7 +38,7 @@ func (i *IpCidrTree) Match(metadata *C.Metadata) bool {
 		v6 := patricia.NewIPv6Address(ip.AsSlice(), 128)
 		found, _ = i.treeV6.FindDeepestTag(v6)
 	}
-	return found
+	return found, i.adapter
 }
 
 func (i *IpCidrTree) Insert(ipCidr string) error {

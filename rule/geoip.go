@@ -17,17 +17,17 @@ func (g *GEOIP) RuleType() C.RuleType {
 	return C.GEOIP
 }
 
-func (g *GEOIP) Match(metadata *C.Metadata) bool {
+func (g *GEOIP) Match(metadata *C.Metadata) (bool, string) {
 	ip := metadata.DstIP
 	if !ip.IsValid() {
-		return false
+		return false, ""
 	}
 
 	if strings.EqualFold(g.country, "LAN") {
-		return ip.IsPrivate()
+		return ip.IsPrivate(), g.adapter
 	}
 	record, _ := mmdb.Instance().Country(ip.AsSlice())
-	return strings.EqualFold(record.Country.IsoCode, g.country)
+	return strings.EqualFold(record.Country.IsoCode, g.country), g.adapter
 }
 
 func (g *GEOIP) Adapter() string {

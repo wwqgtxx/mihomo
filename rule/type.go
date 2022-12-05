@@ -49,8 +49,8 @@ func (t *Type) RuleType() C.RuleType {
 	return C.Type_
 }
 
-func (t *Type) Match(metadata *C.Metadata) bool {
-	return t.type_ == metadata.Type
+func (t *Type) Match(metadata *C.Metadata) (bool, string) {
+	return t.type_ == metadata.Type, t.adapter
 }
 
 func (t *Type) Adapter() string {

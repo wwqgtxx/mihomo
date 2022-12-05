@@ -15,8 +15,8 @@ func (dk *DomainKeyword) RuleType() C.RuleType {
 	return C.DomainKeyword
 }
 
-func (dk *DomainKeyword) Match(metadata *C.Metadata) bool {
-	return strings.Contains(metadata.Host, dk.keyword)
+func (dk *DomainKeyword) Match(metadata *C.Metadata) (bool, string) {
+	return strings.Contains(metadata.Host, dk.keyword), dk.adapter
 }
 
 func (dk *DomainKeyword) Adapter() string {

@@ -221,6 +221,7 @@ type Config struct {
 	Hosts          *trie.DomainTrie[netip.Addr]
 	Profile        *Profile
 	Rules          []C.Rule
+	SubRules       map[string][]C.Rule
 	RulesProviders map[string]R.RuleProvider
 	Users          []auth.AuthUser
 	Proxies        map[string]C.Proxy
@@ -353,6 +354,7 @@ type RawConfig struct {
 	Proxy         []map[string]any          `yaml:"proxies"`
 	ProxyGroup    []map[string]any          `yaml:"proxy-groups"`
 	Rule          []string                  `yaml:"rules"`
+	SubRules      map[string][]string       `yaml:"sub-rules"`
 }
 
 type RawSniffer struct {
@@ -481,12 +483,23 @@ func ParseRawConfig(rawCfg *RawConfig) (*Config, error) {
 	config.Proxies = proxies
 	config.Providers = providers
 
-	rules, ruleProviders, err := parseRules(rawCfg, proxies)
+	ruleProviders, err := parseRuleProviders(rawCfg)
+	if err != nil {
+		return nil, err
+	}
+	config.RulesProviders = ruleProviders
+
+	subRules, err := parseSubRules(rawCfg, proxies)
+	if err != nil {
+		return nil, err
+	}
+	config.SubRules = subRules
+
+	rules, err := parseRules(rawCfg.Rule, proxies, subRules, "rules")
 	if err != nil {
 		return nil, err
 	}
 	config.Rules = rules
-	config.RulesProviders = ruleProviders
 
 	hosts, err := parseHosts(rawCfg)
 	if err != nil {
@@ -685,8 +698,7 @@ func parseProxies(cfg *RawConfig) (proxies map[string]C.Proxy, providersMap map[
 	return proxies, providersMap, nil
 }
 
-func parseRules(cfg *RawConfig, proxies map[string]C.Proxy) (rules []C.Rule, providersMap map[string]R.RuleProvider, err error) {
-	rulesConfig := cfg.Rule
+func parseRuleProviders(cfg *RawConfig) (providersMap map[string]R.RuleProvider, err error) {
 	providersMap = make(map[string]R.RuleProvider)
 	providersConfig := cfg.RuleProviders
 
@@ -694,7 +706,7 @@ func parseRules(cfg *RawConfig, proxies map[string]C.Proxy) (rules []C.Rule, pro
 	for name, mapping := range providersConfig {
 		rd, err := R.ParseRuleProvider(name, mapping)
 		if err != nil {
-			return nil, nil, fmt.Errorf("parse rule ruleProvider %s error: %w", name, err)
+			return nil, fmt.Errorf("parse rule ruleProvider %s error: %w", name, err)
 		}
 
 		providersMap[name] = rd
@@ -710,51 +722,121 @@ func parseRules(cfg *RawConfig, proxies map[string]C.Proxy) (rules []C.Rule, pro
 	//	}
 	//}
 
+	return
+}
+
+func parseSubRules(cfg *RawConfig, proxies map[string]C.Proxy) (subRules map[string][]C.Rule, err error) {
+	for name, rawRules := range cfg.SubRules {
+		if len(name) == 0 {
+			return nil, fmt.Errorf("sub-rule name is empty")
+		}
+		var rules []C.Rule
+		rules, err = parseRules(rawRules, proxies, subRules, fmt.Sprintf("sub-rules[%s]", name))
+		if err != nil {
+			return nil, err
+		}
+		subRules[name] = rules
+	}
+
+	if err = verifySubRule(subRules); err != nil {
+		return nil, err
+	}
+
+	return
+}
+
+func verifySubRule(subRules map[string][]C.Rule) error {
+	for name := range subRules {
+		err := verifySubRuleCircularReferences(name, subRules, []string{})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func verifySubRuleCircularReferences(n string, subRules map[string][]C.Rule, arr []string) error {
+	isInArray := func(v string, array []string) bool {
+		for _, c := range array {
+			if v == c {
+				return true
+			}
+		}
+		return false
+	}
+
+	arr = append(arr, n)
+	for i, rule := range subRules[n] {
+		if rule.RuleType() == C.SubRules {
+			if _, ok := subRules[rule.Adapter()]; !ok {
+				return fmt.Errorf("sub-rule[%d:%s] error: [%s] not found", i, n, rule.Adapter())
+			}
+			if isInArray(rule.Adapter(), arr) {
+				arr = append(arr, rule.Adapter())
+				return fmt.Errorf("sub-rule error: circular references [%s]", strings.Join(arr, "->"))
+			}
+
+			if err := verifySubRuleCircularReferences(rule.Adapter(), subRules, arr); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func parseRules(rulesConfig []string, proxies map[string]C.Proxy, subRules map[string][]C.Rule, format string) ([]C.Rule, error) {
+	var rules []C.Rule
+
 	// parse rules
 	for idx, line := range rulesConfig {
 		rule := trimArr(strings.Split(line, ","))
 		var (
-			payload string
-			target  string
-			params  = []string{}
+			payload  string
+			target   string
+			params   []string
+			ruleName = strings.ToUpper(rule[0])
 		)
 
-		ruleName := rule[0]
-		if ruleName == "NOT" || ruleName == "OR" || ruleName == "AND" {
-			payload = strings.Join(rule[1:len(rule)-1], ",")
-			target = rule[len(rule)-1]
+		l := len(rule)
+
+		if ruleName == "NOT" || ruleName == "OR" || ruleName == "AND" || ruleName == "SUB-RULE" {
+			target = rule[l-1]
+			payload = strings.Join(rule[1:l-1], ",")
 		} else {
-			switch l := len(rule); {
-			case l == 2:
-				target = rule[1]
-			case l == 3:
+			if l < 2 {
+				return nil, fmt.Errorf("%s[%d] [%s] error: format invalid", format, idx, line)
+			}
+			if l < 4 {
+				rule = append(rule, make([]string, 4-l)...)
+			}
+			if ruleName == "MATCH" {
+				l = 2
+			}
+			if l >= 3 {
+				l = 3
 				payload = rule[1]
-				target = rule[2]
-			case l >= 4:
-				payload = rule[1]
-				target = rule[2]
-				params = rule[3:]
-			default:
-				return nil, nil, fmt.Errorf("rules[%d] [%s] error: format invalid", idx, line)
+			}
+			target = rule[l-1]
+			params = rule[l:]
+		}
+		if _, ok := proxies[target]; !ok {
+			if ruleName != "SUB-RULE" {
+				return nil, fmt.Errorf("%s[%d] [%s] error: proxy [%s] not found", format, idx, line, target)
+			} else if _, ok = subRules[target]; !ok {
+				return nil, fmt.Errorf("%s[%d] [%s] error: sub-rule [%s] not found", format, idx, line, target)
 			}
 		}
 
-		if _, ok := proxies[target]; !ok {
-			return nil, nil, fmt.Errorf("rules[%d] [%s] error: proxy [%s] not found", idx, line, target)
-		}
-
-		rule = trimArr(rule)
 		params = trimArr(params)
-
-		parsed, parseErr := R.ParseRule(rule[0], payload, target, params)
+		parsed, parseErr := R.ParseRule(ruleName, payload, target, params, subRules)
 		if parseErr != nil {
-			return nil, nil, fmt.Errorf("rules[%d] [%s] error: %s", idx, line, parseErr.Error())
+			return nil, fmt.Errorf("%s[%d] [%s] error: %s", format, idx, line, parseErr.Error())
 		}
 
 		rules = append(rules, parsed)
 	}
 
-	return rules, providersMap, nil
+	return rules, nil
 }
 
 func parseHosts(cfg *RawConfig) (*trie.DomainTrie[netip.Addr], error) {

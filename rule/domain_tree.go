@@ -23,11 +23,11 @@ func (d *DomainTree) RuleType() C.RuleType {
 	return C.DomainTree
 }
 
-func (d *DomainTree) Match(metadata *C.Metadata) bool {
+func (d *DomainTree) Match(metadata *C.Metadata) (bool, string) {
 	if metadata.AddrType() != socks5.AtypDomainName {
-		return false
+		return false, ""
 	}
-	return d.dt.Search(metadata.Host) != nil
+	return d.dt.Search(metadata.Host) != nil, d.adapter
 }
 
 func (d *DomainTree) Adapter() string {

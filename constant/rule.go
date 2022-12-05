@@ -19,6 +19,7 @@ const (
 	RuleSet
 	DomainTree
 	IpCidrTree
+	SubRules
 	AND
 	OR
 	NOT
@@ -62,6 +63,8 @@ func (rt RuleType) String() string {
 		return "DomainTree"
 	case IpCidrTree:
 		return "IpCidrTree"
+	case SubRules:
+		return "SubRules"
 	case AND:
 		return "AND"
 	case OR:
@@ -75,7 +78,7 @@ func (rt RuleType) String() string {
 
 type Rule interface {
 	RuleType() RuleType
-	Match(metadata *Metadata) bool
+	Match(metadata *Metadata) (bool, string)
 	Adapter() string
 	Payload() string
 	ShouldResolveIP() bool

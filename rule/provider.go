@@ -151,7 +151,7 @@ func rulesParse(buf []byte, behavior string) (any, error) {
 			}
 			rule = trimArr(rule)
 			params = trimArr(params)
-			parsed, err := ParseRule(rule[0], payload, "", params)
+			parsed, err := ParseRule(rule[0], payload, "", params, nil)
 			if err != nil {
 				return nil, fmt.Errorf("rule %d error: %w", idx, err)
 			}

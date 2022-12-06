@@ -14,8 +14,8 @@ import (
 	"github.com/Dreamacro/clash/transport/socks5"
 	v2rayObfs "github.com/Dreamacro/clash/transport/v2ray-plugin"
 
-	singShadowsocks "github.com/sagernet/sing-shadowsocks"
-	"github.com/sagernet/sing-shadowsocks/shadowimpl"
+	singShadowsocks "github.com/metacubex/sing-shadowsocks"
+	"github.com/metacubex/sing-shadowsocks/shadowimpl"
 	"github.com/sagernet/sing/common/bufio"
 	M "github.com/sagernet/sing/common/metadata"
 	"github.com/sagernet/sing/common/uot"

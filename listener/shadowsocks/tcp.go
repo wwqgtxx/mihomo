@@ -6,14 +6,14 @@ import (
 
 	"github.com/Dreamacro/clash/adapter/inbound"
 	C "github.com/Dreamacro/clash/constant"
-	"github.com/Dreamacro/clash/log"
+	LC "github.com/Dreamacro/clash/listener/config"
 	"github.com/Dreamacro/clash/transport/shadowsocks/core"
 	"github.com/Dreamacro/clash/transport/socks5"
 )
 
 type Listener struct {
 	closed       bool
-	config       string
+	config       LC.ShadowsocksServer
 	listeners    []net.Listener
 	udpListeners []*UDPListener
 	pickCipher   core.Cipher
@@ -21,13 +21,8 @@ type Listener struct {
 
 var _listener *Listener
 
-func New(config string, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.PacketAdapter) (*Listener, error) {
-	addr, cipher, password, err := ParseSSURL(config)
-	if err != nil {
-		return nil, err
-	}
-
-	pickCipher, err := core.PickCipher(cipher, nil, password)
+func New(config LC.ShadowsocksServer, tcpIn chan<- C.ConnContext, udpIn chan<- C.PacketAdapter) (*Listener, error) {
+	pickCipher, err := core.PickCipher(config.Cipher, nil, config.Password)
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +30,7 @@ func New(config string, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.Packet
 	sl := &Listener{false, config, nil, nil, pickCipher}
 	_listener = sl
 
-	for _, addr := range strings.Split(addr, ",") {
+	for _, addr := range strings.Split(config.Listen, ",") {
 		addr := addr
 
 		//UDP
@@ -53,7 +48,6 @@ func New(config string, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.Packet
 		sl.listeners = append(sl.listeners, l)
 
 		go func() {
-			log.Infoln("ShadowSocks proxy listening at: %s", l.Addr().String())
 			for {
 				c, err := l.Accept()
 				if err != nil {
@@ -71,21 +65,38 @@ func New(config string, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.Packet
 	return sl, nil
 }
 
-func (l *Listener) Close() {
-	l.closed = true
+func (l *Listener) Close() error {
+	var retErr error
 	for _, lis := range l.listeners {
-		_ = lis.Close()
+		err := lis.Close()
+		if err != nil {
+			retErr = err
+		}
 	}
 	for _, lis := range l.udpListeners {
-		_ = lis.Close()
+		err := lis.Close()
+		if err != nil {
+			retErr = err
+		}
 	}
+	return retErr
 }
 
 func (l *Listener) Config() string {
-	return l.config
+	return l.config.String()
 }
 
-func (l *Listener) HandleConn(conn net.Conn, in chan<- C.ConnContext) {
+func (l *Listener) AddrList() (addrList []net.Addr) {
+	for _, lis := range l.listeners {
+		addrList = append(addrList, lis.Addr())
+	}
+	for _, lis := range l.udpListeners {
+		addrList = append(addrList, lis.LocalAddr())
+	}
+	return
+}
+
+func (l *Listener) HandleConn(conn net.Conn, in chan<- C.ConnContext, additions ...inbound.Addition) {
 	conn = l.pickCipher.StreamConn(conn)
 
 	target, err := socks5.ReadAddr(conn, make([]byte, socks5.MaxAddrLen))
@@ -93,12 +104,12 @@ func (l *Listener) HandleConn(conn net.Conn, in chan<- C.ConnContext) {
 		_ = conn.Close()
 		return
 	}
-	in <- inbound.NewSocket(target, conn, C.SHADOWSOCKS)
+	in <- inbound.NewSocket(target, conn, C.SHADOWSOCKS, additions...)
 }
 
-func HandleShadowSocks(conn net.Conn, in chan<- C.ConnContext) bool {
+func HandleShadowSocks(conn net.Conn, in chan<- C.ConnContext, additions ...inbound.Addition) bool {
 	if _listener != nil && _listener.pickCipher != nil {
-		go _listener.HandleConn(conn, in)
+		go _listener.HandleConn(conn, in, additions...)
 		return true
 	}
 	return false

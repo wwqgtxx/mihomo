@@ -2,6 +2,7 @@ package executor
 
 import (
 	"fmt"
+	LC "github.com/Dreamacro/clash/listener/config"
 	"net/netip"
 	"os"
 	"sync"
@@ -79,6 +80,7 @@ func ApplyConfig(cfg *config.Config, force bool) {
 	updateHosts(cfg.Hosts)
 	updateProfile(cfg)
 	updateGeneral(cfg.General, force)
+	updateListeners(cfg.Listeners)
 	updateDNS(cfg.DNS)
 	updateTun(cfg.General)
 	updateExperimental(cfg)
@@ -98,10 +100,11 @@ func GetGeneral() *config.General {
 			Port:              ports.Port,
 			SocksPort:         ports.SocksPort,
 			RedirPort:         ports.RedirPort,
-			MixedPort:         ports.MixedPort,
-			Tun:               listener.Tun(),
-			MixECConfig:       ports.MixECConfig,
 			TProxyPort:        ports.TProxyPort,
+			MixedPort:         ports.MixedPort,
+			Tun:               listener.GetTunConf(),
+			TuicServer:        listener.GetTuicConf(),
+			MixECConfig:       ports.MixECConfig,
 			ShadowSocksConfig: ports.ShadowSocksConfig,
 			VmessConfig:       ports.VmessConfig,
 			MTProxyConfig:     ports.MTProxyConfig,
@@ -154,6 +157,13 @@ func loadProvider(ruleProviders map[string]R.RuleProvider, proxyProviders map[st
 	for _, ruleProvider := range ruleProviders {
 		load(ruleProvider)
 	}
+}
+
+func updateListeners(listeners map[string]C.InboundListener) {
+	tcpIn := tunnel.TCPIn()
+	udpIn := tunnel.UDPIn()
+
+	listener.PatchInboundListeners(listeners, tcpIn, udpIn, true)
 }
 
 func updateExperimental(c *config.Config) {}
@@ -247,7 +257,7 @@ func updateSniffer(sniffer *config.Sniffer) {
 	}
 }
 
-func updateTunnels(tunnels []config.Tunnel) {
+func updateTunnels(tunnels []LC.Tunnel) {
 	listener.PatchTunnel(tunnels, tunnel.TCPIn(), tunnel.UDPIn())
 }
 

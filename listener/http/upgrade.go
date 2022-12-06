@@ -1,6 +1,8 @@
 package http
 
 import (
+	"context"
+	"crypto/tls"
 	"net"
 	"net/http"
 	"strings"
@@ -23,7 +25,7 @@ func isUpgradeRequest(req *http.Request) bool {
 	return false
 }
 
-func handleUpgrade(conn net.Conn, request *http.Request, in chan<- C.ConnContext) {
+func handleUpgrade(conn net.Conn, request *http.Request, in chan<- C.ConnContext, additions ...inbound.Addition) {
 	defer conn.Close()
 
 	removeProxyHeaders(request.Header)
@@ -41,10 +43,28 @@ func handleUpgrade(conn net.Conn, request *http.Request, in chan<- C.ConnContext
 
 	left, right := net.Pipe()
 
-	in <- inbound.NewHTTP(dstAddr, conn.RemoteAddr(), right)
+	in <- inbound.NewHTTP(dstAddr, conn.RemoteAddr(), right, additions...)
 
-	bufferedLeft := N.NewBufferedConn(left)
-	defer bufferedLeft.Close()
+	var bufferedLeft *N.BufferedConn
+	if request.TLS != nil {
+		tlsConn := tls.Client(left, &tls.Config{
+			ServerName: request.URL.Hostname(),
+		})
+
+		ctx, cancel := context.WithTimeout(context.Background(), C.DefaultTLSTimeout)
+		defer cancel()
+		if tlsConn.HandshakeContext(ctx) != nil {
+			_ = left.Close()
+			return
+		}
+
+		bufferedLeft = N.NewBufferedConn(tlsConn)
+	} else {
+		bufferedLeft = N.NewBufferedConn(left)
+	}
+	defer func() {
+		_ = bufferedLeft.Close()
+	}()
 
 	err := request.Write(bufferedLeft)
 	if err != nil {

@@ -9,9 +9,10 @@ import (
 	"github.com/metacubex/quic-go"
 
 	"github.com/Dreamacro/clash/adapter/inbound"
+	CN "github.com/Dreamacro/clash/common/net"
 	"github.com/Dreamacro/clash/common/sockopt"
-	"github.com/Dreamacro/clash/config"
 	C "github.com/Dreamacro/clash/constant"
+	LC "github.com/Dreamacro/clash/listener/config"
 	"github.com/Dreamacro/clash/log"
 	"github.com/Dreamacro/clash/transport/socks5"
 	"github.com/Dreamacro/clash/transport/tuic"
@@ -19,13 +20,19 @@ import (
 
 type Listener struct {
 	closed       bool
-	config       config.TuicServer
+	config       LC.TuicServer
 	udpListeners []net.PacketConn
 	servers      []*tuic.Server
 }
 
-func New(config config.TuicServer, tcpIn chan<- C.ConnContext, udpIn chan<- *inbound.PacketAdapter) (*Listener, error) {
-	cert, err := tls.LoadX509KeyPair(config.Certificate, config.PrivateKey)
+func New(config LC.TuicServer, tcpIn chan<- C.ConnContext, udpIn chan<- C.PacketAdapter, additions ...inbound.Addition) (*Listener, error) {
+	if len(additions) == 0 {
+		additions = []inbound.Addition{
+			inbound.WithInName("DEFAULT-TUIC"),
+			inbound.WithSpecialRules(""),
+		}
+	}
+	cert, err := CN.ParseCert(config.Certificate, config.PrivateKey)
 	if err != nil {
 		return nil, err
 	}
@@ -56,12 +63,12 @@ func New(config config.TuicServer, tcpIn chan<- C.ConnContext, udpIn chan<- *inb
 
 	option := &tuic.ServerOption{
 		HandleTcpFn: func(conn net.Conn, addr socks5.Addr) error {
-			tcpIn <- inbound.NewSocket(addr, conn, C.TUIC)
+			tcpIn <- inbound.NewSocket(addr, conn, C.TUIC, additions...)
 			return nil
 		},
 		HandleUdpFn: func(addr socks5.Addr, packet C.UDPPacket) error {
 			select {
-			case udpIn <- inbound.NewPacket(addr, packet, C.TUIC):
+			case udpIn <- inbound.NewPacket(addr, packet, C.TUIC, additions...):
 			default:
 			}
 			return nil
@@ -99,7 +106,6 @@ func New(config config.TuicServer, tcpIn chan<- C.ConnContext, udpIn chan<- *inb
 		sl.servers = append(sl.servers, server)
 
 		go func() {
-			log.Infoln("Tuic proxy listening at: %s", ul.LocalAddr().String())
 			err := server.Serve()
 			if err != nil {
 				if sl.closed {
@@ -112,16 +118,31 @@ func New(config config.TuicServer, tcpIn chan<- C.ConnContext, udpIn chan<- *inb
 	return sl, nil
 }
 
-func (l *Listener) Close() {
+func (l *Listener) Close() error {
 	l.closed = true
+	var retErr error
 	for _, lis := range l.servers {
-		_ = lis.Close()
+		err := lis.Close()
+		if err != nil {
+			retErr = err
+		}
 	}
 	for _, lis := range l.udpListeners {
-		_ = lis.Close()
+		err := lis.Close()
+		if err != nil {
+			retErr = err
+		}
 	}
+	return retErr
 }
 
-func (l *Listener) Config() config.TuicServer {
+func (l *Listener) Config() LC.TuicServer {
 	return l.config
+}
+
+func (l *Listener) AddrList() (addrList []net.Addr) {
+	for _, lis := range l.udpListeners {
+		addrList = append(addrList, lis.LocalAddr())
+	}
+	return
 }

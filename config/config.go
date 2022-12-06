@@ -1,7 +1,6 @@
 package config
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -24,11 +23,12 @@ import (
 	"github.com/Dreamacro/clash/constant/sniffer"
 	snifferTypes "github.com/Dreamacro/clash/constant/sniffer"
 	"github.com/Dreamacro/clash/dns"
+	L "github.com/Dreamacro/clash/listener"
+	LC "github.com/Dreamacro/clash/listener/config"
 	"github.com/Dreamacro/clash/log"
 	R "github.com/Dreamacro/clash/rule"
 	T "github.com/Dreamacro/clash/tunnel"
 
-	"github.com/samber/lo"
 	"gopkg.in/yaml.v3"
 )
 
@@ -48,24 +48,25 @@ type General struct {
 	TouchAfterLazyPassNum  int          `json:"touch-after-lazy-pass-num"`
 	PreResolveProcessName  bool         `json:"pre-resolve-process-name"`
 	TCPConcurrent          bool         `json:"tcp-concurrent"`
+	Sniffing               bool         `json:"sniffing"`
 }
 
 // Inbound
 type Inbound struct {
-	Port              int        `json:"port"`
-	SocksPort         int        `json:"socks-port"`
-	RedirPort         int        `json:"redir-port"`
-	TProxyPort        int        `json:"tproxy-port"`
-	MixedPort         int        `json:"mixed-port"`
-	Tun               Tun        `json:"tun"`
-	TuicServer        TuicServer `json:"tuic-server"`
-	MixECConfig       string     `json:"mixec-config"`
-	ShadowSocksConfig string     `json:"ss-config"`
-	VmessConfig       string     `json:"vmess-config"`
-	MTProxyConfig     string     `json:"mtproxy-config"`
-	Authentication    []string   `json:"authentication"`
-	AllowLan          bool       `json:"allow-lan"`
-	BindAddress       string     `json:"bind-address"`
+	Port              int           `json:"port"`
+	SocksPort         int           `json:"socks-port"`
+	RedirPort         int           `json:"redir-port"`
+	TProxyPort        int           `json:"tproxy-port"`
+	MixedPort         int           `json:"mixed-port"`
+	Tun               LC.Tun        `json:"tun"`
+	TuicServer        LC.TuicServer `json:"tuic-server"`
+	MixECConfig       string        `json:"mixec-config"`
+	ShadowSocksConfig string        `json:"ss-config"`
+	VmessConfig       string        `json:"vmess-config"`
+	MTProxyConfig     string        `json:"mtproxy-config"`
+	Authentication    []string      `json:"authentication"`
+	AllowLan          bool          `json:"allow-lan"`
+	BindAddress       string        `json:"bind-address"`
 }
 
 // Controller
@@ -104,101 +105,6 @@ type Profile struct {
 	StoreFakeIP   bool `yaml:"store-fake-ip"`
 }
 
-type TuicServer struct {
-	Enable                bool     `yaml:"enable" json:"enable"`
-	Listen                string   `yaml:"listen" json:"listen"`
-	Token                 []string `yaml:"token" json:"token"`
-	Certificate           string   `yaml:"certificate" json:"certificate"`
-	PrivateKey            string   `yaml:"private-key" json:"private-key"`
-	CongestionController  string   `yaml:"congestion-controller" json:"congestion-controller,omitempty"`
-	MaxIdleTime           int      `yaml:"max-idle-time" json:"max-idle-time,omitempty"`
-	AuthenticationTimeout int      `yaml:"authentication-timeout" json:"authentication-timeout,omitempty"`
-	ALPN                  []string `yaml:"alpn" json:"alpn,omitempty"`
-	MaxUdpRelayPacketSize int      `yaml:"max-udp-relay-packet-size" json:"max-udp-relay-packet-size,omitempty"`
-}
-
-func (t TuicServer) String() string {
-	b, _ := json.Marshal(t)
-	return string(b)
-}
-
-// Tun config
-type Tun struct {
-	Enable              bool     `yaml:"enable" json:"enable"`
-	Device              string   `yaml:"device" json:"device"`
-	Stack               string   `yaml:"stack" json:"stack"`
-	DNSHijack           []string `yaml:"dns-hijack" json:"dns-hijack"`
-	AutoDetectInterface bool     `yaml:"auto-detect-interface" json:"auto-detect-interface"`
-	AutoRoute           bool     `yaml:"auto-route" json:"auto-route"`
-
-	InterfaceName          string         `yaml:"interface-name" json:"interface_name,omitempty"`
-	MTU                    uint32         `yaml:"mtu" json:"mtu,omitempty"`
-	Inet4Address           []ListenPrefix `yaml:"inet4-address" json:"inet4-address,omitempty"`
-	Inet6Address           []ListenPrefix `yaml:"inet6-address" json:"inet6-address,omitempty"`
-	StrictRoute            bool           `yaml:"strict-route" json:"strict-route,omitempty"`
-	Inet4RouteAddress      []ListenPrefix `yaml:"inet4-route-address" json:"inet4-route-address,omitempty"`
-	Inet6RouteAddress      []ListenPrefix `yaml:"inet6-route-address" json:"inet6-route-address,omitempty"`
-	IncludeUID             []uint32       `yaml:"include-uid" json:"include-uid,omitempty"`
-	IncludeUIDRange        []string       `yaml:"include-uid-range" json:"include-uid-range,omitempty"`
-	ExcludeUID             []uint32       `yaml:"exclude-uid" json:"exclude-uid,omitempty"`
-	ExcludeUIDRange        []string       `yaml:"exclude-uid-range" json:"exclude-uid-range,omitempty"`
-	IncludeAndroidUser     []int          `yaml:"include-android-user" json:"include-android-user,omitempty"`
-	IncludePackage         []string       `yaml:"include-package" json:"include-package,omitempty"`
-	ExcludePackage         []string       `yaml:"exclude-package" json:"exclude-package,omitempty"`
-	EndpointIndependentNat bool           `yaml:"endpoint-independent-nat" json:"endpoint-independent-nat,omitempty"`
-	UDPTimeout             int64          `yaml:"udp-timeout" json:"udp-timeout,omitempty"`
-}
-
-type ListenPrefix netip.Prefix
-
-func (p ListenPrefix) MarshalJSON() ([]byte, error) {
-	prefix := netip.Prefix(p)
-	if !prefix.IsValid() {
-		return json.Marshal(nil)
-	}
-	return json.Marshal(prefix.String())
-}
-
-func (p ListenPrefix) MarshalYAML() (interface{}, error) {
-	prefix := netip.Prefix(p)
-	if !prefix.IsValid() {
-		return nil, nil
-	}
-	return prefix.String(), nil
-}
-
-func (p *ListenPrefix) UnmarshalJSON(bytes []byte) error {
-	var value string
-	err := json.Unmarshal(bytes, &value)
-	if err != nil {
-		return err
-	}
-	prefix, err := netip.ParsePrefix(value)
-	if err != nil {
-		return err
-	}
-	*p = ListenPrefix(prefix)
-	return nil
-}
-
-func (p *ListenPrefix) UnmarshalYAML(node *yaml.Node) error {
-	var value string
-	err := node.Decode(&value)
-	if err != nil {
-		return err
-	}
-	prefix, err := netip.ParsePrefix(value)
-	if err != nil {
-		return err
-	}
-	*p = ListenPrefix(prefix)
-	return nil
-}
-
-func (p ListenPrefix) Build() netip.Prefix {
-	return netip.Prefix(p)
-}
-
 type Sniffer struct {
 	Enable          bool
 	Sniffers        []sniffer.Type
@@ -226,7 +132,8 @@ type Config struct {
 	Users          []auth.AuthUser
 	Proxies        map[string]C.Proxy
 	Providers      map[string]providerTypes.ProxyProvider
-	Tunnels        []Tunnel
+	Listeners      map[string]C.InboundListener
+	Tunnels        []LC.Tunnel
 	Sniffer        *Sniffer
 }
 
@@ -252,66 +159,6 @@ type RawFallbackFilter struct {
 	Domain    []string `yaml:"domain"`
 }
 
-type tunnel struct {
-	Network []string `yaml:"network"`
-	Address string   `yaml:"address"`
-	Target  string   `yaml:"target"`
-	Proxy   string   `yaml:"proxy"`
-}
-
-type Tunnel tunnel
-
-// UnmarshalYAML implements yaml.Unmarshaler
-func (t *Tunnel) UnmarshalYAML(unmarshal func(any) error) error {
-	var tp string
-	if err := unmarshal(&tp); err != nil {
-		var inner tunnel
-		if err := unmarshal(&inner); err != nil {
-			return err
-		}
-
-		*t = Tunnel(inner)
-		return nil
-	}
-
-	// parse udp/tcp,address,target,proxy
-	parts := lo.Map(strings.Split(tp, ","), func(s string, _ int) string {
-		return strings.TrimSpace(s)
-	})
-	if len(parts) != 3 && len(parts) != 4 {
-		return fmt.Errorf("invalid tunnel config %s", tp)
-	}
-	network := strings.Split(parts[0], "/")
-
-	// validate network
-	for _, n := range network {
-		switch n {
-		case "tcp", "udp":
-		default:
-			return fmt.Errorf("invalid tunnel network %s", n)
-		}
-	}
-
-	// validate address and target
-	address := parts[1]
-	target := parts[2]
-	for _, addr := range []string{address, target} {
-		if _, _, err := net.SplitHostPort(addr); err != nil {
-			return fmt.Errorf("invalid tunnel target or address %s", addr)
-		}
-	}
-
-	*t = Tunnel(tunnel{
-		Network: network,
-		Address: address,
-		Target:  target,
-	})
-	if len(parts) == 4 {
-		t.Proxy = parts[3]
-	}
-	return nil
-}
-
 type RawConfig struct {
 	Port                   int          `yaml:"port"`
 	SocksPort              int          `yaml:"socks-port"`
@@ -333,7 +180,7 @@ type RawConfig struct {
 	Secret                 string       `yaml:"secret"`
 	Interface              string       `yaml:"interface-name"`
 	RoutingMark            int          `yaml:"routing-mark"`
-	Tunnels                []Tunnel     `yaml:"tunnels"`
+	Tunnels                []LC.Tunnel  `yaml:"tunnels"`
 	UseRemoteDnsDefault    bool         `yaml:"use-remote-dns-default"`
 	UseSystemDnsDial       bool         `yaml:"use-system-dns-dial"`
 	HealthCheckURL         string       `yaml:"health-check-url"`
@@ -347,14 +194,15 @@ type RawConfig struct {
 	ProxyProvider map[string]map[string]any `yaml:"proxy-providers"`
 	Hosts         map[string]string         `yaml:"hosts"`
 	DNS           RawDNS                    `yaml:"dns"`
-	Tun           Tun                       `yaml:"tun"`
-	TuicServer    TuicServer                `yaml:"tuic-server"`
+	Tun           LC.Tun                    `yaml:"tun"`
+	TuicServer    LC.TuicServer             `yaml:"tuic-server"`
 	Experimental  Experimental              `yaml:"experimental"`
 	Profile       Profile                   `yaml:"profile"`
 	Proxy         []map[string]any          `yaml:"proxies"`
 	ProxyGroup    []map[string]any          `yaml:"proxy-groups"`
 	Rule          []string                  `yaml:"rules"`
 	SubRules      map[string][]string       `yaml:"sub-rules"`
+	Listeners     []map[string]any          `yaml:"listeners"`
 }
 
 type RawSniffer struct {
@@ -396,16 +244,16 @@ func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 		Rule:                   []string{},
 		Proxy:                  []map[string]any{},
 		ProxyGroup:             []map[string]any{},
-		Tun: Tun{
+		Tun: LC.Tun{
 			Enable:              false,
-			Stack:               "system",
+			Stack:               C.TunSystem,
 			DNSHijack:           []string{},
 			AutoDetectInterface: true,
 			AutoRoute:           true,
-			Inet4Address:        []ListenPrefix{ListenPrefix(netip.MustParsePrefix("198.18.0.1/30"))},
-			Inet6Address:        []ListenPrefix{ListenPrefix(netip.MustParsePrefix("fdfe:dcba:9876::1/126"))},
+			Inet4Address:        []LC.ListenPrefix{LC.ListenPrefix(netip.MustParsePrefix("198.18.0.1/30"))},
+			Inet6Address:        []LC.ListenPrefix{LC.ListenPrefix(netip.MustParsePrefix("fdfe:dcba:9876::1/126"))},
 		},
-		TuicServer: TuicServer{
+		TuicServer: LC.TuicServer{
 			Enable:                false,
 			Token:                 nil,
 			Certificate:           "",
@@ -482,6 +330,12 @@ func ParseRawConfig(rawCfg *RawConfig) (*Config, error) {
 	}
 	config.Proxies = proxies
 	config.Providers = providers
+
+	listener, err := parseListeners(rawCfg)
+	if err != nil {
+		return nil, err
+	}
+	config.Listeners = listener
 
 	ruleProviders, err := parseRuleProviders(rawCfg)
 	if err != nil {
@@ -698,6 +552,24 @@ func parseProxies(cfg *RawConfig) (proxies map[string]C.Proxy, providersMap map[
 	return proxies, providersMap, nil
 }
 
+func parseListeners(cfg *RawConfig) (listeners map[string]C.InboundListener, err error) {
+	listeners = make(map[string]C.InboundListener)
+	for index, mapping := range cfg.Listeners {
+		listener, err := L.ParseListener(mapping)
+		if err != nil {
+			return nil, fmt.Errorf("proxy %d: %w", index, err)
+		}
+
+		if _, exist := mapping[listener.Name()]; exist {
+			return nil, fmt.Errorf("listener %s is the duplicate name", listener.Name())
+		}
+
+		listeners[listener.Name()] = listener
+
+	}
+	return
+}
+
 func parseRuleProviders(cfg *RawConfig) (providersMap map[string]R.RuleProvider, err error) {
 	providersMap = make(map[string]R.RuleProvider)
 	providersConfig := cfg.RuleProviders
@@ -726,6 +598,7 @@ func parseRuleProviders(cfg *RawConfig) (providersMap map[string]R.RuleProvider,
 }
 
 func parseSubRules(cfg *RawConfig, proxies map[string]C.Proxy) (subRules map[string][]C.Rule, err error) {
+	subRules = map[string][]C.Rule{}
 	for name, rawRules := range cfg.SubRules {
 		if len(name) == 0 {
 			return nil, fmt.Errorf("sub-rule name is empty")

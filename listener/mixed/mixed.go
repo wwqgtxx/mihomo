@@ -1,6 +1,7 @@
 package mixed
 
 import (
+	"github.com/Dreamacro/clash/adapter/inbound"
 	"net"
 
 	"github.com/Dreamacro/clash/common/cache"
@@ -35,7 +36,13 @@ func (l *Listener) Close() error {
 	return l.listener.Close()
 }
 
-func New(addr string, in chan<- C.ConnContext) (*Listener, error) {
+func New(addr string, in chan<- C.ConnContext, additions ...inbound.Addition) (*Listener, error) {
+	if len(additions) == 0 {
+		additions = []inbound.Addition{
+			inbound.WithInName("DEFAULT-MIXED"),
+			inbound.WithSpecialRules(""),
+		}
+	}
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
 		return nil, err
@@ -55,15 +62,14 @@ func New(addr string, in chan<- C.ConnContext) (*Listener, error) {
 				}
 				continue
 			}
-			_ = c.(*net.TCPConn).SetKeepAlive(true)
-			go handleConn(c, in, ml.cache)
+			go handleConn(c, in, ml.cache, additions...)
 		}
 	}()
 
 	return ml, nil
 }
 
-func handleConn(conn net.Conn, in chan<- C.ConnContext, cache *cache.LruCache[string, bool]) {
+func handleConn(conn net.Conn, in chan<- C.ConnContext, cache *cache.LruCache[string, bool], additions ...inbound.Addition) {
 	conn.(*net.TCPConn).SetKeepAlive(true)
 
 	bufConn := N.NewBufferedConn(conn)
@@ -74,10 +80,10 @@ func handleConn(conn net.Conn, in chan<- C.ConnContext, cache *cache.LruCache[st
 
 	switch head[0] {
 	case socks4.Version:
-		socks.HandleSocks4(bufConn, in)
+		socks.HandleSocks4(bufConn, in, additions...)
 	case socks5.Version:
-		socks.HandleSocks5(bufConn, in)
+		socks.HandleSocks5(bufConn, in, additions...)
 	default:
-		http.HandleConn(bufConn, in, cache)
+		http.HandleConn(bufConn, in, cache, additions...)
 	}
 }

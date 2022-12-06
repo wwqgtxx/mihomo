@@ -4,15 +4,14 @@ import (
 	"context"
 	"net"
 
-	"github.com/Dreamacro/clash/adapter/inbound"
 	C "github.com/Dreamacro/clash/constant"
 	icontext "github.com/Dreamacro/clash/context"
 )
 
 var tcpIn chan<- C.ConnContext
-var udpIn chan<- *inbound.PacketAdapter
+var udpIn chan<- C.PacketAdapter
 
-func Init(tcp chan<- C.ConnContext, udp chan<- *inbound.PacketAdapter) {
+func Init(tcp chan<- C.ConnContext, udp chan<- C.PacketAdapter) {
 	tcpIn = tcp
 	udpIn = udp
 }

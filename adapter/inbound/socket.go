@@ -9,10 +9,13 @@ import (
 )
 
 // NewSocket receive TCP inbound and return ConnContext
-func NewSocket(target socks5.Addr, conn net.Conn, source C.Type) *context.ConnContext {
+func NewSocket(target socks5.Addr, conn net.Conn, source C.Type, additions ...Addition) *context.ConnContext {
 	metadata := parseSocksAddr(target)
 	metadata.NetWork = C.TCP
 	metadata.Type = source
+	for _, addition := range additions {
+		addition.Apply(metadata)
+	}
 	remoteAddr := conn.RemoteAddr()
 	// Filter when net.Addr interface is nil
 	if remoteAddr != nil {

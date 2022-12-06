@@ -6,6 +6,7 @@ import (
 	"net/netip"
 	"strings"
 
+	"github.com/Dreamacro/clash/adapter/inbound"
 	N "github.com/Dreamacro/clash/common/net"
 	"github.com/Dreamacro/clash/component/mtproxy/common"
 	"github.com/Dreamacro/clash/component/mtproxy/server_protocol"
@@ -34,7 +35,17 @@ type Listener struct {
 
 var _listener *Listener
 
-func New(config string, in chan<- C.ConnContext) (*Listener, error) {
+func New(config string, in chan<- C.ConnContext, additions ...inbound.Addition) (*Listener, error) {
+	var hl *Listener
+	if len(additions) == 0 {
+		additions = []inbound.Addition{
+			inbound.WithInName("DEFAULT-MTPROXY"),
+			inbound.WithSpecialRules(""),
+		}
+		defer func() {
+			_listener = hl
+		}()
+	}
 	if len(config) == 0 {
 		return nil, nil
 	}
@@ -56,13 +67,11 @@ func New(config string, in chan<- C.ConnContext) (*Listener, error) {
 		serverInfo.CloakPort = spliced2[1]
 	}
 
-	hl := &Listener{
+	hl = &Listener{
 		config:     config,
 		closed:     false,
 		serverInfo: serverInfo,
 	}
-
-	_listener = hl
 
 	if len(addrString) == 0 {
 		return hl, nil
@@ -97,22 +106,34 @@ func New(config string, in chan<- C.ConnContext) (*Listener, error) {
 	return hl, nil
 }
 
-func (l *Listener) Close() {
+func (l *Listener) Close() error {
 	l.closed = true
+	var retErr error
 	for _, lis := range l.listeners {
-		_ = lis.Close()
+		err := lis.Close()
+		if err != nil {
+			retErr = err
+		}
 	}
+	return retErr
 }
 
 func (l *Listener) Config() string {
 	return l.config
 }
 
+func (l *Listener) AddrList() (addrList []net.Addr) {
+	for _, lis := range l.listeners {
+		addrList = append(addrList, lis.Addr())
+	}
+	return
+}
+
 func (l *Listener) SecretMode() common.SecretMode {
 	return l.serverInfo.SecretMode
 }
 
-func (l *Listener) HandleConn(conn net.Conn, in chan<- C.ConnContext) {
+func (l *Listener) HandleConn(conn net.Conn, in chan<- C.ConnContext, additions ...inbound.Addition) {
 	serverProtocol := l.serverInfo.ServerProtocolMaker(
 		l.serverInfo.Secret,
 		l.serverInfo.SecretMode,
@@ -147,6 +168,9 @@ func (l *Listener) HandleConn(conn net.Conn, in chan<- C.ConnContext) {
 				metadata.InIP = ip
 				metadata.InPort = port
 			}
+			for _, addition := range additions {
+				addition.Apply(metadata)
+			}
 			connContext := context.NewConnContext(conn2, metadata)
 			in <- connContext
 			return conn1, nil
@@ -159,9 +183,9 @@ func (l *Listener) HandleConn(conn net.Conn, in chan<- C.ConnContext) {
 	N.Relay(serverConn, telegramConn)
 }
 
-func HandleFakeTLS(conn net.Conn, in chan<- C.ConnContext) bool {
+func HandleFakeTLS(conn net.Conn, in chan<- C.ConnContext, additions ...inbound.Addition) bool {
 	if _listener != nil && _listener.SecretMode() == common.SecretModeTLS {
-		go _listener.HandleConn(conn, in)
+		go _listener.HandleConn(conn, in, additions...)
 		return true
 	}
 	return false

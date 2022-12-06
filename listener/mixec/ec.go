@@ -7,6 +7,7 @@ import (
 	"net/netip"
 	"sync"
 
+	"github.com/Dreamacro/clash/adapter/inbound"
 	C "github.com/Dreamacro/clash/constant"
 	"github.com/Dreamacro/clash/listener/sing_shadowsocks"
 	"github.com/Dreamacro/clash/listener/sing_vmess"
@@ -54,7 +55,8 @@ var _chanListener *chanListener
 
 type ecHandler struct {
 	http.Handler
-	in chan<- C.ConnContext
+	in        chan<- C.ConnContext
+	additions []inbound.Addition
 }
 
 func (h ecHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -63,7 +65,7 @@ func (h ecHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return
 		}
-		if !sing_vmess.HandleVmess(conn, h.in) {
+		if !sing_vmess.HandleVmess(conn, h.in, h.additions...) {
 			_ = conn.Close()
 		}
 		return
@@ -73,7 +75,7 @@ func (h ecHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return
 		}
-		if !sing_shadowsocks.HandleShadowSocks(conn, h.in) {
+		if !sing_shadowsocks.HandleShadowSocks(conn, h.in, h.additions...) {
 			_ = conn.Close()
 		}
 		return
@@ -82,14 +84,14 @@ func (h ecHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.Handler.ServeHTTP(w, r)
 }
 
-func GetChanListener(in chan<- C.ConnContext) ChanListener {
+func GetChanListener(in chan<- C.ConnContext, additions ...inbound.Addition) ChanListener {
 	once.Do(func() {
 		_chanListener = &chanListener{
 			make(chan net.Conn),
 			net.TCPAddrFromAddrPort(netip.AddrPortFrom(netip.IPv4Unspecified(), 0)),
 			atomic.NewBool(false),
 		}
-		go http.Serve(_chanListener, ecHandler{C.GetECHandler(), in})
+		go http.Serve(_chanListener, ecHandler{C.GetECHandler(), in, additions})
 	})
 	return _chanListener
 }

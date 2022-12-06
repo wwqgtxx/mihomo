@@ -12,7 +12,6 @@ import (
 
 	"github.com/jpillora/backoff"
 
-	"github.com/Dreamacro/clash/adapter/inbound"
 	"github.com/Dreamacro/clash/common/channel"
 	"github.com/Dreamacro/clash/component/inner_dialer"
 	"github.com/Dreamacro/clash/component/mmdb"
@@ -30,7 +29,7 @@ import (
 
 var (
 	tcpQueue       = channel.NewInfiniteChannel[C.ConnContext]()
-	udpQueue       = channel.NewInfiniteChannel[*inbound.PacketAdapter]()
+	udpQueue       = channel.NewInfiniteChannel[C.PacketAdapter]()
 	natTable       = nat.New()
 	rules          []C.Rule
 	subRules       map[string][]C.Rule
@@ -97,7 +96,7 @@ func TCPIn() chan<- C.ConnContext {
 }
 
 // UDPIn return fan-in udp queue
-func UDPIn() chan<- *inbound.PacketAdapter {
+func UDPIn() chan<- C.PacketAdapter {
 	return udpQueue.In()
 }
 
@@ -225,7 +224,7 @@ func resolveMetadata(ctx C.PlainContext, metadata *C.Metadata) (proxy C.Proxy, r
 	return
 }
 
-func handleUDPConn(packet *inbound.PacketAdapter) {
+func handleUDPConn(packet C.PacketAdapter) {
 	metadata := packet.Metadata()
 	if !metadata.Valid() {
 		log.Warnln("[Metadata] not valid: %#v", metadata)
@@ -349,7 +348,7 @@ func handleUDPConn(packet *inbound.PacketAdapter) {
 
 		oAddr := metadata.DstIP
 		oAddr = oAddr.Unmap()
-		go handleUDPToLocal(packet.UDPPacket, pc, key, oAddr, fAddr)
+		go handleUDPToLocal(packet, pc, key, oAddr, fAddr)
 
 		natTable.Set(key, pc)
 		handle()

@@ -94,6 +94,7 @@ type Metadata struct {
 	DstPort      string     `json:"destinationPort"`
 	InIP         netip.Addr `json:"inboundIP"`
 	InPort       string     `json:"inboundPort"`
+	InName       string     `json:"inboundName"`
 	Host         string     `json:"host"`
 	DNSMode      DNSMode    `json:"dnsMode"`
 	Process      string     `json:"process"`

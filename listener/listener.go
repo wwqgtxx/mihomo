@@ -506,7 +506,7 @@ func ReCreateMixed(port int, tcpIn chan<- C.ConnContext, udpIn chan<- C.PacketAd
 	log.Infoln("Mixed(http+socks) proxy listening at: %s", mixedListener.Address())
 }
 
-func ReCreateTun(conf LC.Tun, tcpIn chan<- C.ConnContext, udpIn chan<- C.PacketAdapter) {
+func ReCreateTun(tunConf LC.Tun, tcpIn chan<- C.ConnContext, udpIn chan<- C.PacketAdapter) {
 	tunMux.Lock()
 	defer tunMux.Unlock()
 
@@ -518,7 +518,7 @@ func ReCreateTun(conf LC.Tun, tcpIn chan<- C.ConnContext, udpIn chan<- C.PacketA
 	}()
 
 	shouldIgnore := false
-	changed := hasTunConfigChange(&conf)
+	changed := hasTunConfigChange(&tunConf)
 
 	if tunLister != nil {
 		if changed {
@@ -534,11 +534,11 @@ func ReCreateTun(conf LC.Tun, tcpIn chan<- C.ConnContext, udpIn chan<- C.PacketA
 		return
 	}
 
-	LastTunConf = conf
+	LastTunConf = tunConf
 
 	generalInterface := dialer.GeneralInterface.Load()
 	defaultInterface := dialer.DefaultInterface.Load()
-	if !conf.Enable {
+	if !tunConf.Enable {
 		if defaultInterface != generalInterface {
 			log.Infoln("Use interface name: %s", generalInterface)
 			dialer.DefaultInterface.Store(generalInterface)
@@ -547,7 +547,12 @@ func ReCreateTun(conf LC.Tun, tcpIn chan<- C.ConnContext, udpIn chan<- C.PacketA
 		return
 	}
 
-	tunLister, err = sing_tun.New(conf, tcpIn, udpIn)
+	lister, err := sing_tun.New(tunConf, tcpIn, udpIn)
+	if err != nil {
+		return
+	}
+	tunLister = lister
+
 	log.Infoln("[TUN] Tun adapter listening at: %s", tunLister.Address())
 }
 

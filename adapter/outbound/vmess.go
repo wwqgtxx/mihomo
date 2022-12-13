@@ -225,7 +225,9 @@ func (v *Vmess) DialContext(ctx context.Context, metadata *C.Metadata, opts ...d
 		if err != nil {
 			return nil, err
 		}
-		defer safeConnClose(c, err)
+		defer func() {
+			safeConnClose(c, err)
+		}()
 
 		//c, err = v.client.StreamConn(c, parseVmessAddr(metadata))
 		c, err = v.client.DialConn(c, M.ParseSocksaddr(metadata.RemoteAddress()))
@@ -241,7 +243,9 @@ func (v *Vmess) DialContext(ctx context.Context, metadata *C.Metadata, opts ...d
 		return nil, fmt.Errorf("%s connect error: %s", v.addr, err.Error())
 	}
 	tcpKeepAlive(c)
-	defer safeConnClose(c, err)
+	defer func() {
+		safeConnClose(c, err)
+	}()
 
 	c, err = v.StreamConn(c, metadata)
 	return NewConn(c, v), err
@@ -272,7 +276,9 @@ func (v *Vmess) ListenPacketContext(ctx context.Context, metadata *C.Metadata, o
 		if err != nil {
 			return nil, err
 		}
-		defer safeConnClose(c, err)
+		defer func() {
+			safeConnClose(c, err)
+		}()
 
 		//c, err = v.client.StreamConn(c, parseVmessAddr(metadata))
 		if v.option.XUDP {
@@ -286,7 +292,9 @@ func (v *Vmess) ListenPacketContext(ctx context.Context, metadata *C.Metadata, o
 			return nil, fmt.Errorf("%s connect error: %s", v.addr, err.Error())
 		}
 		tcpKeepAlive(c)
-		defer safeConnClose(c, err)
+		defer func() {
+			safeConnClose(c, err)
+		}()
 
 		c, err = v.StreamConn(c, metadata)
 	}

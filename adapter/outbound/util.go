@@ -54,7 +54,7 @@ func resolveUDPAddr(ctx context.Context, network, address string) (*net.UDPAddr,
 }
 
 func safeConnClose(c net.Conn, err error) {
-	if err != nil {
-		c.Close()
+	if err != nil && c != nil {
+		_ = c.Close()
 	}
 }

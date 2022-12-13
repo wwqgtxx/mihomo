@@ -108,14 +108,13 @@ func (ss *ShadowSocks) ListenPacketContext(ctx context.Context, metadata *C.Meta
 		}
 		return newPacketConn(uot.NewClientConn(tcpConn), ss), nil
 	}
-	pc, err := dialer.ListenPacket(ctx, "udp", "", ss.Base.DialOptions(opts...)...)
+	addr, err := resolveUDPAddr(ctx, "udp", ss.addr)
 	if err != nil {
 		return nil, err
 	}
 
-	addr, err := resolveUDPAddr(ctx, "udp", ss.addr)
+	pc, err := dialer.ListenPacket(ctx, dialer.ParseNetwork("udp", addr.AddrPort().Addr()), "", ss.Base.DialOptions(opts...)...)
 	if err != nil {
-		pc.Close()
 		return nil, err
 	}
 

@@ -113,9 +113,9 @@ func (t *Trojan) DialContext(ctx context.Context, metadata *C.Metadata, opts ...
 	}
 	tcpKeepAlive(c)
 
-	defer func() {
+	defer func(c net.Conn) {
 		safeConnClose(c, err)
-	}()
+	}(c)
 
 	c, err = t.StreamConn(c, metadata)
 	if err != nil {

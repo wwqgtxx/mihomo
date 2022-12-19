@@ -34,3 +34,9 @@ func WithRoutingMark(mark int) Option {
 		opt.routingMark = mark
 	}
 }
+
+func withOption(o option) Option {
+	return func(opt *option) {
+		*opt = o
+	}
+}

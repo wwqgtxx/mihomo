@@ -62,7 +62,12 @@ func (ssr *ShadowSocksR) StreamConn(c net.Conn, metadata *C.Metadata) (net.Conn,
 
 // DialContext implements C.ProxyAdapter
 func (ssr *ShadowSocksR) DialContext(ctx context.Context, metadata *C.Metadata, opts ...dialer.Option) (_ C.Conn, err error) {
-	c, err := dialer.DialContext(ctx, "tcp", ssr.addr, ssr.Base.DialOptions(opts...)...)
+	return ssr.DialContextWithDialer(ctx, dialer.NewDialer(ssr.Base.DialOptions(opts...)...), metadata)
+}
+
+// DialContextWithDialer implements C.ProxyAdapter
+func (ssr *ShadowSocksR) DialContextWithDialer(ctx context.Context, dialer C.Dialer, metadata *C.Metadata) (_ C.Conn, err error) {
+	c, err := dialer.DialContext(ctx, "tcp", ssr.addr)
 	if err != nil {
 		return nil, fmt.Errorf("%s connect error: %w", ssr.addr, err)
 	}
@@ -78,12 +83,17 @@ func (ssr *ShadowSocksR) DialContext(ctx context.Context, metadata *C.Metadata, 
 
 // ListenPacketContext implements C.ProxyAdapter
 func (ssr *ShadowSocksR) ListenPacketContext(ctx context.Context, metadata *C.Metadata, opts ...dialer.Option) (C.PacketConn, error) {
+	return ssr.ListenPacketWithDialer(ctx, dialer.NewDialer(ssr.Base.DialOptions(opts...)...), metadata)
+}
+
+// ListenPacketWithDialer implements C.ProxyAdapter
+func (ssr *ShadowSocksR) ListenPacketWithDialer(ctx context.Context, dialer C.Dialer, metadata *C.Metadata) (_ C.PacketConn, err error) {
 	addr, err := resolveUDPAddr(ctx, "udp", ssr.addr)
 	if err != nil {
 		return nil, err
 	}
 
-	pc, err := dialer.ListenPacket(ctx, dialer.ParseNetwork("udp", addr.AddrPort().Addr()), "", ssr.Base.DialOptions(opts...)...)
+	pc, err := dialer.ListenPacket(ctx, "udp", "", addr.AddrPort())
 	if err != nil {
 		return nil, err
 	}
@@ -93,20 +103,8 @@ func (ssr *ShadowSocksR) ListenPacketContext(ctx context.Context, metadata *C.Me
 	return newPacketConn(&ssPacketConn{PacketConn: pc, rAddr: addr}, ssr), nil
 }
 
-// ListenPacketOnPacketConn implements C.ProxyAdapter
-func (ssr *ShadowSocksR) ListenPacketOnPacketConn(ctx context.Context, c C.PacketConn, metadata *C.Metadata) (_ C.PacketConn, err error) {
-	addr, err := resolveUDPAddr(ctx, "udp", ssr.addr)
-	if err != nil {
-		return nil, err
-	}
-
-	pc := ssr.cipher.PacketConn(c)
-	pc = ssr.protocol.PacketConn(pc)
-	return newPacketConn(&ssPacketConn{PacketConn: pc, rAddr: addr}, ssr), nil
-}
-
-// SupportLPPC implements C.ProxyAdapter
-func (ssr *ShadowSocksR) SupportLPPC() bool {
+// SupportWithDialer implements C.ProxyAdapter
+func (ssr *ShadowSocksR) SupportWithDialer() bool {
 	return true
 }
 

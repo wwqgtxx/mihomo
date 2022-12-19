@@ -93,6 +93,23 @@ func (ssr *ShadowSocksR) ListenPacketContext(ctx context.Context, metadata *C.Me
 	return newPacketConn(&ssPacketConn{PacketConn: pc, rAddr: addr}, ssr), nil
 }
 
+// ListenPacketOnPacketConn implements C.ProxyAdapter
+func (ssr *ShadowSocksR) ListenPacketOnPacketConn(ctx context.Context, c C.PacketConn, metadata *C.Metadata) (_ C.PacketConn, err error) {
+	addr, err := resolveUDPAddr(ctx, "udp", ssr.addr)
+	if err != nil {
+		return nil, err
+	}
+
+	pc := ssr.cipher.PacketConn(c)
+	pc = ssr.protocol.PacketConn(pc)
+	return newPacketConn(&ssPacketConn{PacketConn: pc, rAddr: addr}, ssr), nil
+}
+
+// SupportLPPC implements C.ProxyAdapter
+func (ssr *ShadowSocksR) SupportLPPC() bool {
+	return true
+}
+
 func NewShadowSocksR(option ShadowSocksROption) (*ShadowSocksR, error) {
 	// SSR protocol compatibility
 	// https://github.com/Dreamacro/clash/pull/2056

@@ -43,7 +43,7 @@ func DialContext(ctx context.Context, network, address string, options ...Option
 }
 
 func ListenPacket(ctx context.Context, network, address string, options ...Option) (net.PacketConn, error) {
-	cfg := ApplyOptions(options...)
+	cfg := applyOptions(options...)
 
 	lc := &net.ListenConfig{}
 	if cfg.interfaceName != "" {
@@ -81,7 +81,7 @@ func GetDial() bool {
 	return tcpConcurrent
 }
 
-func ApplyOptions(options ...Option) *option {
+func applyOptions(options ...Option) *option {
 	opt := &option{
 		interfaceName: DefaultInterface.Load(),
 		routingMark:   int(DefaultRoutingMark.Load()),
@@ -99,7 +99,7 @@ func ApplyOptions(options ...Option) *option {
 }
 
 func dialContext(ctx context.Context, network string, destination netip.Addr, port string, options []Option) (net.Conn, error) {
-	opt := ApplyOptions(options...)
+	opt := applyOptions(options...)
 
 	dialer := &net.Dialer{}
 	if opt.interfaceName != "" {
@@ -350,19 +350,19 @@ func concurrentDualStackDialContext(ctx context.Context, network, address string
 	return nil, errors.New("never touched")
 }
 
-type dialer struct {
+type Dialer struct {
 	opt option
 }
 
-func (d dialer) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
-	return DialContext(ctx, network, address, withOption(d.opt))
+func (d Dialer) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
+	return DialContext(ctx, network, address, WithOption(d.opt))
 }
 
-func (d dialer) ListenPacket(ctx context.Context, network, address string, rAddrPort netip.AddrPort) (net.PacketConn, error) {
-	return ListenPacket(ctx, ParseNetwork(network, rAddrPort.Addr()), address, withOption(d.opt))
+func (d Dialer) ListenPacket(ctx context.Context, network, address string, rAddrPort netip.AddrPort) (net.PacketConn, error) {
+	return ListenPacket(ctx, ParseNetwork(network, rAddrPort.Addr()), address, WithOption(d.opt))
 }
 
-func NewDialer(options ...Option) dialer {
-	opt := ApplyOptions(options...)
-	return dialer{opt: *opt}
+func NewDialer(options ...Option) Dialer {
+	opt := applyOptions(options...)
+	return Dialer{opt: *opt}
 }

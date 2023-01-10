@@ -166,7 +166,9 @@ func updateListeners(listeners map[string]C.InboundListener) {
 	listener.PatchInboundListeners(listeners, tcpIn, udpIn, true)
 }
 
-func updateExperimental(c *config.Config) {}
+func updateExperimental(c *config.Config) {
+	tunnel.UDPFallbackMatch.Store(c.Experimental.UDPFallbackMatch)
+}
 
 func updateDNS(c *config.DNS) {
 	if !c.Enable {

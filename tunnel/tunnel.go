@@ -25,6 +25,8 @@ import (
 	"github.com/Dreamacro/clash/log"
 	R "github.com/Dreamacro/clash/rule"
 	"github.com/Dreamacro/clash/tunnel/statistic"
+
+	"go.uber.org/atomic"
 )
 
 var (
@@ -48,6 +50,9 @@ var (
 	preResolveProcessName = false
 
 	fakeIPRange netip.Prefix
+
+	// experimental feature
+	UDPFallbackMatch = atomic.NewBool(false)
 )
 
 func SetFakeIPRange(p netip.Prefix) {
@@ -533,8 +538,8 @@ func match(metadata *C.Metadata) (C.Proxy, C.Rule, error) {
 				continue
 			}
 
-			if metadata.NetWork == C.UDP && !adapter.SupportUDP() {
-				log.Debugln("%s UDP is not supported", adapter.Name())
+			if metadata.NetWork == C.UDP && !adapter.SupportUDP() && UDPFallbackMatch.Load() {
+				log.Debugln("[Matcher] %s UDP is not supported, skip match", adapter.Name())
 				continue
 			}
 			return adapter, rule, nil

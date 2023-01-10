@@ -288,9 +288,13 @@ func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 			},
 			DefaultNameserver: []string{
 				"114.114.114.114",
+				"tcp://114.114.114.114",
 				"223.5.5.5",
+				"tcp://223.5.5.5",
 				"8.8.8.8",
+				"tcp://8.8.8.8",
 				"1.0.0.1",
+				"tcp://1.0.0.1",
 			},
 			NameServer: []string{
 				"https://8.8.8.8/dns-query",

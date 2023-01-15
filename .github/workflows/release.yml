@@ -2,7 +2,20 @@ name: Release
 on: [push]
 jobs:
   build:
+    permissions: write-all
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        job:
+          - { target: "linux-386 linux-amd64 linux-amd64-v3", id: "1" }
+          - { target: "linux-armv5 linux-armv6 linux-armv7", id: "2" }
+          - { target: "linux-arm64 linux-mips64 linux-mips64le", id: "3" }
+          - { target: "linux-mips-softfloat linux-mips-hardfloat linux-mipsle-softfloat linux-mipsle-hardfloat", id: "4" }
+          - { target: "freebsd-386 freebsd-amd64 freebsd-amd64-v3 freebsd-arm64", id: "5" }
+          - { target: "windows-amd64 windows-amd64-v3 windows-386", id: "6" }
+          - { target: "windows-arm64 windows-armv7", id: "7" }
+          - { target: "darwin-amd64 darwin-amd64-v3 darwin-arm64", id: "8" }
     steps:
       - name: Setup Go
         uses: actions/setup-go@v3
@@ -13,17 +26,12 @@ jobs:
       - name: Check out code into the Go module directory
         uses: actions/checkout@v3
 
-      - name: Cache go module
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
+      - name: Set variables
+        run: echo "VERSION=$(git describe --tags)" >> $GITHUB_ENV
+        shell: bash
 
       - name: Get dependencies, run test
+        if: ${{ matrix.job.id=='1' }}
         run: |
           go test ./...
 
@@ -35,14 +43,23 @@ jobs:
 #          wget -O Country.mmdb https://raw.githubusercontent.com/JMVoid/ipip2mmdb/release/Country.mmdb
 
       - name: Build
-#        if: startsWith(github.ref, 'refs/tags/')
+        #        if: startsWith(github.ref, 'refs/tags/')
         env:
           NAME: clashr
           BINDIR: bin
-        run: make -j releases
+        run: |
+          make -j$(($(nproc) + 1)) ${{ matrix.job.target }}
+          cd bin
+          ls -la
+          chmod +x *
+          cp ../.github/release.sh ./
+          bash ./release.sh
+          rm ./release.sh
+          ls -la
+          cd ..
 
       - name: Update Artifact
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v3
         with:
           name: bin
           path: bin/

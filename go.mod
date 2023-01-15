@@ -20,20 +20,20 @@ require (
 	github.com/miekg/dns v1.1.50
 	github.com/oschwald/geoip2-golang v1.8.0
 	github.com/sagernet/netlink v0.0.0-20220905062125-8043b4a9aa97
-	github.com/sagernet/sing v0.1.0
-	github.com/sagernet/sing-vmess v0.1.0
-	github.com/sagernet/wireguard-go v0.0.0-20221108054404-7c2acadba17c
+	github.com/sagernet/sing v0.1.5
+	github.com/sagernet/sing-vmess v0.1.1
+	github.com/sagernet/wireguard-go v0.0.0-20221116151939-c99467f53f2c
 	github.com/samber/lo v1.35.0
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.1
 	go.etcd.io/bbolt v1.3.6
 	go.uber.org/atomic v1.10.0
 	go.uber.org/automaxprocs v1.5.1
-	golang.org/x/crypto v0.3.1-0.20221117191849-2c476679df9a
+	golang.org/x/crypto v0.4.0
 	golang.org/x/exp v0.0.0-20221031165847-c99f073a8326
-	golang.org/x/net v0.2.1-0.20221117215542-ecf7fda6a59e
+	golang.org/x/net v0.3.0
 	golang.org/x/sync v0.1.0
-	golang.org/x/sys v0.2.1-0.20221110211117-d684c6f88669
+	golang.org/x/sys v0.4.0
 	gopkg.in/yaml.v3 v3.0.1
 	lukechampine.com/blake3 v1.1.7
 )
@@ -60,7 +60,7 @@ require (
 	github.com/u-root/uio v0.0.0-20220204230159-dac05f7d2cb4 // indirect
 	github.com/vishvananda/netns v0.0.1 // indirect
 	golang.org/x/mod v0.6.0 // indirect
-	golang.org/x/text v0.4.0 // indirect
+	golang.org/x/text v0.5.0 // indirect
 	golang.org/x/time v0.1.0 // indirect
 	golang.org/x/tools v0.2.0 // indirect
 	gvisor.dev/gvisor v0.0.0-20220901235040-6ca97ef2ce1c // indirect

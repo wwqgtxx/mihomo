@@ -65,6 +65,7 @@ func (h *ListenerHandler) NewConnection(ctx context.Context, conn net.Conn, meta
 	wg := &sync.WaitGroup{}
 	defer wg.Wait() // this goroutine must exit after conn.Close()
 	wg.Add(1)
+
 	h.TcpIn <- inbound.NewSocket(target, &waitCloseConn{Conn: conn, wg: wg, rAddr: metadata.Source.TCPAddr()}, h.Type, additions...)
 	return nil
 }
@@ -145,7 +146,7 @@ func (c *packet) WriteBack(b []byte, addr net.Addr) (n int, err error) {
 		err = errors.New("writeBack to closed connection")
 		return
 	}
-	err = conn.WritePacket(buff, M.ParseSocksaddr(addr.String()))
+	err = conn.WritePacket(buff, M.SocksaddrFromNet(addr))
 	return
 }
 

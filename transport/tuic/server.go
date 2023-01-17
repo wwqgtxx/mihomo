@@ -54,6 +54,7 @@ func (s *Server) Serve() error {
 		if err != nil {
 			return err
 		}
+		SetCongestionController(conn, s.CongestionController)
 		uuid, err := uuid.NewV4()
 		if err != nil {
 			return err
@@ -166,7 +167,6 @@ func (s *serverHandler) handleStream() (err error) {
 		if err != nil {
 			return err
 		}
-
 		go func() (err error) {
 			stream := &quicStreamConn{
 				Stream: quicStream,

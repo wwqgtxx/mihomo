@@ -87,6 +87,7 @@ func Init(secret string) {
 		r.Mount("/providers/proxies", proxyProviderRouter())
 		r.Mount("/providers/rules", ruleProviderRouter())
 		r.Mount("/script", scriptRouter())
+		r.Mount("/dns", dnsRouter())
 	})
 
 	if uiPath != "" {

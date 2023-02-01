@@ -87,9 +87,15 @@ func withMapping(mapping *cache.LruCache[netip.Addr, string]) middleware {
 				case *D.A:
 					ip, _ = netip.AddrFromSlice(a.A)
 					ttl = a.Hdr.Ttl
+					if !ip.IsGlobalUnicast() {
+						continue
+					}
 				case *D.AAAA:
 					ip, _ = netip.AddrFromSlice(a.AAAA)
 					ttl = a.Hdr.Ttl
+					if !ip.IsGlobalUnicast() {
+						continue
+					}
 				default:
 					continue
 				}
@@ -181,9 +187,6 @@ func NewHandler(resolver *Resolver, mapper *ResolverEnhancer) handler {
 
 	if mapper.mode == C.DNSFakeIP {
 		middlewares = append(middlewares, withFakeIP(mapper.fakePool))
-	}
-
-	if mapper.mode != C.DNSNormal {
 		middlewares = append(middlewares, withMapping(mapper.mapping))
 	}
 

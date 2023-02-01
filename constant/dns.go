@@ -8,8 +8,9 @@ import (
 
 // DNSModeMapping is a mapping for EnhancedMode enum
 var DNSModeMapping = map[string]DNSMode{
-	DNSNormal.String(): DNSNormal,
-	DNSFakeIP.String(): DNSFakeIP,
+	DNSNormal.String():  DNSNormal,
+	DNSFakeIP.String():  DNSFakeIP,
+	DNSMapping.String(): DNSMapping,
 }
 
 const (

@@ -187,6 +187,9 @@ func NewHandler(resolver *Resolver, mapper *ResolverEnhancer) handler {
 
 	if mapper.mode == C.DNSFakeIP {
 		middlewares = append(middlewares, withFakeIP(mapper.fakePool))
+	}
+
+	if mapper.mode != C.DNSNormal {
 		middlewares = append(middlewares, withMapping(mapper.mapping))
 	}
 

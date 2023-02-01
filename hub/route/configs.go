@@ -289,11 +289,13 @@ func patchConfigs(w http.ResponseWriter, r *http.Request) {
 	render.NoContent(w, r)
 }
 
+type updateConfigRequest struct {
+	Path    string `json:"path"`
+	Payload string `json:"payload"`
+}
+
 func updateConfigs(w http.ResponseWriter, r *http.Request) {
-	req := struct {
-		Path    string `json:"path"`
-		Payload string `json:"payload"`
-	}{}
+	req := updateConfigRequest{}
 	if err := render.DecodeJSON(r.Body, &req); err != nil {
 		render.Status(r, http.StatusBadRequest)
 		render.JSON(w, r, ErrBadRequest)

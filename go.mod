@@ -13,8 +13,8 @@ require (
 	github.com/jpillora/backoff v1.0.0
 	github.com/kentik/patricia v1.2.0
 	github.com/mdlayher/netlink v1.7.2-0.20221213171556-9881fafed8c7
-	github.com/metacubex/quic-go v0.31.1-0.20230117135846-c981c4c16e91
-	github.com/metacubex/sing-shadowsocks v0.1.0
+	github.com/metacubex/quic-go v0.32.0
+	github.com/metacubex/sing-shadowsocks v0.1.1-0.20230202072246-e2bef5f088c7
 	github.com/metacubex/sing-tun v0.1.1-0.20230129141228-645f74b2208b
 	github.com/metacubex/sing-wireguard v0.0.0-20230129141512-65b25e764f8e
 	github.com/miekg/dns v1.1.50
@@ -30,7 +30,7 @@ require (
 	go.uber.org/atomic v1.10.0
 	go.uber.org/automaxprocs v1.5.1
 	golang.org/x/crypto v0.5.0
-	golang.org/x/exp v0.0.0-20221031165847-c99f073a8326
+	golang.org/x/exp v0.0.0-20221205204356-47842c84f3db
 	golang.org/x/net v0.5.0
 	golang.org/x/sync v0.1.0
 	golang.org/x/sys v0.4.0
@@ -50,12 +50,13 @@ require (
 	github.com/josharian/native v1.1.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.1.2 // indirect
 	github.com/kr/text v0.2.0 // indirect
-	github.com/marten-seemann/qtls-go1-18 v0.1.3 // indirect
-	github.com/marten-seemann/qtls-go1-19 v0.1.1 // indirect
 	github.com/mdlayher/socket v0.4.0 // indirect
 	github.com/onsi/ginkgo/v2 v2.2.0 // indirect
 	github.com/oschwald/maxminddb-golang v1.10.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/quic-go/qtls-go1-18 v0.2.0 // indirect
+	github.com/quic-go/qtls-go1-19 v0.2.0 // indirect
+	github.com/quic-go/qtls-go1-20 v0.1.0 // indirect
 	github.com/sagernet/abx-go v0.0.0-20220819185957-dba1257d738e // indirect
 	github.com/sagernet/go-tun2socks v1.16.12-0.20220818015926-16cb67876a61 // indirect
 	github.com/u-root/uio v0.0.0-20221213070652-c3537552635f // indirect
@@ -67,4 +68,4 @@ require (
 	gvisor.dev/gvisor v0.0.0-20230128000341-b7014294633b // indirect
 )
 
-replace gvisor.dev/gvisor v0.0.0-20230128000341-b7014294633b => github.com/metacubex/gvisor v0.0.0-20230129142733-94bf62304db8
+replace gvisor.dev/gvisor v0.0.0-20230128000341-b7014294633b => github.com/metacubex/gvisor v0.0.0-20230202073621-9b7164de61df

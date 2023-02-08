@@ -329,7 +329,12 @@ func (v *Vmess) ListenPacketWithDialer(ctx context.Context, dialer C.Dialer, met
 
 // ListenPacketOnStreamConn implements C.ProxyAdapter
 func (v *Vmess) ListenPacketOnStreamConn(c net.Conn, metadata *C.Metadata) (_ C.PacketConn, err error) {
-	return v.ListenPacketOnStreamConn(c, metadata)
+	if v.option.PacketAddr {
+		return newPacketConn(&threadSafePacketConn{PacketConn: packetaddr.NewBindConn(c)}, v), nil
+	} else if pc, ok := c.(net.PacketConn); ok {
+		return newPacketConn(&threadSafePacketConn{PacketConn: pc}, v), nil
+	}
+	return newPacketConn(&vmessPacketConn{Conn: c, rAddr: metadata.UDPAddr()}, v), nil
 }
 
 // SupportWithDialer implements C.ProxyAdapter

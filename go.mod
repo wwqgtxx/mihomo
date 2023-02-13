@@ -15,8 +15,8 @@ require (
 	github.com/mdlayher/netlink v1.7.2-0.20221213171556-9881fafed8c7
 	github.com/metacubex/quic-go v0.32.0
 	github.com/metacubex/sing-shadowsocks v0.1.1-0.20230202072246-e2bef5f088c7
-	github.com/metacubex/sing-tun v0.1.1-0.20230129141228-645f74b2208b
-	github.com/metacubex/sing-wireguard v0.0.0-20230129141512-65b25e764f8e
+	github.com/metacubex/sing-tun v0.1.1-0.20230213124625-28d27a0c236b
+	github.com/metacubex/sing-wireguard v0.0.0-20230213124601-d04406a109b4
 	github.com/miekg/dns v1.1.50
 	github.com/oschwald/geoip2-golang v1.8.0
 	github.com/sagernet/netlink v0.0.0-20220905062125-8043b4a9aa97
@@ -51,6 +51,7 @@ require (
 	github.com/klauspost/cpuid/v2 v2.1.2 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mdlayher/socket v0.4.0 // indirect
+	github.com/metacubex/gvisor v0.0.0-20230213124051-7a16c835d80e // indirect
 	github.com/onsi/ginkgo/v2 v2.2.0 // indirect
 	github.com/oschwald/maxminddb-golang v1.10.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
@@ -65,7 +66,4 @@ require (
 	golang.org/x/text v0.6.0 // indirect
 	golang.org/x/time v0.1.0 // indirect
 	golang.org/x/tools v0.2.0 // indirect
-	gvisor.dev/gvisor v0.0.0-20230128000341-b7014294633b // indirect
 )
-
-replace gvisor.dev/gvisor v0.0.0-20230128000341-b7014294633b => github.com/metacubex/gvisor v0.0.0-20230202073621-9b7164de61df

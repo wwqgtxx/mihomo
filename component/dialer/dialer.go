@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"net"
 	"net/netip"
-	"runtime"
-	"strings"
 	"sync"
 
 	"github.com/Dreamacro/clash/component/resolver"
@@ -19,17 +17,6 @@ var (
 	actualDualStackDialContext = dualStackDialContext
 	tcpConcurrent              = false
 )
-
-func ParseNetwork(network string, addr netip.Addr) string {
-	if runtime.GOOS == "windows" { // fix bindIfaceToListenConfig() in windows force bind to an ipv4 address
-		if !strings.HasSuffix(network, "4") &&
-			!strings.HasSuffix(network, "6") &&
-			addr.Unmap().Is6() {
-			network += "6"
-		}
-	}
-	return network
-}
 
 func DialContext(ctx context.Context, network, address string, options ...Option) (net.Conn, error) {
 	switch network {

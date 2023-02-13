@@ -18,12 +18,9 @@ func bindControl(ifaceName string, chain controlFn) controlFn {
 			}
 		}()
 
-		ipStr, _, err := net.SplitHostPort(address)
-		if err == nil {
-			ip := net.ParseIP(ipStr)
-			if ip != nil && !ip.IsGlobalUnicast() {
-				return
-			}
+		addrPort, err := netip.ParseAddrPort(address)
+		if err == nil && !addrPort.Addr().IsGlobalUnicast() {
+			return
 		}
 
 		var innerErr error
@@ -49,4 +46,8 @@ func bindIfaceToListenConfig(ifaceName string, lc *net.ListenConfig, _, address 
 	lc.Control = bindControl(ifaceName, lc.Control)
 
 	return address, nil
+}
+
+func ParseNetwork(network string, addr netip.Addr) string {
+	return network
 }

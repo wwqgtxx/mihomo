@@ -9,6 +9,7 @@ import (
 	N "github.com/Dreamacro/clash/common/net"
 	"github.com/Dreamacro/clash/common/pool"
 	C "github.com/Dreamacro/clash/constant"
+	"github.com/Dreamacro/clash/log"
 )
 
 func handleUDPToRemote(packet C.UDPPacket, pc C.PacketConn, metadata *C.Metadata) error {
@@ -30,9 +31,12 @@ func handleUDPToRemote(packet C.UDPPacket, pc C.PacketConn, metadata *C.Metadata
 
 func handleUDPToLocal(packet C.UDPPacket, pc net.PacketConn, key string, oAddr, fAddr netip.Addr) {
 	buf := pool.Get(pool.UDPBufferSize)
-	defer pool.Put(buf)
-	defer natTable.Delete(key)
-	defer pc.Close()
+	defer func() {
+		_ = pc.Close()
+		closeAllLocalCoon(key)
+		natTable.Delete(key)
+		_ = pool.Put(buf)
+	}()
 
 	for {
 		pc.SetReadDeadline(time.Now().Add(udpTimeout))
@@ -60,4 +64,17 @@ func handleUDPToLocal(packet C.UDPPacket, pc net.PacketConn, key string, oAddr, 
 
 func handleSocket(ctx C.ConnContext, outbound net.Conn) {
 	N.Relay(ctx.Conn(), outbound)
+}
+
+func closeAllLocalCoon(lAddr string) {
+	natTable.RangeLocalConn(lAddr, func(key, value any) bool {
+		conn, ok := value.(*net.UDPConn)
+		if !ok || conn == nil {
+			log.Debugln("Value %#v unknown value when closing TProxy local conn...", conn)
+			return true
+		}
+		conn.Close()
+		log.Debugln("Closing TProxy local conn... lAddr=%s rAddr=%s", lAddr, key)
+		return true
+	})
 }

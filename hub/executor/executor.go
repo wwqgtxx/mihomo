@@ -162,8 +162,9 @@ func loadProvider(ruleProviders map[string]R.RuleProvider, proxyProviders map[st
 func updateListeners(listeners map[string]C.InboundListener) {
 	tcpIn := tunnel.TCPIn()
 	udpIn := tunnel.UDPIn()
+	natTable := tunnel.NatTable()
 
-	listener.PatchInboundListeners(listeners, tcpIn, udpIn, true)
+	listener.PatchInboundListeners(listeners, tcpIn, udpIn, natTable, true)
 }
 
 func updateExperimental(c *config.Config) {
@@ -296,11 +297,12 @@ func updateGeneral(general *config.General, force bool) {
 
 	tcpIn := tunnel.TCPIn()
 	udpIn := tunnel.UDPIn()
+	natTable := tunnel.NatTable()
 
 	listener.ReCreateHTTP(general.Port, tcpIn)
 	listener.ReCreateSocks(general.SocksPort, tcpIn, udpIn)
-	listener.ReCreateRedir(general.RedirPort, tcpIn, udpIn)
-	listener.ReCreateTProxy(general.TProxyPort, tcpIn, udpIn)
+	listener.ReCreateRedir(general.RedirPort, tcpIn, udpIn, natTable)
+	listener.ReCreateTProxy(general.TProxyPort, tcpIn, udpIn, natTable)
 	listener.ReCreateMixed(general.MixedPort, tcpIn, udpIn)
 	listener.ReCreateMixEC(general.MixECConfig, tcpIn, udpIn)
 	listener.ReCreateShadowSocks(general.ShadowSocksConfig, tcpIn, udpIn)

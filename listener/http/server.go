@@ -41,7 +41,7 @@ func NewWithAuthenticate(addr string, in chan<- C.ConnContext, authenticate bool
 			inbound.WithSpecialRules(""),
 		}
 	}
-	l, err := net.Listen("tcp", addr)
+	l, err := inbound.Listen("tcp", addr)
 
 	if err != nil {
 		return nil, err

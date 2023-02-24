@@ -41,7 +41,7 @@ func New(addr string, in chan<- C.ConnContext, additions ...inbound.Addition) (*
 			inbound.WithSpecialRules(""),
 		}
 	}
-	l, err := net.Listen("tcp", addr)
+	l, err := inbound.Listen("tcp", addr)
 	if err != nil {
 		return nil, err
 	}

@@ -2,6 +2,7 @@ package executor
 
 import (
 	"fmt"
+	"github.com/Dreamacro/clash/adapter/inbound"
 	LC "github.com/Dreamacro/clash/listener/config"
 	"net/netip"
 	"os"
@@ -279,6 +280,7 @@ func updateGeneral(general *config.General, force bool) {
 		log.Infoln("Use tcp concurrent")
 	}
 
+	inbound.SetTfo(general.InboundTfo)
 	dialer.DefaultInterface.Store(general.Interface)
 	dialer.GeneralInterface.Store(general.Interface)
 	dialer.DefaultRoutingMark.Store(int32(general.RoutingMark))

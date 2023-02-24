@@ -80,7 +80,7 @@ func New(config string, in chan<- C.ConnContext, additions ...inbound.Addition) 
 	for _, addr := range strings.Split(addrString, ",") {
 		addr := addr
 
-		l, err := net.Listen("tcp", addr)
+		l, err := inbound.Listen("tcp", addr)
 		if err != nil {
 			return nil, err
 		}

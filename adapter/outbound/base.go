@@ -16,6 +16,7 @@ type Base struct {
 	iface string
 	tp    C.AdapterType
 	udp   bool
+	tfo   bool
 	rmark int
 }
 
@@ -64,6 +65,11 @@ func (b *Base) SupportUDP() bool {
 	return b.udp
 }
 
+// SupportTFO implements C.ProxyAdapter
+func (b *Base) SupportTFO() bool {
+	return b.tfo
+}
+
 // MarshalJSON implements C.ProxyAdapter
 func (b *Base) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]string{
@@ -91,10 +97,15 @@ func (b *Base) DialOptions(opts ...dialer.Option) []dialer.Option {
 		opts = append(opts, dialer.WithRoutingMark(b.rmark))
 	}
 
+	if b.tfo {
+		opts = append(opts, dialer.WithTFO(true))
+	}
+
 	return opts
 }
 
 type BasicOption struct {
+	TFO         bool   `proxy:"tfo,omitempty" group:"tfo,omitempty"`
 	Interface   string `proxy:"interface-name,omitempty" group:"interface-name,omitempty"`
 	RoutingMark int    `proxy:"routing-mark,omitempty" group:"routing-mark,omitempty"`
 }

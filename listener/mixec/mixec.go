@@ -42,7 +42,7 @@ func New(config string, tcpIn chan<- C.ConnContext, udpIn chan<- C.PacketAdapter
 		ml.udpListeners = append(ml.udpListeners, sul)
 
 		//TCP
-		l, err := net.Listen("tcp", addr)
+		l, err := inbound.Listen("tcp", addr)
 		if err != nil {
 			return nil, err
 		}

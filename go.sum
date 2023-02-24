@@ -111,6 +111,8 @@ github.com/sagernet/sing-shadowtls v0.0.0-20230221130515-dac782ca098e h1:S1fd0kB
 github.com/sagernet/sing-shadowtls v0.0.0-20230221130515-dac782ca098e/go.mod h1:Kn1VUIprdkwCgkS6SXYaLmIpKzQbqBIKJBMY+RvBhYc=
 github.com/sagernet/sing-vmess v0.1.2 h1:RbOZNAId2LrCai8epMoQXlf0XTrou0bfcw08hNBg6lM=
 github.com/sagernet/sing-vmess v0.1.2/go.mod h1:9NSj8mZTx1JIY/HF9LaYRppUsVkysIN5tEFpNZujXxY=
+github.com/sagernet/tfo-go v0.0.0-20230207095944-549363a7327d h1:trP/l6ZPWvQ/5Gv99Z7/t/v8iYy06akDMejxW1sznUk=
+github.com/sagernet/tfo-go v0.0.0-20230207095944-549363a7327d/go.mod h1:jk6Ii8Y3En+j2KQDLgdgQGwb3M6y7EL567jFnGYhN9g=
 github.com/sagernet/wireguard-go v0.0.0-20221116151939-c99467f53f2c h1:vK2wyt9aWYHHvNLWniwijBu/n4pySypiKRhN32u/JGo=
 github.com/sagernet/wireguard-go v0.0.0-20221116151939-c99467f53f2c/go.mod h1:euOmN6O5kk9dQmgSS8Df4psAl3TCjxOz0NW60EWkSaI=
 github.com/samber/lo v1.37.0 h1:XjVcB8g6tgUp8rsPsJ2CvhClfImrpL04YpQHXeHPhRw=

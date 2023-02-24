@@ -23,6 +23,7 @@ require (
 	github.com/sagernet/sing v0.1.8-0.20230221060643-3401d210384b
 	github.com/sagernet/sing-shadowtls v0.0.0-20230221130515-dac782ca098e
 	github.com/sagernet/sing-vmess v0.1.2
+	github.com/sagernet/tfo-go v0.0.0-20230207095944-549363a7327d
 	github.com/sagernet/wireguard-go v0.0.0-20221116151939-c99467f53f2c
 	github.com/samber/lo v1.37.0
 	github.com/sirupsen/logrus v1.9.0

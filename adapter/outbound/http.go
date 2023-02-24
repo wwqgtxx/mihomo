@@ -149,6 +149,7 @@ func NewHttp(option HttpOption) *Http {
 			name:  option.Name,
 			addr:  net.JoinHostPort(option.Server, strconv.Itoa(option.Port)),
 			tp:    C.Http,
+			tfo:   option.TFO,
 			iface: option.Interface,
 			rmark: option.RoutingMark,
 		},

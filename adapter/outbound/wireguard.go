@@ -73,6 +73,7 @@ func NewWireGuard(option WireGuardOption) (*WireGuard, error) {
 			addr:  net.JoinHostPort(option.Server, strconv.Itoa(option.Port)),
 			tp:    C.WireGuard,
 			udp:   option.UDP,
+			tfo:   option.TFO,
 			iface: option.Interface,
 			rmark: option.RoutingMark,
 		},

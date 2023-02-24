@@ -390,6 +390,7 @@ func NewVmess(option VmessOption) (*Vmess, error) {
 			addr:  net.JoinHostPort(option.Server, strconv.Itoa(option.Port)),
 			tp:    C.Vmess,
 			udp:   option.UDP,
+			tfo:   option.TFO,
 			iface: option.Interface,
 			rmark: option.RoutingMark,
 		},

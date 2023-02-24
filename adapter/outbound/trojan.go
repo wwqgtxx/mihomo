@@ -213,6 +213,7 @@ func NewTrojan(option TrojanOption) (*Trojan, error) {
 			addr:  addr,
 			tp:    C.Trojan,
 			udp:   option.UDP,
+			tfo:   option.TFO,
 			iface: option.Interface,
 			rmark: option.RoutingMark,
 		},

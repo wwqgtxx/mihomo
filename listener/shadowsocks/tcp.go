@@ -41,7 +41,7 @@ func New(config LC.ShadowsocksServer, tcpIn chan<- C.ConnContext, udpIn chan<- C
 		sl.udpListeners = append(sl.udpListeners, ul)
 
 		//TCP
-		l, err := net.Listen("tcp", addr)
+		l, err := inbound.Listen("tcp", addr)
 		if err != nil {
 			return nil, err
 		}

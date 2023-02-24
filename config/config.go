@@ -67,6 +67,7 @@ type Inbound struct {
 	Authentication    []string      `json:"authentication"`
 	AllowLan          bool          `json:"allow-lan"`
 	BindAddress       string        `json:"bind-address"`
+	InboundTfo        bool          `json:"inbound-tfo"`
 }
 
 // Controller
@@ -171,6 +172,7 @@ type RawConfig struct {
 	ShadowSocksConfig      string       `yaml:"ss-config"`
 	VmessConfig            string       `yaml:"vmess-config"`
 	MTProxyConfig          string       `yaml:"mtproxy-config"`
+	InboundTfo             bool         `yaml:"inbound-tfo"`
 	Authentication         []string     `yaml:"authentication"`
 	AllowLan               bool         `yaml:"allow-lan"`
 	BindAddress            string       `yaml:"bind-address"`
@@ -230,6 +232,7 @@ func Parse(buf []byte) (*Config, error) {
 func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 	// config with default value
 	rawCfg := &RawConfig{
+		InboundTfo:             true,
 		AllowLan:               false,
 		BindAddress:            "*",
 		Mode:                   T.Rule,
@@ -420,6 +423,7 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 			MTProxyConfig:     cfg.MTProxyConfig,
 			AllowLan:          cfg.AllowLan,
 			BindAddress:       cfg.BindAddress,
+			InboundTfo:        cfg.InboundTfo,
 		},
 		Controller: Controller{
 			ExternalController: cfg.ExternalController,

@@ -203,7 +203,9 @@ func NewTuic(option TuicOption) (*Tuic, error) {
 			addr:  addr,
 			tp:    C.Tuic,
 			udp:   true,
+			tfo:   option.TFO,
 			iface: option.Interface,
+			rmark: option.RoutingMark,
 		},
 	}
 

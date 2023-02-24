@@ -19,11 +19,13 @@ var (
 )
 
 func DialContext(ctx context.Context, network, address string, options ...Option) (net.Conn, error) {
+	opt := applyOptions(options...)
+
 	switch network {
 	case "tcp4", "tcp6", "udp4", "udp6":
-		return actualSingleDialContext(ctx, network, address, options)
+		return actualSingleDialContext(ctx, network, address, opt)
 	case "tcp", "udp":
-		return actualDualStackDialContext(ctx, network, address, options)
+		return actualDualStackDialContext(ctx, network, address, opt)
 	default:
 		return nil, errors.New("network invalid")
 	}
@@ -85,8 +87,7 @@ func applyOptions(options ...Option) *option {
 	return opt
 }
 
-func dialContext(ctx context.Context, network string, destination netip.Addr, port string, options []Option) (net.Conn, error) {
-	opt := applyOptions(options...)
+func dialContext(ctx context.Context, network string, destination netip.Addr, port string, opt *option) (net.Conn, error) {
 
 	dialer := &net.Dialer{}
 	if opt.interfaceName != "" {
@@ -98,10 +99,14 @@ func dialContext(ctx context.Context, network string, destination netip.Addr, po
 		bindMarkToDialer(opt.routingMark, dialer, network, destination)
 	}
 
-	return dialer.DialContext(ctx, network, net.JoinHostPort(destination.String(), port))
+	address := net.JoinHostPort(destination.String(), port)
+	if opt.tfo {
+		return dialTFO(ctx, *dialer, network, address)
+	}
+	return dialer.DialContext(ctx, network, address)
 }
 
-func singleDialContext(ctx context.Context, network, address string, options []Option) (net.Conn, error) {
+func singleDialContext(ctx context.Context, network, address string, opt *option) (net.Conn, error) {
 	host, port, err := net.SplitHostPort(address)
 	if err != nil {
 		return nil, err
@@ -118,10 +123,10 @@ func singleDialContext(ctx context.Context, network, address string, options []O
 		return nil, err
 	}
 
-	return dialContext(ctx, network, ip, port, options)
+	return dialContext(ctx, network, ip, port, opt)
 }
 
-func dualStackDialContext(ctx context.Context, network, address string, options []Option) (net.Conn, error) {
+func dualStackDialContext(ctx context.Context, network, address string, opt *option) (net.Conn, error) {
 	host, port, err := net.SplitHostPort(address)
 	if err != nil {
 		return nil, err
@@ -163,7 +168,7 @@ func dualStackDialContext(ctx context.Context, network, address string, options 
 		}
 		result.resolved = true
 
-		result.Conn, result.error = dialContext(ctx, network, ip, port, options)
+		result.Conn, result.error = dialContext(ctx, network, ip, port, opt)
 	}
 
 	go startRacer(ctx, network+"4", host, false)
@@ -194,7 +199,7 @@ func dualStackDialContext(ctx context.Context, network, address string, options 
 	return nil, errors.New("never touched")
 }
 
-func concurrentDialContext(ctx context.Context, network string, destinations []netip.Addr, port string, options []Option) (net.Conn, error) {
+func concurrentDialContext(ctx context.Context, network string, destinations []netip.Addr, port string, opt *option) (net.Conn, error) {
 	returned := make(chan struct{})
 	defer close(returned)
 
@@ -216,7 +221,7 @@ func concurrentDialContext(ctx context.Context, network string, destinations []n
 				}
 			}
 		}()
-		result.Conn, result.error = dialContext(ctx, network, destination, port, options)
+		result.Conn, result.error = dialContext(ctx, network, destination, port, opt)
 	}
 
 	for _, destination := range destinations {
@@ -244,7 +249,7 @@ func concurrentDialContext(ctx context.Context, network string, destinations []n
 	return nil, fmt.Errorf("all ips %v tcp shake hands failed, the first error is: %w", destinations, firstErr)
 }
 
-func concurrentSingleDialContext(ctx context.Context, network, address string, options []Option) (net.Conn, error) {
+func concurrentSingleDialContext(ctx context.Context, network, address string, opt *option) (net.Conn, error) {
 	host, port, err := net.SplitHostPort(address)
 	if err != nil {
 		return nil, err
@@ -261,10 +266,10 @@ func concurrentSingleDialContext(ctx context.Context, network, address string, o
 		return nil, err
 	}
 
-	return concurrentDialContext(ctx, network, ips, port, options)
+	return concurrentDialContext(ctx, network, ips, port, opt)
 }
 
-func concurrentDualStackDialContext(ctx context.Context, network, address string, options []Option) (net.Conn, error) {
+func concurrentDualStackDialContext(ctx context.Context, network, address string, opt *option) (net.Conn, error) {
 	host, port, err := net.SplitHostPort(address)
 	if err != nil {
 		return nil, err
@@ -306,7 +311,7 @@ func concurrentDualStackDialContext(ctx context.Context, network, address string
 		}
 		result.resolved = true
 
-		result.Conn, result.error = concurrentDialContext(ctx, network, ips, port, options)
+		result.Conn, result.error = concurrentDialContext(ctx, network, ips, port, opt)
 	}
 
 	go startRacer(ctx, network+"4", host, false)

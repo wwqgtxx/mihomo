@@ -68,7 +68,7 @@ func New(config LC.VmessServer, tcpIn chan<- C.ConnContext, udpIn chan<- C.Packe
 		addr := addr
 
 		//TCP
-		l, err := net.Listen("tcp", addr)
+		l, err := inbound.Listen("tcp", addr)
 		if err != nil {
 			return nil, err
 		}

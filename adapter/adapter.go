@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/Dreamacro/clash/common/callback"
 	"github.com/Dreamacro/clash/common/queue"
 	"github.com/Dreamacro/clash/component/dialer"
 	C "github.com/Dreamacro/clash/constant"
@@ -40,9 +41,17 @@ func (p *Proxy) Dial(metadata *C.Metadata) (C.Conn, error) {
 
 // DialContext implements C.ProxyAdapter
 func (p *Proxy) DialContext(ctx context.Context, metadata *C.Metadata, opts ...dialer.Option) (C.Conn, error) {
-	return aliveContext(p, ctx, func(ctx context.Context) (C.Conn, error) {
-		return p.ProxyAdapter.DialContext(ctx, metadata, opts...)
-	})
+	beginTime := time.Now()
+	c, err := p.ProxyAdapter.DialContext(ctx, metadata, opts...)
+	aliveCallback(beginTime, err, p, ctx)
+
+	c = &callback.FirstWriteCallBackConn{
+		Conn: c,
+		Callback: func(err error) {
+			aliveCallback(beginTime, err, p, ctx)
+		},
+	}
+	return c, err
 }
 
 // DialUDP implements C.ProxyAdapter
@@ -54,21 +63,19 @@ func (p *Proxy) DialUDP(metadata *C.Metadata) (C.PacketConn, error) {
 
 // ListenPacketContext implements C.ProxyAdapter
 func (p *Proxy) ListenPacketContext(ctx context.Context, metadata *C.Metadata, opts ...dialer.Option) (C.PacketConn, error) {
-	return aliveContext(p, ctx, func(ctx context.Context) (C.PacketConn, error) {
-		return p.ProxyAdapter.ListenPacketContext(ctx, metadata, opts...)
-	})
+	beginTime := time.Now()
+	pc, err := p.ProxyAdapter.ListenPacketContext(ctx, metadata, opts...)
+	aliveCallback(beginTime, err, p, ctx)
+	return pc, err
 }
 
-func aliveContext[T any](p *Proxy, ctx context.Context, f func(context.Context) (T, error)) (T, error) {
-	beginTime := time.Now()
-	t, err := f(ctx)
+func aliveCallback(beginTime time.Time, err error, p *Proxy, ctx context.Context) {
 	timeUsed := time.Now().Sub(beginTime)
 	if err != nil {
 		if ctx.Err() == nil || timeUsed > 1*time.Second { // context not cancelled or timeUsed>1s
 			p.alive.Store(false)
 		}
 	}
-	return t, err
 }
 
 // DelayHistory implements C.Proxy

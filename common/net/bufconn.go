@@ -8,13 +8,14 @@ import (
 type BufferedConn struct {
 	r *bufio.Reader
 	net.Conn
+	peeked bool
 }
 
 func NewBufferedConn(c net.Conn) *BufferedConn {
 	if bc, ok := c.(*BufferedConn); ok {
 		return bc
 	}
-	return &BufferedConn{bufio.NewReader(c), c}
+	return &BufferedConn{bufio.NewReader(c), c, false}
 }
 
 // Reader returns the internal bufio.Reader.
@@ -22,9 +23,18 @@ func (c *BufferedConn) Reader() *bufio.Reader {
 	return c.r
 }
 
+func (c *BufferedConn) Peeked() bool {
+	return c.peeked
+}
+
 // Peek returns the next n bytes without advancing the reader.
 func (c *BufferedConn) Peek(n int) ([]byte, error) {
+	c.peeked = true
 	return c.r.Peek(n)
+}
+
+func (c *BufferedConn) Discard(n int) (discarded int, err error) {
+	return c.r.Discard(n)
 }
 
 func (c *BufferedConn) Read(p []byte) (int, error) {

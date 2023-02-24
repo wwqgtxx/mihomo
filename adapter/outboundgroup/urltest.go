@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Dreamacro/clash/adapter/outbound"
+	"github.com/Dreamacro/clash/common/callback"
 	"github.com/Dreamacro/clash/common/singledo"
 	"github.com/Dreamacro/clash/component/dialer"
 	C "github.com/Dreamacro/clash/constant"
@@ -43,6 +44,16 @@ func (u *URLTest) DialContext(ctx context.Context, metadata *C.Metadata, opts ..
 		c.AppendToChains(u)
 	} else {
 		doHealthCheck(u.providers, proxy)
+	}
+
+	c = &callback.FirstWriteCallBackConn{
+		Conn: c,
+		Callback: func(err error) {
+			if err == nil {
+			} else {
+				doHealthCheck(u.providers, proxy)
+			}
+		},
 	}
 	return c, err
 }

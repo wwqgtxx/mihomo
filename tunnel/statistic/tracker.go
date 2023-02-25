@@ -57,7 +57,7 @@ func (tt *tcpTracker) Close() error {
 	return tt.Conn.Close()
 }
 
-func NewTCPTracker(conn C.Conn, manager *Manager, metadata *C.Metadata, rule C.Rule) *tcpTracker {
+func NewTCPTracker(conn C.Conn, manager *Manager, metadata *C.Metadata, rule C.Rule, uploadTotal int64, downloadTotal int64) *tcpTracker {
 	uuid, _ := uuid.NewV4()
 
 	t := &tcpTracker{
@@ -69,8 +69,8 @@ func NewTCPTracker(conn C.Conn, manager *Manager, metadata *C.Metadata, rule C.R
 			Metadata:      metadata,
 			Chain:         conn.Chains(),
 			Rule:          "",
-			UploadTotal:   atomic.NewInt64(0),
-			DownloadTotal: atomic.NewInt64(0),
+			UploadTotal:   atomic.NewInt64(uploadTotal),
+			DownloadTotal: atomic.NewInt64(downloadTotal),
 		},
 	}
 
@@ -114,7 +114,7 @@ func (ut *udpTracker) Close() error {
 	return ut.PacketConn.Close()
 }
 
-func NewUDPTracker(conn C.PacketConn, manager *Manager, metadata *C.Metadata, rule C.Rule) *udpTracker {
+func NewUDPTracker(conn C.PacketConn, manager *Manager, metadata *C.Metadata, rule C.Rule, uploadTotal int64, downloadTotal int64) *udpTracker {
 	uuid, _ := uuid.NewV4()
 
 	ut := &udpTracker{
@@ -126,8 +126,8 @@ func NewUDPTracker(conn C.PacketConn, manager *Manager, metadata *C.Metadata, ru
 			Metadata:      metadata,
 			Chain:         conn.Chains(),
 			Rule:          "",
-			UploadTotal:   atomic.NewInt64(0),
-			DownloadTotal: atomic.NewInt64(0),
+			UploadTotal:   atomic.NewInt64(uploadTotal),
+			DownloadTotal: atomic.NewInt64(downloadTotal),
 		},
 	}
 

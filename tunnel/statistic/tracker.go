@@ -57,6 +57,10 @@ func (tt *tcpTracker) Close() error {
 	return tt.Conn.Close()
 }
 
+func (tt *tcpTracker) Upstream() any {
+	return tt.Conn
+}
+
 func NewTCPTracker(conn C.Conn, manager *Manager, metadata *C.Metadata, rule C.Rule, uploadTotal int64, downloadTotal int64) *tcpTracker {
 	uuid, _ := uuid.NewV4()
 

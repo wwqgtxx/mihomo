@@ -79,6 +79,10 @@ func (wsc *websocketConn) Write(b []byte) (int, error) {
 	return len(b), nil
 }
 
+func (wsc *websocketConn) Upstream() any {
+	return wsc.conn.UnderlyingConn()
+}
+
 func (wsc *websocketConn) Close() error {
 	var errors []string
 	if err := wsc.conn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""), time.Now().Add(time.Second*5)); err != nil {
@@ -226,6 +230,14 @@ func (wsedc *websocketWithEarlyDataConn) SetWriteDeadline(t time.Time) error {
 		return nil
 	}
 	return wsedc.Conn.SetWriteDeadline(t)
+}
+
+func (wsedc *websocketWithEarlyDataConn) Upstream() any {
+	return wsedc.underlay
+}
+
+func (wsedc *websocketWithEarlyDataConn) NeedHandshake() bool {
+	return wsedc.Conn == nil
 }
 
 func streamWebsocketWithEarlyDataConn(conn net.Conn, c *WebsocketConfig) (net.Conn, error) {

@@ -56,3 +56,7 @@ func (c *BufferedConn) UnreadByte() error {
 func (c *BufferedConn) Buffered() int {
 	return c.r.Buffered()
 }
+
+func (c *BufferedConn) Upstream() any {
+	return c.Conn
+}

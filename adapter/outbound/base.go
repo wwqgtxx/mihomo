@@ -145,6 +145,10 @@ func (c *conn) AppendToChains(a C.ProxyAdapter) {
 	c.chain = append(c.chain, a.Name())
 }
 
+func (c *conn) Upstream() any {
+	return c.Conn
+}
+
 func NewConn(c net.Conn, a C.ProxyAdapter) C.Conn {
 	return &conn{c, []string{a.Name()}}
 }

@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"time"
 
+	N "github.com/Dreamacro/clash/common/net"
 	"github.com/Dreamacro/clash/common/structure"
 	"github.com/Dreamacro/clash/component/dialer"
 	C "github.com/Dreamacro/clash/constant"
@@ -106,9 +108,17 @@ func (ss *ShadowSocks) streamConn(c net.Conn, metadata *C.Metadata) (net.Conn, e
 	//_, err := c.Write(serializesSocksAddr(metadata))
 	//return c, err
 	if metadata.NetWork == C.UDP && ss.option.UDPOverTCP {
-		return ss.method.DialEarlyConn(c, M.ParseSocksaddr(uot.UOTMagicAddress+":443")), nil
+		if N.NeedHandshake(c) {
+			return ss.method.DialEarlyConn(c, M.ParseSocksaddr(uot.UOTMagicAddress+":443")), nil
+		} else {
+			return ss.method.DialConn(c, M.ParseSocksaddr(uot.UOTMagicAddress+":443"))
+		}
 	}
-	return ss.method.DialEarlyConn(c, M.ParseSocksaddr(metadata.RemoteAddress())), nil
+	if N.NeedHandshake(c) {
+		return ss.method.DialEarlyConn(c, M.ParseSocksaddr(metadata.RemoteAddress())), nil
+	} else {
+		return ss.method.DialConn(c, M.ParseSocksaddr(metadata.RemoteAddress()))
+	}
 }
 
 // DialContext implements C.ProxyAdapter
@@ -190,7 +200,7 @@ func NewShadowSocks(option ShadowSocksOption) (*ShadowSocks, error) {
 	//cipher := option.Cipher
 	//password := option.Password
 	//ciph, err := core.PickCipher(cipher, nil, password)
-	method, err := shadowimpl.FetchMethod(option.Cipher, option.Password)
+	method, err := shadowimpl.FetchMethod(option.Cipher, option.Password, time.Now)
 	if err != nil {
 		return nil, fmt.Errorf("ss %s initialize error: %w", addr, err)
 	}

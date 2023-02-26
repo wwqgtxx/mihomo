@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Dreamacro/clash/common/callback"
+	N "github.com/Dreamacro/clash/common/net"
 	"github.com/Dreamacro/clash/common/queue"
 	"github.com/Dreamacro/clash/component/dialer"
 	C "github.com/Dreamacro/clash/constant"
@@ -45,12 +46,15 @@ func (p *Proxy) DialContext(ctx context.Context, metadata *C.Metadata, opts ...d
 	c, err := p.ProxyAdapter.DialContext(ctx, metadata, opts...)
 	aliveCallback(beginTime, err, p, ctx)
 
-	c = &callback.FirstWriteCallBackConn{
-		Conn: c,
-		Callback: func(err error) {
-			aliveCallback(beginTime, err, p, ctx)
-		},
+	if N.NeedHandshake(c) {
+		c = &callback.FirstWriteCallBackConn{
+			Conn: c,
+			Callback: func(err error) {
+				aliveCallback(beginTime, err, p, ctx)
+			},
+		}
 	}
+
 	return c, err
 }
 

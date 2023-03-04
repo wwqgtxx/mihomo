@@ -74,7 +74,7 @@ func (p *Proxy) ListenPacketContext(ctx context.Context, metadata *C.Metadata, o
 }
 
 func aliveCallback(beginTime time.Time, err error, p *Proxy, ctx context.Context) {
-	timeUsed := time.Now().Sub(beginTime)
+	timeUsed := time.Since(beginTime)
 	if err != nil {
 		if ctx.Err() == nil || timeUsed > 1*time.Second { // context not cancelled or timeUsed>1s
 			p.alive.Store(false)

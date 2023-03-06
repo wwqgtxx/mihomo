@@ -11,16 +11,13 @@ import (
 	"errors"
 	"hash/fnv"
 	"io"
-	"math/rand"
 	"net"
 	"time"
 
 	"golang.org/x/crypto/chacha20poly1305"
-)
 
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
+	"github.com/zhangyunhao116/fastrand"
+)
 
 // Conn wrapper a net.Conn with vmess protocol
 type Conn struct {
@@ -77,7 +74,7 @@ func (vc *Conn) sendRequest() error {
 	buf.WriteByte(vc.respV)
 	buf.WriteByte(vc.option)
 
-	p := rand.Intn(16)
+	p := fastrand.Intn(16)
 	// P Sec Reserve Cmd
 	buf.WriteByte(byte(p<<4) | byte(vc.security))
 	buf.WriteByte(0)
@@ -95,7 +92,7 @@ func (vc *Conn) sendRequest() error {
 	// padding
 	if p > 0 {
 		padding := make([]byte, p)
-		rand.Read(padding)
+		fastrand.Read(padding)
 		buf.Write(padding)
 	}
 
@@ -201,7 +198,7 @@ func hashTimestamp(t time.Time) []byte {
 // newConn return a Conn instance
 func newConn(conn net.Conn, id *ID, dst *DstAddr, security Security, isAead bool) (*Conn, error) {
 	randBytes := make([]byte, 33)
-	rand.Read(randBytes)
+	fastrand.Read(randBytes)
 	reqBodyIV := make([]byte, 16)
 	reqBodyKey := make([]byte, 16)
 	copy(reqBodyIV[:], randBytes[:16])

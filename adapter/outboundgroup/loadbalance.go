@@ -2,11 +2,9 @@ package outboundgroup
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/big"
 	"net"
 
 	"github.com/Dreamacro/clash/adapter/outbound"
@@ -16,6 +14,7 @@ import (
 	C "github.com/Dreamacro/clash/constant"
 	"github.com/Dreamacro/clash/constant/provider"
 
+	"github.com/zhangyunhao116/fastrand"
 	"golang.org/x/net/publicsuffix"
 )
 
@@ -117,12 +116,9 @@ func strategyRandom() strategyFn {
 		if aliveNum == 0 {
 			return proxies[0]
 		}
-		idx, err := rand.Int(rand.Reader, big.NewInt(aliveNum))
-		if err != nil {
-			return aliveProxies[0]
-		}
+		idx := fastrand.Int63n(aliveNum)
 
-		return aliveProxies[idx.Int64()]
+		return aliveProxies[idx]
 	}
 }
 

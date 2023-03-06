@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/rand"
 	"net/netip"
 	"strings"
 	"time"
@@ -16,6 +15,7 @@ import (
 	C "github.com/Dreamacro/clash/constant"
 
 	D "github.com/miekg/dns"
+	"github.com/zhangyunhao116/fastrand"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -131,7 +131,7 @@ func (r *Resolver) ResolveIP(ctx context.Context, host string) (ip netip.Addr, e
 	} else if len(ips) == 0 {
 		return netip.Addr{}, fmt.Errorf("%w: %s", resolver.ErrIPNotFound, host)
 	}
-	return ips[rand.Intn(len(ips))], nil
+	return ips[fastrand.Intn(len(ips))], nil
 }
 
 // LookupIPv4 request with TypeA
@@ -147,7 +147,7 @@ func (r *Resolver) ResolveIPv4(ctx context.Context, host string) (ip netip.Addr,
 	} else if len(ips) == 0 {
 		return netip.Addr{}, fmt.Errorf("%w: %s", resolver.ErrIPNotFound, host)
 	}
-	return ips[rand.Intn(len(ips))], nil
+	return ips[fastrand.Intn(len(ips))], nil
 }
 
 // LookupIPv6 request with TypeAAAA
@@ -163,7 +163,7 @@ func (r *Resolver) ResolveIPv6(ctx context.Context, host string) (ip netip.Addr,
 	} else if len(ips) == 0 {
 		return netip.Addr{}, fmt.Errorf("%w: %s", resolver.ErrIPNotFound, host)
 	}
-	return ips[rand.Intn(len(ips))], nil
+	return ips[fastrand.Intn(len(ips))], nil
 }
 
 func (r *Resolver) shouldIPFallback(ip netip.Addr) bool {

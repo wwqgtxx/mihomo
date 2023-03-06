@@ -5,10 +5,10 @@ import (
 	"time"
 
 	"github.com/Dreamacro/clash/common/batch"
+	"github.com/Dreamacro/clash/common/utils"
 	C "github.com/Dreamacro/clash/constant"
 	"github.com/Dreamacro/clash/log"
 
-	"github.com/gofrs/uuid"
 	"go.uber.org/atomic"
 )
 
@@ -96,7 +96,7 @@ func (hc *HealthCheck) check() {
 		hc.checking.Store(false)
 	}()
 	id := ""
-	if uid, err := uuid.NewV4(); err == nil {
+	if uid, err := utils.UnsafeUUIDGenerator.NewV4(); err == nil {
 		id = uid.String()
 	}
 	log.Infoln("Start New Health Checking (%s) {%s}", hc.gName, id)

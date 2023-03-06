@@ -4,6 +4,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/Dreamacro/clash/common/utils"
 	C "github.com/Dreamacro/clash/constant"
 
 	"github.com/gofrs/uuid"
@@ -62,7 +63,7 @@ func (tt *tcpTracker) Upstream() any {
 }
 
 func NewTCPTracker(conn C.Conn, manager *Manager, metadata *C.Metadata, rule C.Rule, uploadTotal int64, downloadTotal int64) *tcpTracker {
-	uuid, _ := uuid.NewV4()
+	uuid, _ := utils.UnsafeUUIDGenerator.NewV4()
 
 	t := &tcpTracker{
 		Conn:    conn,
@@ -119,7 +120,7 @@ func (ut *udpTracker) Close() error {
 }
 
 func NewUDPTracker(conn C.PacketConn, manager *Manager, metadata *C.Metadata, rule C.Rule, uploadTotal int64, downloadTotal int64) *udpTracker {
-	uuid, _ := uuid.NewV4()
+	uuid, _ := utils.UnsafeUUIDGenerator.NewV4()
 
 	ut := &udpTracker{
 		PacketConn: conn,

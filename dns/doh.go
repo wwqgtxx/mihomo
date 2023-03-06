@@ -6,7 +6,6 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
-	"math/rand"
 	"net"
 	"net/http"
 	"time"
@@ -15,6 +14,7 @@ import (
 	"github.com/Dreamacro/clash/component/resolver"
 
 	D "github.com/miekg/dns"
+	"github.com/zhangyunhao116/fastrand"
 )
 
 const (
@@ -109,7 +109,7 @@ func newDoHClient(url, iface string, r *Resolver, useRemote bool) *dohClient {
 				} else if len(ips) == 0 {
 					return nil, fmt.Errorf("%w: %s", resolver.ErrIPNotFound, host)
 				}
-				ip := ips[rand.Intn(len(ips))]
+				ip := ips[fastrand.Intn(len(ips))]
 
 				options := []dialer.Option{}
 				if iface != "" {

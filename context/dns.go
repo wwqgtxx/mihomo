@@ -4,6 +4,8 @@ import (
 	"context"
 	"github.com/gofrs/uuid"
 	"github.com/miekg/dns"
+
+	"github.com/Dreamacro/clash/common/utils"
 )
 
 const (
@@ -21,7 +23,7 @@ type DNSContext struct {
 }
 
 func NewDNSContext(ctx context.Context, msg *dns.Msg) *DNSContext {
-	id, _ := uuid.NewV4()
+	id, _ := utils.UnsafeUUIDGenerator.NewV4()
 	return &DNSContext{
 		Context: ctx,
 

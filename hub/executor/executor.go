@@ -122,7 +122,7 @@ func GetGeneral() *config.General {
 		HealthCheckLazyDefault: provider.HealthCheckLazyDefault(),
 		TouchAfterLazyPassNum:  provider.TouchAfterLazyPassNum(),
 		PreResolveProcessName:  tunnel.PreResolveProcessName(),
-		TCPConcurrent:          dialer.GetDial(),
+		TCPConcurrent:          dialer.GetTcpConcurrent(),
 	}
 
 	return general
@@ -276,7 +276,7 @@ func updateGeneral(general *config.General, force bool) {
 	provider.SetTouchAfterLazyPassNum(general.TouchAfterLazyPassNum)
 	tunnel.SetPreResolveProcessName(general.PreResolveProcessName)
 	if general.TCPConcurrent {
-		dialer.SetDial(general.TCPConcurrent)
+		dialer.SetTcpConcurrent(general.TCPConcurrent)
 		log.Infoln("Use tcp concurrent")
 	}
 

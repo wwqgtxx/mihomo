@@ -230,7 +230,7 @@ func patchConfigs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if general.TcpConcurrent != nil {
-		dialer.SetDial(*general.TcpConcurrent)
+		dialer.SetTcpConcurrent(*general.TcpConcurrent)
 	}
 
 	ports := P.GetPorts()

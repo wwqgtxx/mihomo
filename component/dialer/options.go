@@ -1,6 +1,11 @@
 package dialer
 
-import "go.uber.org/atomic"
+import (
+	"context"
+	"net"
+
+	"go.uber.org/atomic"
+)
 
 var (
 	DefaultOptions     []Option
@@ -9,11 +14,16 @@ var (
 	DefaultRoutingMark = atomic.NewInt32(0)
 )
 
+type NetDialer interface {
+	DialContext(ctx context.Context, network, address string) (net.Conn, error)
+}
+
 type option struct {
 	interfaceName string
 	addrReuse     bool
 	routingMark   int
 	tfo           bool
+	netDialer     NetDialer
 }
 
 type Option func(opt *option)
@@ -39,6 +49,12 @@ func WithRoutingMark(mark int) Option {
 func WithTFO(tfo bool) Option {
 	return func(opt *option) {
 		opt.tfo = tfo
+	}
+}
+
+func WithNetDialer(netDialer NetDialer) Option {
+	return func(opt *option) {
+		opt.netDialer = netDialer
 	}
 }
 

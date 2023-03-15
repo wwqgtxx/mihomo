@@ -51,6 +51,7 @@ type ShadowSocksOption struct {
 	Plugin            string         `proxy:"plugin,omitempty"`
 	PluginOpts        map[string]any `proxy:"plugin-opts,omitempty"`
 	UDPOverTCP        bool           `proxy:"udp-over-tcp,omitempty"`
+	UDPOverTCPVersion int            `proxy:"udp-over-tcp-version,omitempty"`
 	ClientFingerprint string         `proxy:"client-fingerprint,omitempty"`
 }
 
@@ -126,13 +127,19 @@ func (ss *ShadowSocks) StreamConnContext(ctx context.Context, c net.Conn, metada
 	//_, err := c.Write(serializesSocksAddr(metadata))
 	//return c, err
 	if metadata.NetWork == C.UDP && ss.option.UDPOverTCP {
-		if N.NeedHandshake(c) {
-			return ss.method.DialEarlyConn(c, M.ParseSocksaddr(uot.UOTMagicAddress+":443")), nil
+		var uotDestination M.Socksaddr
+		if ss.option.UDPOverTCPVersion == 1 {
+			uotDestination.Fqdn = uot.LegacyMagicAddress
 		} else {
-			return ss.method.DialConn(c, M.ParseSocksaddr(uot.UOTMagicAddress+":443"))
+			uotDestination.Fqdn = uot.MagicAddress
+		}
+		if useEarly {
+			return ss.method.DialEarlyConn(c, uotDestination), nil
+		} else {
+			return ss.method.DialConn(c, uotDestination)
 		}
 	}
-	if N.NeedHandshake(c) {
+	if useEarly {
 		return ss.method.DialEarlyConn(c, M.ParseSocksaddr(metadata.RemoteAddress())), nil
 	} else {
 		return ss.method.DialConn(c, M.ParseSocksaddr(metadata.RemoteAddress()))
@@ -180,7 +187,12 @@ func (ss *ShadowSocks) ListenPacketWithDialer(ctx context.Context, dialer C.Dial
 		if err != nil {
 			return nil, err
 		}
-		return newPacketConn(uot.NewClientConn(tcpConn), ss), nil
+		destination := M.ParseSocksaddr(metadata.RemoteAddress())
+		if ss.option.UDPOverTCPVersion == 1 {
+			return newPacketConn(uot.NewConn(tcpConn, false, destination), ss), nil
+		} else {
+			return newPacketConn(uot.NewLazyConn(tcpConn, uot.Request{Destination: destination}), ss), nil
+		}
 	}
 	addr, err := resolveUDPAddr(ctx, "udp", ss.addr)
 	if err != nil {
@@ -203,7 +215,12 @@ func (ss *ShadowSocks) SupportWithDialer() bool {
 // ListenPacketOnStreamConn implements C.ProxyAdapter
 func (ss *ShadowSocks) ListenPacketOnStreamConn(c net.Conn, metadata *C.Metadata) (_ C.PacketConn, err error) {
 	if ss.option.UDPOverTCP {
-		return newPacketConn(uot.NewClientConn(c), ss), nil
+		destination := M.ParseSocksaddr(metadata.RemoteAddress())
+		if ss.option.UDPOverTCPVersion == 1 {
+			return newPacketConn(uot.NewConn(c, false, destination), ss), nil
+		} else {
+			return newPacketConn(uot.NewLazyConn(c, uot.Request{Destination: destination}), ss), nil
+		}
 	}
 	return nil, errors.New("no support")
 }
@@ -292,6 +309,13 @@ func NewShadowSocks(option ShadowSocksOption) (*ShadowSocks, error) {
 			return nil, fmt.Errorf("ss %s initialize restls-plugin error: %w", addr, err)
 		}
 
+	}
+	switch option.UDPOverTCPVersion {
+	case 1, 2:
+	case 0:
+		option.UDPOverTCPVersion = 2
+	default:
+		return nil, fmt.Errorf("ss %s unknown udp over tcp protocol version: %d", addr, option.UDPOverTCPVersion)
 	}
 
 	return &ShadowSocks{

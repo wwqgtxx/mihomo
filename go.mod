@@ -18,13 +18,13 @@ require (
 	github.com/metacubex/sing-shadowsocks v0.1.1-0.20230226153717-4e80da7e6947
 	github.com/metacubex/sing-tun v0.1.1-0.20230304153753-5058534177f3
 	github.com/metacubex/sing-wireguard v0.0.0-20230310035749-f7595fcae5cb
-	github.com/miekg/dns v1.1.50
+	github.com/miekg/dns v1.1.52
 	github.com/oschwald/geoip2-golang v1.8.0
 	github.com/sagernet/netlink v0.0.0-20220905062125-8043b4a9aa97
-	github.com/sagernet/sing v0.1.8
+	github.com/sagernet/sing v0.1.9-0.20230315063014-2731df16725b
 	github.com/sagernet/sing-shadowtls v0.1.0
-	github.com/sagernet/sing-vmess v0.1.3-0.20230307060529-d110e81a50bc
-	github.com/sagernet/tfo-go v0.0.0-20230207095944-549363a7327d
+	github.com/sagernet/sing-vmess v0.1.3
+	github.com/sagernet/tfo-go v0.0.0-20230303015439-ffcfd8c41cf9
 	github.com/sagernet/wireguard-go v0.0.0-20221116151939-c99467f53f2c
 	github.com/samber/lo v1.37.0
 	github.com/sirupsen/logrus v1.9.0
@@ -33,11 +33,11 @@ require (
 	go.etcd.io/bbolt v1.3.6
 	go.uber.org/atomic v1.10.0
 	go.uber.org/automaxprocs v1.5.1
-	golang.org/x/crypto v0.6.0
+	golang.org/x/crypto v0.7.0
 	golang.org/x/exp v0.0.0-20221205204356-47842c84f3db
-	golang.org/x/net v0.7.0
+	golang.org/x/net v0.8.0
 	golang.org/x/sync v0.1.0
-	golang.org/x/sys v0.5.0
+	golang.org/x/sys v0.6.0
 	gopkg.in/yaml.v3 v3.0.1
 	lukechampine.com/blake3 v1.1.7
 )
@@ -66,8 +66,8 @@ require (
 	github.com/sagernet/go-tun2socks v1.16.12-0.20220818015926-16cb67876a61 // indirect
 	github.com/u-root/uio v0.0.0-20221213070652-c3537552635f // indirect
 	github.com/vishvananda/netns v0.0.1 // indirect
-	golang.org/x/mod v0.7.0 // indirect
-	golang.org/x/text v0.7.0 // indirect
+	golang.org/x/mod v0.8.0 // indirect
+	golang.org/x/text v0.8.0 // indirect
 	golang.org/x/time v0.1.0 // indirect
-	golang.org/x/tools v0.5.0 // indirect
+	golang.org/x/tools v0.6.0 // indirect
 )

@@ -6,6 +6,8 @@ import (
 	"errors"
 	"net"
 
+	N "github.com/Dreamacro/clash/common/net"
+	"github.com/Dreamacro/clash/common/utils"
 	"github.com/Dreamacro/clash/component/dialer"
 	C "github.com/Dreamacro/clash/constant"
 )
@@ -155,7 +157,9 @@ func NewConn(c net.Conn, a C.ProxyAdapter) C.Conn {
 
 type packetConn struct {
 	net.PacketConn
-	chain C.Chain
+	chain       C.Chain
+	adapterName string
+	connID      string
 }
 
 // Chains implements C.Connection
@@ -168,6 +172,12 @@ func (c *packetConn) AppendToChains(a C.ProxyAdapter) {
 	c.chain = append(c.chain, a.Name())
 }
 
+func (c *packetConn) LocalAddr() net.Addr {
+	lAddr := c.PacketConn.LocalAddr()
+	return N.NewCustomAddr(c.adapterName, c.connID, lAddr) // make quic-go's connMultiplexer happy
+}
+
 func newPacketConn(pc net.PacketConn, a C.ProxyAdapter) C.PacketConn {
-	return &packetConn{pc, []string{a.Name()}}
+	id, _ := utils.UnsafeUUIDGenerator.NewV4()
+	return &packetConn{pc, []string{a.Name()}, a.Name(), id.String()}
 }

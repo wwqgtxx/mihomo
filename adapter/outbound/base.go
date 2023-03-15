@@ -178,6 +178,5 @@ func (c *packetConn) LocalAddr() net.Addr {
 }
 
 func newPacketConn(pc net.PacketConn, a C.ProxyAdapter) C.PacketConn {
-	id, _ := utils.UnsafeUUIDGenerator.NewV4()
-	return &packetConn{pc, []string{a.Name()}, a.Name(), id.String()}
+	return &packetConn{pc, []string{a.Name()}, a.Name(), utils.NewUUIDV4().String()}
 }

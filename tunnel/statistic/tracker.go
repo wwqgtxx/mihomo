@@ -63,13 +63,11 @@ func (tt *tcpTracker) Upstream() any {
 }
 
 func NewTCPTracker(conn C.Conn, manager *Manager, metadata *C.Metadata, rule C.Rule, uploadTotal int64, downloadTotal int64) *tcpTracker {
-	uuid, _ := utils.UnsafeUUIDGenerator.NewV4()
-
 	t := &tcpTracker{
 		Conn:    conn,
 		manager: manager,
 		trackerInfo: &trackerInfo{
-			UUID:          uuid,
+			UUID:          utils.NewUUIDV4(),
 			Start:         time.Now(),
 			Metadata:      metadata,
 			Chain:         conn.Chains(),
@@ -120,13 +118,11 @@ func (ut *udpTracker) Close() error {
 }
 
 func NewUDPTracker(conn C.PacketConn, manager *Manager, metadata *C.Metadata, rule C.Rule, uploadTotal int64, downloadTotal int64) *udpTracker {
-	uuid, _ := utils.UnsafeUUIDGenerator.NewV4()
-
 	ut := &udpTracker{
 		PacketConn: conn,
 		manager:    manager,
 		trackerInfo: &trackerInfo{
-			UUID:          uuid,
+			UUID:          utils.NewUUIDV4(),
 			Start:         time.Now(),
 			Metadata:      metadata,
 			Chain:         conn.Chains(),

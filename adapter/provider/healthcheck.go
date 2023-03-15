@@ -95,10 +95,7 @@ func (hc *HealthCheck) check() {
 	defer func() {
 		hc.checking.Store(false)
 	}()
-	id := ""
-	if uid, err := utils.UnsafeUUIDGenerator.NewV4(); err == nil {
-		id = uid.String()
-	}
+	id := utils.NewUUIDV4().String()
 	log.Infoln("Start New Health Checking (%s) {%s}", hc.gName, id)
 	switch hc.gType {
 	case "fallback":

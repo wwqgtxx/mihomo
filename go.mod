@@ -16,7 +16,7 @@ require (
 	github.com/mdlayher/netlink v1.7.2-0.20221213171556-9881fafed8c7
 	github.com/metacubex/quic-go v0.33.1
 	github.com/metacubex/sing-shadowsocks v0.1.1-0.20230226153717-4e80da7e6947
-	github.com/metacubex/sing-tun v0.1.1-0.20230304153753-5058534177f3
+	github.com/metacubex/sing-tun v0.1.2
 	github.com/metacubex/sing-wireguard v0.0.0-20230310035749-f7595fcae5cb
 	github.com/miekg/dns v1.1.52
 	github.com/oschwald/geoip2-golang v1.8.0
@@ -57,7 +57,7 @@ require (
 	github.com/klauspost/cpuid/v2 v2.1.2 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mdlayher/socket v0.4.0 // indirect
-	github.com/metacubex/gvisor v0.0.0-20230304153416-e2bb9c726005 // indirect
+	github.com/metacubex/gvisor v0.0.0-20230315105319-c03631d706be // indirect
 	github.com/onsi/ginkgo/v2 v2.2.0 // indirect
 	github.com/oschwald/maxminddb-golang v1.10.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect

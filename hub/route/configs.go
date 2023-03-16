@@ -81,6 +81,7 @@ type tunSchema struct {
 	ExcludePackage         *[]string          `yaml:"exclude-package" json:"exclude-package,omitempty"`
 	EndpointIndependentNat *bool              `yaml:"endpoint-independent-nat" json:"endpoint-independent-nat,omitempty"`
 	UDPTimeout             *int64             `yaml:"udp-timeout" json:"udp-timeout,omitempty"`
+	FileDescriptor         *int               `yaml:"file-descriptor" json:"file-descriptor"`
 }
 
 type tuicServerSchema struct {
@@ -170,6 +171,9 @@ func pointerOrDefaultTun(p *tunSchema, def LC.Tun) LC.Tun {
 		}
 		if p.UDPTimeout != nil {
 			def.UDPTimeout = *p.UDPTimeout
+		}
+		if p.FileDescriptor != nil {
+			def.FileDescriptor = *p.FileDescriptor
 		}
 	}
 	return def

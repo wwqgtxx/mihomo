@@ -127,12 +127,7 @@ func (ss *ShadowSocks) StreamConnContext(ctx context.Context, c net.Conn, metada
 	//_, err := c.Write(serializesSocksAddr(metadata))
 	//return c, err
 	if metadata.NetWork == C.UDP && ss.option.UDPOverTCP {
-		var uotDestination M.Socksaddr
-		if ss.option.UDPOverTCPVersion == 1 {
-			uotDestination.Fqdn = uot.LegacyMagicAddress
-		} else {
-			uotDestination.Fqdn = uot.MagicAddress
-		}
+		uotDestination := uot.RequestDestination(uint8(ss.option.UDPOverTCPVersion))
 		if useEarly {
 			return ss.method.DialEarlyConn(c, uotDestination), nil
 		} else {
@@ -189,7 +184,7 @@ func (ss *ShadowSocks) ListenPacketWithDialer(ctx context.Context, dialer C.Dial
 		}
 		destination := M.ParseSocksaddr(metadata.RemoteAddress())
 		if ss.option.UDPOverTCPVersion == 1 {
-			return newPacketConn(uot.NewConn(tcpConn, false, destination), ss), nil
+			return newPacketConn(uot.NewConn(tcpConn, uot.Request{Destination: destination}), ss), nil
 		} else {
 			return newPacketConn(uot.NewLazyConn(tcpConn, uot.Request{Destination: destination}), ss), nil
 		}
@@ -216,8 +211,8 @@ func (ss *ShadowSocks) SupportWithDialer() bool {
 func (ss *ShadowSocks) ListenPacketOnStreamConn(c net.Conn, metadata *C.Metadata) (_ C.PacketConn, err error) {
 	if ss.option.UDPOverTCP {
 		destination := M.ParseSocksaddr(metadata.RemoteAddress())
-		if ss.option.UDPOverTCPVersion == 1 {
-			return newPacketConn(uot.NewConn(c, false, destination), ss), nil
+		if ss.option.UDPOverTCPVersion == uot.LegacyVersion {
+			return newPacketConn(uot.NewConn(c, uot.Request{Destination: destination}), ss), nil
 		} else {
 			return newPacketConn(uot.NewLazyConn(c, uot.Request{Destination: destination}), ss), nil
 		}

@@ -21,7 +21,7 @@ require (
 	github.com/miekg/dns v1.1.52
 	github.com/oschwald/geoip2-golang v1.8.0
 	github.com/sagernet/netlink v0.0.0-20220905062125-8043b4a9aa97
-	github.com/sagernet/sing v0.2.0
+	github.com/sagernet/sing v0.2.1-0.20230323055925-1c4c60c739ef
 	github.com/sagernet/sing-shadowtls v0.1.0
 	github.com/sagernet/sing-vmess v0.1.3
 	github.com/sagernet/tfo-go v0.0.0-20230303015439-ffcfd8c41cf9
@@ -34,7 +34,7 @@ require (
 	go.uber.org/atomic v1.10.0
 	go.uber.org/automaxprocs v1.5.1
 	golang.org/x/crypto v0.7.0
-	golang.org/x/exp v0.0.0-20221205204356-47842c84f3db
+	golang.org/x/exp v0.0.0-20230321023759-10a507213a29
 	golang.org/x/net v0.8.0
 	golang.org/x/sync v0.1.0
 	golang.org/x/sys v0.6.0
@@ -71,3 +71,5 @@ require (
 	golang.org/x/time v0.1.0 // indirect
 	golang.org/x/tools v0.6.0 // indirect
 )
+
+replace go.uber.org/atomic v1.10.0 => github.com/metacubex/uber-atomic v0.0.0-20230202125923-feb10b770370

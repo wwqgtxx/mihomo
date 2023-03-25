@@ -2,13 +2,12 @@ package executor
 
 import (
 	"fmt"
-	"github.com/Dreamacro/clash/adapter/inbound"
-	LC "github.com/Dreamacro/clash/listener/config"
 	"net/netip"
 	"os"
 	"sync"
 
 	"github.com/Dreamacro/clash/adapter"
+	"github.com/Dreamacro/clash/adapter/inbound"
 	"github.com/Dreamacro/clash/adapter/outboundgroup"
 	"github.com/Dreamacro/clash/adapter/provider"
 	"github.com/Dreamacro/clash/component/auth"
@@ -26,6 +25,7 @@ import (
 	"github.com/Dreamacro/clash/dns"
 	"github.com/Dreamacro/clash/listener"
 	authStore "github.com/Dreamacro/clash/listener/auth"
+	LC "github.com/Dreamacro/clash/listener/config"
 	"github.com/Dreamacro/clash/log"
 	R "github.com/Dreamacro/clash/rule"
 	"github.com/Dreamacro/clash/tunnel"

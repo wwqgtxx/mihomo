@@ -5,12 +5,13 @@ import (
 	"encoding/json"
 
 	"github.com/Dreamacro/clash/adapter/outbound"
+	"github.com/Dreamacro/clash/adapter/provider"
 	"github.com/Dreamacro/clash/common/callback"
 	N "github.com/Dreamacro/clash/common/net"
 	"github.com/Dreamacro/clash/common/singledo"
 	"github.com/Dreamacro/clash/component/dialer"
 	C "github.com/Dreamacro/clash/constant"
-	"github.com/Dreamacro/clash/constant/provider"
+	providerTypes "github.com/Dreamacro/clash/constant/provider"
 )
 
 type Fallback struct {
@@ -18,7 +19,7 @@ type Fallback struct {
 	disableUDP bool
 	filter     string
 	single     *singledo.Single
-	providers  []provider.ProxyProvider
+	providers  []providerTypes.ProxyProvider
 }
 
 func (f *Fallback) Now() string {
@@ -103,6 +104,11 @@ func (f *Fallback) proxies(touch bool) []C.Proxy {
 func (f *Fallback) findAliveProxy(touch bool) C.Proxy {
 	proxies := f.proxies(touch)
 	for _, proxy := range proxies {
+		if proxy.Alive() && !provider.ProxyIsRed(proxy) {
+			return proxy
+		}
+	}
+	for _, proxy := range proxies {
 		if proxy.Alive() {
 			return proxy
 		}
@@ -111,7 +117,7 @@ func (f *Fallback) findAliveProxy(touch bool) C.Proxy {
 	return proxies[0]
 }
 
-func NewFallback(option *GroupCommonOption, providers []provider.ProxyProvider) *Fallback {
+func NewFallback(option *GroupCommonOption, providers []providerTypes.ProxyProvider) *Fallback {
 	return &Fallback{
 		Base: outbound.NewBase(outbound.BaseOption{
 			Name:        option.Name,

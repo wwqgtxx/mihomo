@@ -9,11 +9,14 @@ import (
 	C "github.com/Dreamacro/clash/constant"
 	"github.com/Dreamacro/clash/log"
 
+	"github.com/zhangyunhao116/fastrand"
 	"go.uber.org/atomic"
 )
 
 const (
 	defaultURLTestTimeout = time.Second * 5
+	yellowURLTestTimeout  = time.Millisecond * 260
+	redURLTestTimeout     = time.Millisecond * 600
 	waitAfterAURLTest     = time.Millisecond * 100
 )
 
@@ -131,7 +134,7 @@ func (hc *HealthCheck) fallbackCheck(id string) {
 		log.Infoln("Health Checked (%s) %s : %t %d ms {%s}", hc.gName, proxy.Name(), proxy.Alive(), proxy.LastDelay(), id)
 	}
 	wait := func() {
-		<-time.After(waitAfterAURLTest)
+		time.Sleep(waitAfterAURLTest)
 	}
 	cleaner := func() {
 		if hc.cleanerRun.Swap(true) {
@@ -157,15 +160,29 @@ func (hc *HealthCheck) fallbackCheck(id string) {
 		b.Wait()
 		log.Infoln("Finish A Health Check Cleaner (%s) {%s}", hc.gName, id)
 	}
+	reds := make([]C.Proxy, 0, len(hc.proxies))
 	for _, proxy := range hc.proxies {
 		if proxy.Alive() {
-			wait()
-			check(proxy)
-			if proxy.Alive() {
-				break
+			if !ProxyIsRed(proxy) {
+				wait()
+				check(proxy)
+				if proxy.Alive() {
+					if !ProxyIsRed(proxy) {
+						break
+					} else {
+						reds = append(reds, proxy)
+					}
+				}
+			} else {
+				reds = append(reds, proxy)
 			}
 		}
 	}
+	if lenReds := len(reds); lenReds > 0 {
+		redProxy := reds[fastrand.Intn(lenReds)] // random choose a red proxy to check
+		check(redProxy)
+	}
+
 	go cleaner()
 }
 
@@ -205,4 +222,23 @@ func TouchAfterLazyPassNum() int {
 
 func SetTouchAfterLazyPassNum(newTouchAfterLazyPassNum int) {
 	touchAfterLazyPassNum = newTouchAfterLazyPassNum
+}
+
+func proxyIsColor(proxy C.Proxy, timeout time.Duration) bool {
+	if timeout == 0 {
+		return false
+	}
+	lastDelay := proxy.LastDelay()
+	if lastDelay == 0 || lastDelay == 0xffff {
+		return false
+	}
+	return lastDelay >= uint16(timeout/time.Millisecond)
+}
+
+func ProxyIsYellow(proxy C.Proxy) bool {
+	return proxyIsColor(proxy, yellowURLTestTimeout)
+}
+
+func ProxyIsRed(proxy C.Proxy) bool {
+	return proxyIsColor(proxy, redURLTestTimeout)
 }

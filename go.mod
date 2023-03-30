@@ -19,6 +19,7 @@ require (
 	github.com/metacubex/sing-tun v0.1.3-0.20230323115055-7935ba0ac8b3
 	github.com/metacubex/sing-wireguard v0.0.0-20230310035749-f7595fcae5cb
 	github.com/miekg/dns v1.1.52
+	github.com/openacid/low v0.1.21
 	github.com/oschwald/geoip2-golang v1.8.0
 	github.com/sagernet/netlink v0.0.0-20220905062125-8043b4a9aa97
 	github.com/sagernet/sing v0.2.1-0.20230323071235-f8038854d286

@@ -117,8 +117,7 @@ func TestPool_CycleUsed(t *testing.T) {
 
 func TestPool_Skip(t *testing.T) {
 	ipnet := netip.MustParsePrefix("192.168.0.1/30")
-	tree := trie.New[struct{}]()
-	tree.Insert("example.com", struct{}{})
+	tree := trie.NewDomainSet([]string{"example.com"})
 	pools, tempfile, err := createPools(Options{
 		IPNet: ipnet,
 		Size:  10,

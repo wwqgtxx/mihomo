@@ -1,6 +1,8 @@
 package rules
 
 import (
+	"fmt"
+
 	C "github.com/Dreamacro/clash/constant"
 
 	"github.com/kentik/patricia"
@@ -8,14 +10,14 @@ import (
 )
 
 type IpCidrTree struct {
-	*IPCIDR
-	treeV4  *tree.TreeV4[struct{}]
-	treeV6  *tree.TreeV6[struct{}]
-	insertN int
+	IPCIDR    // for C.Rule interface
+	treeV4    *tree.TreeV4[struct{}]
+	treeV6    *tree.TreeV6[struct{}]
+	ruleCount int
 }
 
-func (i *IpCidrTree) InsertN() int {
-	return i.insertN
+func (i *IpCidrTree) RuleCount() int {
+	return i.ruleCount
 }
 
 func (i *IpCidrTree) RuleType() C.RuleType {
@@ -41,7 +43,7 @@ func (i *IpCidrTree) Match(metadata *C.Metadata) (bool, string) {
 	return found, i.adapter
 }
 
-func (i *IpCidrTree) Insert(ipCidr string) error {
+func (i *IpCidrTree) insert(ipCidr string) error {
 	v4, v6, err := patricia.ParseIPFromString(ipCidr)
 	if err != nil {
 		return err
@@ -51,33 +53,22 @@ func (i *IpCidrTree) Insert(ipCidr string) error {
 	} else {
 		_, _ = i.treeV6.Set(*v6, struct{}{})
 	}
-	i.insertN++
+	i.ruleCount++
 	return nil
 }
 
-func (i *IpCidrTree) FinishInsert() {}
-
-func newEmptyIPCIDRTrie() *IpCidrTree {
-	return &IpCidrTree{
-		IPCIDR:  &IPCIDR{},
-		treeV4:  tree.NewTreeV4[struct{}](),
-		treeV6:  tree.NewTreeV6[struct{}](),
-		insertN: 0,
+func NewIPCIDRTrie(rules []string) (*IpCidrTree, error) {
+	i := &IpCidrTree{
+		IPCIDR:    IPCIDR{},
+		treeV4:    tree.NewTreeV4[struct{}](),
+		treeV6:    tree.NewTreeV6[struct{}](),
+		ruleCount: 0,
 	}
-}
-
-func NewIPCIDRTrie(ipCidr string, adapter string, opts ...IPCIDROption) (*IpCidrTree, error) {
-	dt := newEmptyIPCIDRTrie()
-	i, err := NewIPCIDR(ipCidr, adapter, opts...)
-	if err != nil {
-		return nil, errPayload
+	for idx, ipCidr := range rules {
+		err := i.insert(ipCidr)
+		if err != nil {
+			return nil, fmt.Errorf("rule %d error: %w", idx, err)
+		}
 	}
-	dt.IPCIDR = i
-	err = dt.Insert(ipCidr)
-
-	for _, o := range opts {
-		o(dt.IPCIDR)
-	}
-
-	return dt, err
+	return i, nil
 }

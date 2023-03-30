@@ -27,7 +27,7 @@ type Pool struct {
 	gateway uint32
 	offset  uint32
 	mux     sync.Mutex
-	host    *trie.DomainTrie[struct{}]
+	host    *trie.DomainSet
 	ipnet   netip.Prefix
 	store   store
 }
@@ -65,7 +65,7 @@ func (p *Pool) ShouldSkipped(domain string) bool {
 	if p.host == nil {
 		return false
 	}
-	return p.host.Search(domain) != nil
+	return p.host.Has(domain)
 }
 
 // Exist returns if given ip exists in fake-ip pool
@@ -132,7 +132,7 @@ func uintToIP(v uint32) netip.Addr {
 
 type Options struct {
 	IPNet netip.Prefix
-	Host  *trie.DomainTrie[struct{}]
+	Host  *trie.DomainSet
 
 	// Size sets the maximum number of entries in memory
 	// and does not work if Persistence is true

@@ -81,9 +81,7 @@ func (rp *ruleSetProvider) Rules() []C.Rule {
 
 type RuleTree interface {
 	C.Rule
-	InsertN() int
-	Insert(string) error
-	FinishInsert()
+	RuleCount() int
 }
 
 func rulesParse(buf []byte, behavior string) (any, error) {
@@ -102,32 +100,21 @@ func rulesParse(buf []byte, behavior string) (any, error) {
 	printMemStats("unmarshal")
 
 	var rules []C.Rule
-	var rt RuleTree
-	for idx, str := range schema.Payload {
-		switch behavior {
-		case "domain":
-			if rt == nil {
-				rt = newEmptyDomainTree()
-			}
-			err := rt.Insert(str)
-			if err != nil {
-				return nil, fmt.Errorf("rule %d error: %w", idx, err)
-			}
-			if rules == nil {
-				rules = []C.Rule{rt}
-			}
-		case "ipcidr":
-			if rt == nil {
-				rt = newEmptyIPCIDRTrie()
-			}
-			err := rt.Insert(str)
-			if err != nil {
-				return nil, fmt.Errorf("rule %d error: %w", idx, err)
-			}
-			if rules == nil {
-				rules = []C.Rule{rt}
-			}
-		default: // classical
+	switch behavior {
+	case "domain":
+		rt, err := NewDomainTree(schema.Payload)
+		if err != nil {
+			return nil, err
+		}
+		rules = []C.Rule{rt}
+	case "ipcidr":
+		rt, err := NewIPCIDRTrie(schema.Payload)
+		if err != nil {
+			return nil, err
+		}
+		rules = []C.Rule{rt}
+	default: // classical
+		for idx, str := range schema.Payload {
 			line := str
 
 			var rule []string
@@ -158,9 +145,6 @@ func rulesParse(buf []byte, behavior string) (any, error) {
 			rules = append(rules, parsed)
 		}
 	}
-	if rt != nil {
-		rt.FinishInsert()
-	}
 
 	if len(rules) == 0 {
 		return nil, errors.New("file doesn't have any valid proxy")
@@ -182,7 +166,7 @@ func (rp *ruleSetProvider) setRules(rules []C.Rule) {
 	rp.ruleCount = len(rp.rules)
 	if rp.ruleCount == 1 && rp.behavior != "classical" {
 		if rt, ok := rp.rules[0].(RuleTree); ok {
-			rp.ruleCount = rt.InsertN()
+			rp.ruleCount = rt.RuleCount()
 		}
 	}
 }

@@ -109,9 +109,8 @@ type Profile struct {
 type Sniffer struct {
 	Enable          bool
 	Sniffers        []sniffer.Type
-	Reverses        *trie.DomainTrie[struct{}]
-	ForceDomain     *trie.DomainTrie[struct{}]
-	SkipDomain      *trie.DomainTrie[struct{}]
+	ForceDomain     *trie.DomainSet
+	SkipDomain      *trie.DomainSet
 	Ports           *[]utils.Range[uint16]
 	ForceDnsMapping bool
 	ParsePureIp     bool
@@ -920,14 +919,10 @@ func parseDNS(rawCfg *RawConfig, hosts *trie.DomainTrie[netip.Addr]) (*DNS, erro
 			return nil, err
 		}
 
-		var host *trie.DomainTrie[struct{}]
+		var host *trie.DomainSet
 		// fake ip skip host filter
 		if len(cfg.FakeIPFilter) != 0 {
-			host = trie.New[struct{}]()
-			for _, domain := range cfg.FakeIPFilter {
-				host.Insert(domain, struct{}{})
-			}
-			host.Optimize()
+			host = trie.NewDomainSet(cfg.FakeIPFilter)
 		}
 
 		pool, err := fakeip.New(fakeip.Options{
@@ -1022,23 +1017,8 @@ func parseSniffer(snifferRaw RawSniffer) (*Sniffer, error) {
 	for st := range loadSniffer {
 		sniffer.Sniffers = append(sniffer.Sniffers, st)
 	}
-	sniffer.ForceDomain = trie.New[struct{}]()
-	for _, domain := range snifferRaw.ForceDomain {
-		err := sniffer.ForceDomain.Insert(domain, struct{}{})
-		if err != nil {
-			return nil, fmt.Errorf("error domian[%s] in force-domain, error:%v", domain, err)
-		}
-	}
-	sniffer.ForceDomain.Optimize()
-
-	sniffer.SkipDomain = trie.New[struct{}]()
-	for _, domain := range snifferRaw.SkipDomain {
-		err := sniffer.SkipDomain.Insert(domain, struct{}{})
-		if err != nil {
-			return nil, fmt.Errorf("error domian[%s] in force-domain, error:%v", domain, err)
-		}
-	}
-	sniffer.SkipDomain.Optimize()
+	sniffer.ForceDomain = trie.NewDomainSet(snifferRaw.ForceDomain)
+	sniffer.SkipDomain = trie.NewDomainSet(snifferRaw.SkipDomain)
 
 	return sniffer, nil
 }

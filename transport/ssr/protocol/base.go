@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/rand"
 	"encoding/base64"
 	"encoding/binary"
 	"sync"
@@ -38,7 +39,7 @@ func (a *authData) next() *authData {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 	if a.connectionID > 0xff000000 || a.connectionID == 0 {
-		fastrand.Read(a.clientID[:])
+		rand.Read(a.clientID[:])
 		a.connectionID = fastrand.Uint32() & 0xffffff
 	}
 	a.connectionID++

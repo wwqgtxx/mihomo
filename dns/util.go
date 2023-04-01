@@ -17,13 +17,11 @@ import (
 	D "github.com/miekg/dns"
 )
 
-func putMsgToCache(c *cache.LruCache[string, *D.Msg], key string, msg *D.Msg) {
+func putMsgToCache(c *cache.LruCache[string, *D.Msg], key string, q D.Question, msg *D.Msg) {
 	// skip dns cache for acme challenge
-	if len(msg.Question) != 0 {
-		if q := msg.Question[0]; q.Qtype == D.TypeTXT && strings.HasPrefix(q.Name, "_acme-challenge") {
-			log.Debugln("[DNS] dns cache ignored because of acme challenge for: %s", q.Name)
-			return
-		}
+	if q.Qtype == D.TypeTXT && strings.HasPrefix(q.Name, "_acme-challenge.") {
+		log.Debugln("[DNS] dns cache ignored because of acme challenge for: %s", q.Name)
+		return
 	}
 	var ttl uint32
 	switch {

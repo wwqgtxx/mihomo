@@ -1,6 +1,7 @@
 package obfs
 
 import (
+	"crypto/rand"
 	"encoding/binary"
 	"hash/crc32"
 	"net"
@@ -57,7 +58,7 @@ func (c *randomHeadConn) Write(b []byte) (int, error) {
 		dataLength := fastrand.Intn(96) + 4
 		buf := pool.Get(dataLength + 4)
 		defer pool.Put(buf)
-		fastrand.Read(buf[:dataLength])
+		rand.Read(buf[:dataLength])
 		binary.LittleEndian.PutUint32(buf[dataLength:], 0xffffffff-crc32.ChecksumIEEE(buf[:dataLength]))
 		_, err := c.Conn.Write(buf)
 		return len(b), err

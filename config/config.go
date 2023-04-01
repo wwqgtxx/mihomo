@@ -90,6 +90,7 @@ type DNS struct {
 	FakeIPRange       *fakeip.Pool
 	Hosts             *trie.DomainTrie[netip.Addr]
 	NameServerPolicy  map[string]dns.NameServer
+	SearchDomains     []string
 }
 
 // FallbackFilter config
@@ -152,6 +153,7 @@ type RawDNS struct {
 	FakeIPFilter      []string          `yaml:"fake-ip-filter"`
 	DefaultNameserver []string          `yaml:"default-nameserver"`
 	NameServerPolicy  map[string]string `yaml:"nameserver-policy"`
+	SearchDomains     []string          `yaml:"search-domains"`
 }
 
 type RawFallbackFilter struct {
@@ -947,6 +949,18 @@ func parseDNS(rawCfg *RawConfig, hosts *trie.DomainTrie[netip.Addr]) (*DNS, erro
 
 	if cfg.UseHosts {
 		dnsCfg.Hosts = hosts
+	}
+
+	if len(cfg.SearchDomains) != 0 {
+		for _, domain := range cfg.SearchDomains {
+			if strings.HasPrefix(domain, ".") || strings.HasSuffix(domain, ".") {
+				return nil, errors.New("search domains should not start or end with '.'")
+			}
+			if strings.Contains(domain, ":") {
+				return nil, errors.New("search domains are for ipv4 only and should not contain ports")
+			}
+		}
+		dnsCfg.SearchDomains = cfg.SearchDomains
 	}
 
 	return dnsCfg, nil

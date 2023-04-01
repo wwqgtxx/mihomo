@@ -6,6 +6,7 @@ import (
 	"crypto/cipher"
 	"crypto/hmac"
 	"crypto/md5"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
@@ -92,7 +93,7 @@ func (vc *Conn) sendRequest() error {
 	// padding
 	if p > 0 {
 		padding := make([]byte, p)
-		fastrand.Read(padding)
+		rand.Read(padding)
 		buf.Write(padding)
 	}
 
@@ -198,7 +199,7 @@ func hashTimestamp(t time.Time) []byte {
 // newConn return a Conn instance
 func newConn(conn net.Conn, id *ID, dst *DstAddr, security Security, isAead bool) (*Conn, error) {
 	randBytes := make([]byte, 33)
-	fastrand.Read(randBytes)
+	rand.Read(randBytes)
 	reqBodyIV := make([]byte, 16)
 	reqBodyKey := make([]byte, 16)
 	copy(reqBodyIV[:], randBytes[:16])

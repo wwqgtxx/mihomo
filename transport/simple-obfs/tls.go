@@ -2,14 +2,13 @@ package obfs
 
 import (
 	"bytes"
+	"crypto/rand"
 	"encoding/binary"
 	"io"
 	"net"
 	"time"
 
 	"github.com/Dreamacro/clash/common/pool"
-
-	"github.com/zhangyunhao116/fastrand"
 )
 
 const (
@@ -122,8 +121,8 @@ func NewTLSObfs(conn net.Conn, server string) net.Conn {
 func makeClientHelloMsg(data []byte, server string) []byte {
 	random := make([]byte, 28)
 	sessionID := make([]byte, 32)
-	fastrand.Read(random)
-	fastrand.Read(sessionID)
+	rand.Read(random)
+	rand.Read(sessionID)
 
 	buf := &bytes.Buffer{}
 

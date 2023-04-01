@@ -61,6 +61,7 @@ type Resolver struct {
 	group                 singleflight.Group
 	lruCache              *cache.LruCache[string, *D.Msg]
 	policy                *trie.DomainTrie[[]dnsClient]
+	searchDomains         []string
 }
 
 // LookupIPPrimaryIPv4 request with TypeA and TypeAAAA, priority return TypeA
@@ -231,7 +232,7 @@ func (r *Resolver) exchangeWithoutCache(ctx context.Context, m *D.Msg) (msg *D.M
 
 			msg := result.(*D.Msg)
 
-			putMsgToCache(r.lruCache, q.String(), msg)
+			putMsgToCache(r.lruCache, q.String(), q, msg)
 		}()
 
 		isIPReq := isIPRequest(q)
@@ -388,10 +389,27 @@ func (r *Resolver) lookupIP(ctx context.Context, host string, dnsType uint16) ([
 	}
 
 	ips := msgToIP(msg)
-	if len(ips) == 0 {
+	if len(ips) != 0 {
+		return ips, nil
+	} else if len(r.searchDomains) == 0 {
 		return nil, resolver.ErrIPNotFound
 	}
-	return ips, nil
+
+	// query provided search domains serially
+	for _, domain := range r.searchDomains {
+		q := &D.Msg{}
+		q.SetQuestion(D.Fqdn(fmt.Sprintf("%s.%s", host, domain)), dnsType)
+		msg, err := r.ExchangeContext(ctx, q)
+		if err != nil {
+			return nil, err
+		}
+		ips := msgToIP(msg)
+		if len(ips) != 0 {
+			return ips, nil
+		}
+	}
+
+	return nil, resolver.ErrIPNotFound
 }
 
 func (r *Resolver) msgToDomain(msg *D.Msg) string {
@@ -434,6 +452,7 @@ type Config struct {
 	Pool           *fakeip.Pool
 	Hosts          *trie.DomainTrie[netip.Addr]
 	Policy         map[string]NameServer
+	SearchDomains  []string
 }
 
 func NewResolver(config Config) (*Resolver, *Resolver) {
@@ -443,10 +462,11 @@ func NewResolver(config Config) (*Resolver, *Resolver) {
 	}
 
 	r := &Resolver{
-		ipv6:     config.IPv6,
-		main:     transform(config.Main, defaultResolver),
-		lruCache: cache.New[string, *D.Msg](cache.WithSize[string, *D.Msg](4096), cache.WithStale[string, *D.Msg](true)),
-		hosts:    config.Hosts,
+		ipv6:          config.IPv6,
+		main:          transform(config.Main, defaultResolver),
+		lruCache:      cache.New[string, *D.Msg](cache.WithSize[string, *D.Msg](4096), cache.WithStale[string, *D.Msg](true)),
+		hosts:         config.Hosts,
+		searchDomains: config.SearchDomains,
 	}
 
 	if len(config.Fallback) != 0 {

@@ -48,15 +48,9 @@ func (u *URLTest) DialContext(ctx context.Context, metadata *C.Metadata, opts ..
 	}
 
 	if N.NeedHandshake(c) {
-		c = &callback.FirstWriteCallBackConn{
-			Conn: c,
-			Callback: func(err error) {
-				if err == nil {
-				} else {
-					doHealthCheck(u.providers, proxy)
-				}
-			},
-		}
+		c = callback.NewFirstWriteCallBackConn(c, func(err error) {
+			doHealthCheck(u.providers, proxy)
+		})
 	}
 
 	return c, err

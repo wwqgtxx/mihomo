@@ -47,12 +47,9 @@ func (p *Proxy) DialContext(ctx context.Context, metadata *C.Metadata, opts ...d
 	aliveCallback(beginTime, err, p, ctx)
 
 	if N.NeedHandshake(c) {
-		c = &callback.FirstWriteCallBackConn{
-			Conn: c,
-			Callback: func(err error) {
-				aliveCallback(beginTime, err, p, ctx)
-			},
-		}
+		c = callback.NewFirstWriteCallBackConn(c, func(err error) {
+			aliveCallback(beginTime, err, p, ctx)
+		})
 	}
 
 	return c, err

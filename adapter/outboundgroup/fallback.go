@@ -38,15 +38,9 @@ func (f *Fallback) DialContext(ctx context.Context, metadata *C.Metadata, opts .
 	}
 
 	if N.NeedHandshake(c) {
-		c = &callback.FirstWriteCallBackConn{
-			Conn: c,
-			Callback: func(err error) {
-				if err == nil {
-				} else {
-					doHealthCheck(f.providers, proxy)
-				}
-			},
-		}
+		c = callback.NewFirstWriteCallBackConn(c, func(err error) {
+			doHealthCheck(f.providers, proxy)
+		})
 	}
 
 	return c, err

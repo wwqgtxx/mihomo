@@ -1,15 +1,19 @@
 package rules
 
 import (
+	"bufio"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"gopkg.in/yaml.v3"
+	"io"
 	"runtime"
 	"strings"
 	"time"
 
 	"github.com/Dreamacro/clash/adapter/provider"
+	"github.com/Dreamacro/clash/common/pool"
 	"github.com/Dreamacro/clash/common/structure"
 	C "github.com/Dreamacro/clash/constant"
 	providerTypes "github.com/Dreamacro/clash/constant/provider"
@@ -86,24 +90,73 @@ type RuleTree interface {
 	FinishInsert()
 }
 
+var ErrNoPayload = errors.New("file must have a `payload` field")
+
 func rulesParse(buf []byte, behavior string) (any, error) {
 	printMemStats("before")
 	schema := &RuleSchema{}
 
-	if err := yaml.Unmarshal(buf, schema); err != nil {
-		return nil, err
-	}
+	reader := bufio.NewReader(bytes.NewReader(buf))
 
-	schema.Payload = append(schema.Payload, schema.Rules...)
-
-	if schema.Payload == nil {
-		return nil, errors.New("file must have a `payload` field")
-	}
-	printMemStats("unmarshal")
+	firstLineBuffer := pool.GetBuffer()
+	defer pool.PutBuffer(firstLineBuffer)
+	firstLineLength := 0
 
 	var rules []C.Rule
 	var rt RuleTree
-	for idx, str := range schema.Payload {
+
+	for {
+		line, isPrefix, err := reader.ReadLine()
+		if err != nil {
+			if err == io.EOF {
+				if firstLineLength == 0 { // find payload head
+					return nil, ErrNoPayload
+				}
+				break
+			}
+			return nil, err
+		}
+		firstLineBuffer.Write(line) // need a copy because the returned buffer is only valid until the next call to ReadLine
+		if isPrefix {
+			// If the line was too long for the buffer then isPrefix is set and the
+			// beginning of the line is returned. The rest of the line will be returned
+			// from future calls.
+			continue
+		}
+		if firstLineLength == 0 { // find payload head
+			firstLineBuffer.WriteByte('\n')
+			firstLineLength = firstLineBuffer.Len()
+			firstLineBuffer.WriteString("  - ''") // a test line
+
+			err = yaml.Unmarshal(firstLineBuffer.Bytes(), schema)
+			firstLineBuffer.Truncate(firstLineLength)
+			if err == nil && (len(schema.Payload) > 0 || len(schema.Rules) > 0) { // found
+				continue
+			}
+
+			// not found or err!=nil
+			firstLineBuffer.Truncate(0)
+			firstLineLength = 0
+			continue
+		}
+
+		// parse payload body
+		err = yaml.Unmarshal(firstLineBuffer.Bytes(), schema)
+		firstLineBuffer.Truncate(firstLineLength)
+		if err != nil {
+			continue
+		}
+		var str string
+		if len(schema.Payload) > 0 {
+			str = schema.Payload[0]
+		}
+		if len(schema.Rules) > 0 {
+			str = schema.Rules[0]
+		}
+		if str == "" {
+			continue
+		}
+
 		switch behavior {
 		case "domain":
 			if rt == nil {
@@ -111,7 +164,7 @@ func rulesParse(buf []byte, behavior string) (any, error) {
 			}
 			err := rt.Insert(str)
 			if err != nil {
-				return nil, fmt.Errorf("rule %d error: %w", idx, err)
+				return nil, fmt.Errorf("rule '%s' error: %w", str, err)
 			}
 			if rules == nil {
 				rules = []C.Rule{rt}
@@ -122,7 +175,7 @@ func rulesParse(buf []byte, behavior string) (any, error) {
 			}
 			err := rt.Insert(str)
 			if err != nil {
-				return nil, fmt.Errorf("rule %d error: %w", idx, err)
+				return nil, fmt.Errorf("rule '%s' error: %w", str, err)
 			}
 			if rules == nil {
 				rules = []C.Rule{rt}
@@ -153,17 +206,18 @@ func rulesParse(buf []byte, behavior string) (any, error) {
 			params = trimArr(params)
 			parsed, err := ParseRule(rule[0], payload, "", params, nil)
 			if err != nil {
-				return nil, fmt.Errorf("rule %d error: %w", idx, err)
+				return nil, fmt.Errorf("rule '%s' error: %w", str, err)
 			}
 			rules = append(rules, parsed)
 		}
 	}
+
 	if rt != nil {
 		rt.FinishInsert()
 	}
 
 	if len(rules) == 0 {
-		return nil, errors.New("file doesn't have any valid proxy")
+		return nil, errors.New("file doesn't have any valid rule")
 	}
 
 	printMemStats("after")

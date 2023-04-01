@@ -128,6 +128,7 @@ type Proxy interface {
 	Alive() bool
 	DelayHistory() []DelayHistory
 	LastDelay() uint16
+	LastMeanDelay() uint16
 	URLTest(ctx context.Context, url string) (uint16, uint16, error)
 
 	// Deprecated: use DialContext instead.

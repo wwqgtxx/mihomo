@@ -117,6 +117,28 @@ func (p *Proxy) LastDelay() (delay uint16) {
 	return history.Delay
 }
 
+// LastMeanDelay return last history record. if proxy is not alive, return the max value of uint16.
+// implements C.Proxy
+func (p *Proxy) LastMeanDelay() (meanDelay uint16) {
+	if proxy := p.ProxyAdapter.Unwrap(nil, false); proxy != nil {
+		return proxy.LastMeanDelay()
+	}
+	var max uint16 = 0xffff
+	if !p.alive.Load() {
+		return max
+	}
+
+	last := p.history.Last()
+	if last == nil {
+		return max
+	}
+	history := last.(C.DelayHistory)
+	if history.MeanDelay == 0 {
+		return max
+	}
+	return history.MeanDelay
+}
+
 // MarshalJSON implements C.ProxyAdapter
 func (p *Proxy) MarshalJSON() ([]byte, error) {
 	inner, err := p.ProxyAdapter.MarshalJSON()
@@ -136,7 +158,7 @@ func (p *Proxy) MarshalJSON() ([]byte, error) {
 // implements C.Proxy
 func (p *Proxy) URLTest(ctx context.Context, url string) (delay, meanDelay uint16, err error) {
 	if p.ignoreURLTest {
-		return p.LastDelay(), p.LastDelay(), nil
+		return p.LastDelay(), p.LastMeanDelay(), nil
 	}
 	if proxy := p.ProxyAdapter.Unwrap(nil, true); proxy != nil {
 		return proxy.URLTest(ctx, url)

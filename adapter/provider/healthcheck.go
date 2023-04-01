@@ -118,7 +118,7 @@ func (hc *HealthCheck) normalCheck(id string) {
 			defer cancel()
 			log.Infoln("Health Checking (%s) %s {%s}", hc.gName, p.Name(), id)
 			p.URLTest(ctx, hc.url)
-			log.Infoln("Health Checked (%s) %s : %t %d ms {%s}", hc.gName, p.Name(), p.Alive(), p.LastDelay(), id)
+			log.Infoln("Health Checked (%s) %s : %t %d ms %d ms {%s}", hc.gName, p.Name(), p.Alive(), p.LastDelay(), p.LastMeanDelay(), id)
 			return nil, nil
 		})
 	}
@@ -131,7 +131,7 @@ func (hc *HealthCheck) fallbackCheck(id string) {
 		defer cancel()
 		log.Infoln("Health Checking (%s) %s {%s}", hc.gName, proxy.Name(), id)
 		proxy.URLTest(ctx, hc.url)
-		log.Infoln("Health Checked (%s) %s : %t %d ms {%s}", hc.gName, proxy.Name(), proxy.Alive(), proxy.LastDelay(), id)
+		log.Infoln("Health Checked (%s) %s : %t %d ms %d ms {%s}", hc.gName, proxy.Name(), proxy.Alive(), proxy.LastDelay(), proxy.LastMeanDelay(), id)
 	}
 	wait := func() {
 		time.Sleep(waitAfterAURLTest)
@@ -228,7 +228,7 @@ func proxyIsColor(proxy C.Proxy, timeout time.Duration) bool {
 	if timeout == 0 {
 		return false
 	}
-	lastDelay := proxy.LastDelay()
+	lastDelay := proxy.LastMeanDelay()
 	if lastDelay == 0 || lastDelay == 0xffff {
 		return false
 	}

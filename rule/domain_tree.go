@@ -8,7 +8,8 @@ import (
 
 type DomainTree struct {
 	Domain    // for C.Rule interface
-	dt        *trie.DomainSet
+	dt        *trie.DomainTrie[struct{}]
+	ds        *trie.DomainSet
 	ruleCount int
 }
 
@@ -24,14 +25,28 @@ func (d *DomainTree) Match(metadata *C.Metadata) (bool, string) {
 	if metadata.AddrType() != socks5.AtypDomainName {
 		return false, ""
 	}
-	return d.dt.Has(metadata.Host), d.adapter
+	return d.ds.Has(metadata.Host), d.adapter
 }
 
-func NewDomainTree(domains []string) (*DomainTree, error) {
-	dt := trie.NewDomainSet(domains)
+func (d *DomainTree) Insert(domain string) error {
+	err := d.dt.Insert(domain, struct{}{})
+	if err != nil {
+		return err
+	}
+	d.ruleCount++
+	return nil
+}
+
+func (d *DomainTree) FinishInsert() {
+	d.ds = d.dt.NewDomainSet()
+	d.dt = nil
+}
+
+func NewDomainTree() *DomainTree {
 	return &DomainTree{
 		Domain:    Domain{},
-		dt:        dt,
-		ruleCount: len(domains),
-	}, nil
+		dt:        trie.New[struct{}](),
+		ds:        nil,
+		ruleCount: 0,
+	}
 }

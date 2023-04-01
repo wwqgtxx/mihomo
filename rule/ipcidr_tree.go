@@ -1,8 +1,6 @@
 package rules
 
 import (
-	"fmt"
-
 	C "github.com/Dreamacro/clash/constant"
 
 	"github.com/kentik/patricia"
@@ -43,7 +41,7 @@ func (i *IpCidrTree) Match(metadata *C.Metadata) (bool, string) {
 	return found, i.adapter
 }
 
-func (i *IpCidrTree) insert(ipCidr string) error {
+func (i *IpCidrTree) Insert(ipCidr string) error {
 	v4, v6, err := patricia.ParseIPFromString(ipCidr)
 	if err != nil {
 		return err
@@ -57,18 +55,13 @@ func (i *IpCidrTree) insert(ipCidr string) error {
 	return nil
 }
 
-func NewIPCIDRTrie(rules []string) (*IpCidrTree, error) {
-	i := &IpCidrTree{
+func (i *IpCidrTree) FinishInsert() {}
+
+func NewIPCIDRTree() *IpCidrTree {
+	return &IpCidrTree{
 		IPCIDR:    IPCIDR{},
 		treeV4:    tree.NewTreeV4[struct{}](),
 		treeV6:    tree.NewTreeV6[struct{}](),
 		ruleCount: 0,
 	}
-	for idx, ipCidr := range rules {
-		err := i.insert(ipCidr)
-		if err != nil {
-			return nil, fmt.Errorf("rule %d error: %w", idx, err)
-		}
-	}
-	return i, nil
 }

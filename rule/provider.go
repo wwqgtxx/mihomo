@@ -82,6 +82,8 @@ func (rp *ruleSetProvider) Rules() []C.Rule {
 type RuleTree interface {
 	C.Rule
 	RuleCount() int
+	Insert(string) error
+	FinishInsert()
 }
 
 func rulesParse(buf []byte, behavior string) (any, error) {
@@ -100,21 +102,32 @@ func rulesParse(buf []byte, behavior string) (any, error) {
 	printMemStats("unmarshal")
 
 	var rules []C.Rule
-	switch behavior {
-	case "domain":
-		rt, err := NewDomainTree(schema.Payload)
-		if err != nil {
-			return nil, err
-		}
-		rules = []C.Rule{rt}
-	case "ipcidr":
-		rt, err := NewIPCIDRTrie(schema.Payload)
-		if err != nil {
-			return nil, err
-		}
-		rules = []C.Rule{rt}
-	default: // classical
-		for idx, str := range schema.Payload {
+	var rt RuleTree
+	for idx, str := range schema.Payload {
+		switch behavior {
+		case "domain":
+			if rt == nil {
+				rt = NewDomainTree()
+			}
+			err := rt.Insert(str)
+			if err != nil {
+				return nil, fmt.Errorf("rule %d error: %w", idx, err)
+			}
+			if rules == nil {
+				rules = []C.Rule{rt}
+			}
+		case "ipcidr":
+			if rt == nil {
+				rt = NewIPCIDRTree()
+			}
+			err := rt.Insert(str)
+			if err != nil {
+				return nil, fmt.Errorf("rule %d error: %w", idx, err)
+			}
+			if rules == nil {
+				rules = []C.Rule{rt}
+			}
+		default: // classical
 			line := str
 
 			var rule []string
@@ -144,6 +157,9 @@ func rulesParse(buf []byte, behavior string) (any, error) {
 			}
 			rules = append(rules, parsed)
 		}
+	}
+	if rt != nil {
+		rt.FinishInsert()
 	}
 
 	if len(rules) == 0 {
@@ -176,7 +192,6 @@ func stopRuleProvider(rd *RuleSetProvider) {
 }
 
 func NewRuleSetProvider(name string, interval time.Duration, vehicle providerTypes.Vehicle, behavior string) *RuleSetProvider {
-
 	rp := &ruleSetProvider{
 		rules:    []C.Rule{},
 		behavior: behavior,

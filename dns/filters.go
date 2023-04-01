@@ -38,7 +38,11 @@ type domainFilter struct {
 }
 
 func NewDomainFilter(domains []string) *domainFilter {
-	df := domainFilter{tree: trie.NewDomainSet(domains)}
+	tree := trie.New[struct{}]()
+	for _, domain := range domains {
+		tree.Insert(domain, struct{}{})
+	}
+	df := domainFilter{tree: tree.NewDomainSet()}
 	return &df
 }
 

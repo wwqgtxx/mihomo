@@ -15,14 +15,14 @@ require (
 	github.com/kentik/patricia v1.2.0
 	github.com/mdlayher/netlink v1.7.2-0.20221213171556-9881fafed8c7
 	github.com/metacubex/quic-go v0.33.2
-	github.com/metacubex/sing-shadowsocks v0.1.1-0.20230226153717-4e80da7e6947
-	github.com/metacubex/sing-tun v0.1.3-0.20230323115055-7935ba0ac8b3
-	github.com/metacubex/sing-wireguard v0.0.0-20230310035749-f7595fcae5cb
+	github.com/metacubex/sing-shadowsocks v0.2.1
+	github.com/metacubex/sing-tun v0.1.3
+	github.com/metacubex/sing-wireguard v0.0.0-20230402083957-d134f603ac98
 	github.com/miekg/dns v1.1.52
 	github.com/openacid/low v0.1.21
 	github.com/oschwald/geoip2-golang v1.8.0
 	github.com/sagernet/netlink v0.0.0-20220905062125-8043b4a9aa97
-	github.com/sagernet/sing v0.2.1-0.20230323071235-f8038854d286
+	github.com/sagernet/sing v0.2.1
 	github.com/sagernet/sing-shadowtls v0.1.0
 	github.com/sagernet/sing-vmess v0.1.3
 	github.com/sagernet/tfo-go v0.0.0-20230303015439-ffcfd8c41cf9
@@ -44,9 +44,15 @@ require (
 )
 
 require (
+	github.com/RyuaNerin/go-krypto v1.0.2 // indirect
+	github.com/Yawning/aez v0.0.0-20211027044916-e49e68abd344 // indirect
 	github.com/ajg/form v1.5.1 // indirect
 	github.com/andybalholm/brotli v1.0.4 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/ericlagergren/aegis v0.0.0-20230312195928-b4ce538b56f9 // indirect
+	github.com/ericlagergren/polyval v0.0.0-20220411101811-e25bc10ba391 // indirect
+	github.com/ericlagergren/siv v0.0.0-20220507050439-0b757b3aa5f1 // indirect
+	github.com/ericlagergren/subtle v0.0.0-20220507045147-890d697da010 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0 // indirect
 	github.com/gofrs/uuid v4.4.0+incompatible // indirect
@@ -60,6 +66,7 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mdlayher/socket v0.4.0 // indirect
 	github.com/metacubex/gvisor v0.0.0-20230323114922-412956fb6a03 // indirect
+	github.com/oasisprotocol/deoxysii v0.0.0-20220228165953-2091330c22b7 // indirect
 	github.com/onsi/ginkgo/v2 v2.2.0 // indirect
 	github.com/oschwald/maxminddb-golang v1.10.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.14 // indirect
@@ -67,8 +74,12 @@ require (
 	github.com/quic-go/qtls-go1-19 v0.2.1 // indirect
 	github.com/quic-go/qtls-go1-20 v0.1.1 // indirect
 	github.com/sagernet/go-tun2socks v1.16.12-0.20220818015926-16cb67876a61 // indirect
+	github.com/sina-ghaderi/poly1305 v0.0.0-20220724002748-c5926b03988b // indirect
+	github.com/sina-ghaderi/rabaead v0.0.0-20220730151906-ab6e06b96e8c // indirect
+	github.com/sina-ghaderi/rabbitio v0.0.0-20220730151941-9ce26f4f872e // indirect
 	github.com/u-root/uio v0.0.0-20230220225925-ffce2a382923 // indirect
 	github.com/vishvananda/netns v0.0.1 // indirect
+	gitlab.com/yawning/bsaes.git v0.0.0-20190805113838-0a714cd429ec // indirect
 	golang.org/x/mod v0.8.0 // indirect
 	golang.org/x/text v0.8.0 // indirect
 	golang.org/x/time v0.1.0 // indirect

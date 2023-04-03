@@ -133,7 +133,7 @@ func NewBase(opt BaseOption) *Base {
 }
 
 type conn struct {
-	net.Conn
+	N.ExtendedConn
 	chain C.Chain
 }
 
@@ -148,11 +148,11 @@ func (c *conn) AppendToChains(a C.ProxyAdapter) {
 }
 
 func (c *conn) Upstream() any {
-	return c.Conn
+	return c.ExtendedConn
 }
 
 func NewConn(c net.Conn, a C.ProxyAdapter) C.Conn {
-	return &conn{c, []string{a.Name()}}
+	return &conn{N.NewExtendedConn(c), []string{a.Name()}}
 }
 
 type packetConn struct {

@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	N "github.com/Dreamacro/clash/common/net"
 	"github.com/Dreamacro/clash/component/dialer"
 )
 
@@ -67,7 +68,7 @@ func (c Chain) Last() string {
 }
 
 type Conn interface {
-	net.Conn
+	N.ExtendedConn
 	Connection
 }
 

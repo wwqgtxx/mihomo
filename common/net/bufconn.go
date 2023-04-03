@@ -3,11 +3,15 @@ package net
 import (
 	"bufio"
 	"net"
+
+	"github.com/Dreamacro/clash/common/buf"
 )
+
+var _ ExtendedConn = (*BufferedConn)(nil)
 
 type BufferedConn struct {
 	r *bufio.Reader
-	net.Conn
+	ExtendedConn
 	peeked bool
 }
 
@@ -15,7 +19,7 @@ func NewBufferedConn(c net.Conn) *BufferedConn {
 	if bc, ok := c.(*BufferedConn); ok {
 		return bc
 	}
-	return &BufferedConn{bufio.NewReader(c), c, false}
+	return &BufferedConn{bufio.NewReader(c), NewExtendedConn(c), false}
 }
 
 // Reader returns the internal bufio.Reader.
@@ -57,6 +61,21 @@ func (c *BufferedConn) Buffered() int {
 	return c.r.Buffered()
 }
 
+func (c *BufferedConn) ReadBuffer(buffer *buf.Buffer) (err error) {
+	if c.r.Buffered() > 0 {
+		_, err = buffer.ReadOnceFrom(c.r)
+		return
+	}
+	return c.ExtendedConn.ReadBuffer(buffer)
+}
+
 func (c *BufferedConn) Upstream() any {
-	return c.Conn
+	return c.ExtendedConn
+}
+
+func (c *BufferedConn) ReaderReplaceable() bool {
+	if c.r.Buffered() > 0 {
+		return false
+	}
+	return true
 }

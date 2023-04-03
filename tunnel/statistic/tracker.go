@@ -4,6 +4,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/Dreamacro/clash/common/buf"
 	"github.com/Dreamacro/clash/common/utils"
 	C "github.com/Dreamacro/clash/constant"
 
@@ -45,12 +46,28 @@ func (tt *tcpTracker) Read(b []byte) (int, error) {
 	return n, err
 }
 
+func (tt *tcpTracker) ReadBuffer(buffer *buf.Buffer) (err error) {
+	err = tt.Conn.ReadBuffer(buffer)
+	download := int64(buffer.Len())
+	tt.manager.PushDownloaded(download)
+	tt.DownloadTotal.Add(download)
+	return
+}
+
 func (tt *tcpTracker) Write(b []byte) (int, error) {
 	n, err := tt.Conn.Write(b)
 	upload := int64(n)
 	tt.manager.PushUploaded(upload)
 	tt.UploadTotal.Add(upload)
 	return n, err
+}
+
+func (tt *tcpTracker) WriteBuffer(buffer *buf.Buffer) (err error) {
+	upload := int64(buffer.Len())
+	err = tt.Conn.WriteBuffer(buffer)
+	tt.manager.PushUploaded(upload)
+	tt.UploadTotal.Add(upload)
+	return
 }
 
 func (tt *tcpTracker) Close() error {

@@ -127,9 +127,17 @@ func singleDialContext(ctx context.Context, network, address string, opt *option
 	var ip netip.Addr
 	switch network {
 	case "tcp4", "udp4":
-		ip, err = resolver.ResolveIPv4WithResolver(ctx, host, resolver.DialerResolver)
+		if opt.resolver == nil {
+			ip, err = resolver.ResolveIPv4WithResolver(ctx, host, resolver.DialerResolver)
+		} else {
+			ip, err = resolver.ResolveIPv4WithResolver(ctx, host, opt.resolver)
+		}
 	default:
-		ip, err = resolver.ResolveIPv6WithResolver(ctx, host, resolver.DialerResolver)
+		if opt.resolver == nil {
+			ip, err = resolver.ResolveIPv6WithResolver(ctx, host, resolver.DialerResolver)
+		} else {
+			ip, err = resolver.ResolveIPv6WithResolver(ctx, host, opt.resolver)
+		}
 	}
 	if err != nil {
 		return nil, err
@@ -171,9 +179,17 @@ func dualStackDialContext(ctx context.Context, network, address string, opt *opt
 
 		var ip netip.Addr
 		if ipv6 {
-			ip, result.error = resolver.ResolveIPv6WithResolver(ctx, host, resolver.DialerResolver)
+			if opt.resolver == nil {
+				ip, result.error = resolver.ResolveIPv6WithResolver(ctx, host, resolver.DialerResolver)
+			} else {
+				ip, result.error = resolver.ResolveIPv6WithResolver(ctx, host, opt.resolver)
+			}
 		} else {
-			ip, result.error = resolver.ResolveIPv4WithResolver(ctx, host, resolver.DialerResolver)
+			if opt.resolver == nil {
+				ip, result.error = resolver.ResolveIPv4WithResolver(ctx, host, resolver.DialerResolver)
+			} else {
+				ip, result.error = resolver.ResolveIPv4WithResolver(ctx, host, opt.resolver)
+			}
 		}
 		if result.error != nil {
 			return
@@ -270,9 +286,17 @@ func concurrentSingleDialContext(ctx context.Context, network, address string, o
 	var ips []netip.Addr
 	switch network {
 	case "tcp4", "udp4":
-		ips, err = resolver.LookupIPv4WithResolver(ctx, host, resolver.DialerResolver)
+		if opt.resolver == nil {
+			ips, err = resolver.LookupIPv4WithResolver(ctx, host, resolver.DialerResolver)
+		} else {
+			ips, err = resolver.LookupIPv4WithResolver(ctx, host, opt.resolver)
+		}
 	default:
-		ips, err = resolver.LookupIPv6WithResolver(ctx, host, resolver.DialerResolver)
+		if opt.resolver == nil {
+			ips, err = resolver.LookupIPv6WithResolver(ctx, host, resolver.DialerResolver)
+		} else {
+			ips, err = resolver.LookupIPv6WithResolver(ctx, host, opt.resolver)
+		}
 	}
 	if err != nil {
 		return nil, err
@@ -314,9 +338,17 @@ func concurrentDualStackDialContext(ctx context.Context, network, address string
 
 		var ips []netip.Addr
 		if ipv6 {
-			ips, result.error = resolver.LookupIPv6WithResolver(ctx, host, resolver.DialerResolver)
+			if opt.resolver == nil {
+				ips, result.error = resolver.LookupIPv6WithResolver(ctx, host, resolver.DialerResolver)
+			} else {
+				ips, result.error = resolver.LookupIPv6WithResolver(ctx, host, opt.resolver)
+			}
 		} else {
-			ips, result.error = resolver.LookupIPv4WithResolver(ctx, host, resolver.DialerResolver)
+			if opt.resolver == nil {
+				ips, result.error = resolver.LookupIPv4WithResolver(ctx, host, resolver.DialerResolver)
+			} else {
+				ips, result.error = resolver.LookupIPv4WithResolver(ctx, host, opt.resolver)
+			}
 		}
 		if result.error != nil {
 			return

@@ -41,19 +41,26 @@ type WireGuard struct {
 
 type WireGuardOption struct {
 	BasicOption
-	Name                string  `proxy:"name"`
-	Server              string  `proxy:"server"`
-	Port                int     `proxy:"port"`
-	Ip                  string  `proxy:"ip,omitempty"`
-	Ipv6                string  `proxy:"ipv6,omitempty"`
-	PrivateKey          string  `proxy:"private-key"`
-	PublicKey           string  `proxy:"public-key"`
-	PreSharedKey        string  `proxy:"pre-shared-key,omitempty"`
-	Reserved            []uint8 `proxy:"reserved,omitempty"`
-	Workers             int     `proxy:"workers,omitempty"`
-	MTU                 int     `proxy:"mtu,omitempty"`
-	UDP                 bool    `proxy:"udp,omitempty"`
-	PersistentKeepalive int     `proxy:"persistent-keepalive,omitempty"`
+	WireGuardPeerOption
+	Name                string `proxy:"name"`
+	PrivateKey          string `proxy:"private-key"`
+	Workers             int    `proxy:"workers,omitempty"`
+	MTU                 int    `proxy:"mtu,omitempty"`
+	UDP                 bool   `proxy:"udp,omitempty"`
+	PersistentKeepalive int    `proxy:"persistent-keepalive,omitempty"`
+
+	Peers []WireGuardPeerOption `proxy:"peers,omitempty"`
+}
+
+type WireGuardPeerOption struct {
+	Server       string   `proxy:"server"`
+	Port         int      `proxy:"port"`
+	Ip           string   `proxy:"ip,omitempty"`
+	Ipv6         string   `proxy:"ipv6,omitempty"`
+	PublicKey    string   `proxy:"public-key,omitempty"`
+	PreSharedKey string   `proxy:"pre-shared-key,omitempty"`
+	Reserved     []uint8  `proxy:"reserved,omitempty"`
+	AllowedIPs   []string `proxy:"allowed_ips,omitempty"`
 }
 
 type wgSingDialer struct {
@@ -77,34 +84,14 @@ type wgNetDialer struct {
 var _ dialer.NetDialer = (*wgNetDialer)(nil)
 
 func (d wgNetDialer) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
-	return d.tunDevice.DialContext(ctx, network, M.ParseSocksaddr(address))
+	return d.tunDevice.DialContext(ctx, network, M.ParseSocksaddr(address).Unwrap())
 }
 
-func NewWireGuard(option WireGuardOption) (*WireGuard, error) {
-	outbound := &WireGuard{
-		Base: &Base{
-			name:  option.Name,
-			addr:  net.JoinHostPort(option.Server, strconv.Itoa(option.Port)),
-			tp:    C.WireGuard,
-			udp:   option.UDP,
-			iface: option.Interface,
-			rmark: option.RoutingMark,
-		},
-		dialer: &wgSingDialer{dialer: dialer.NewDialer()},
-	}
-	runtime.SetFinalizer(outbound, closeWireGuard)
+func (option WireGuardPeerOption) Addr() M.Socksaddr {
+	return M.ParseSocksaddrHostPort(option.Server, uint16(option.Port))
+}
 
-	var reserved [3]uint8
-	if len(option.Reserved) > 0 {
-		if len(option.Reserved) != 3 {
-			return nil, E.New("invalid reserved value, required 3 bytes, got ", len(option.Reserved))
-		}
-		reserved[0] = uint8(option.Reserved[0])
-		reserved[1] = uint8(option.Reserved[1])
-		reserved[2] = uint8(option.Reserved[2])
-	}
-	peerAddr := M.ParseSocksaddrHostPort(option.Server, uint16(option.Port))
-	outbound.bind = wireguard.NewClientBind(context.Background(), outbound.dialer, true, peerAddr, reserved)
+func (option WireGuardPeerOption) Prefixes() ([]netip.Prefix, error) {
 	localPrefixes := make([]netip.Prefix, 0, 2)
 	if len(option.Ip) > 0 {
 		if !strings.Contains(option.Ip, "/") {
@@ -129,7 +116,45 @@ func NewWireGuard(option WireGuardOption) (*WireGuard, error) {
 	if len(localPrefixes) == 0 {
 		return nil, E.New("missing local address")
 	}
-	var privateKey, peerPublicKey, preSharedKey string
+	return localPrefixes, nil
+}
+
+func NewWireGuard(option WireGuardOption) (*WireGuard, error) {
+	outbound := &WireGuard{
+		Base: &Base{
+			name:  option.Name,
+			addr:  net.JoinHostPort(option.Server, strconv.Itoa(option.Port)),
+			tp:    C.WireGuard,
+			udp:   option.UDP,
+			iface: option.Interface,
+			rmark: option.RoutingMark,
+		},
+		dialer: &wgSingDialer{dialer: dialer.NewDialer()},
+	}
+	runtime.SetFinalizer(outbound, closeWireGuard)
+
+	var reserved [3]uint8
+	if len(option.Reserved) > 0 {
+		if len(option.Reserved) != 3 {
+			return nil, E.New("invalid reserved value, required 3 bytes, got ", len(option.Reserved))
+		}
+		copy(reserved[:], option.Reserved)
+	}
+	var isConnect bool
+	var connectAddr M.Socksaddr
+	if len(option.Peers) < 2 {
+		isConnect = true
+		if len(option.Peers) == 1 {
+			connectAddr = option.Peers[0].Addr()
+		} else {
+			connectAddr = option.Addr()
+		}
+	}
+	outbound.bind = wireguard.NewClientBind(context.Background(), outbound.dialer, isConnect, connectAddr, reserved)
+
+	var localPrefixes []netip.Prefix
+
+	var privateKey string
 	{
 		bytes, err := base64.StdEncoding.DecodeString(option.PrivateKey)
 		if err != nil {
@@ -137,46 +162,101 @@ func NewWireGuard(option WireGuardOption) (*WireGuard, error) {
 		}
 		privateKey = hex.EncodeToString(bytes)
 	}
-	{
-		bytes, err := base64.StdEncoding.DecodeString(option.PublicKey)
-		if err != nil {
-			return nil, E.Cause(err, "decode peer public key")
-		}
-		peerPublicKey = hex.EncodeToString(bytes)
-	}
-	if option.PreSharedKey != "" {
-		bytes, err := base64.StdEncoding.DecodeString(option.PreSharedKey)
-		if err != nil {
-			return nil, E.Cause(err, "decode pre shared key")
-		}
-		preSharedKey = hex.EncodeToString(bytes)
-	}
 	ipcConf := "private_key=" + privateKey
-	ipcConf += "\npublic_key=" + peerPublicKey
-	ipcConf += "\nendpoint=" + peerAddr.String()
-	if preSharedKey != "" {
-		ipcConf += "\npreshared_key=" + preSharedKey
-	}
-	var has4, has6 bool
-	for _, address := range localPrefixes {
-		if address.Addr().Is4() {
-			has4 = true
-		} else {
-			has6 = true
+	if peersLen := len(option.Peers); peersLen > 0 {
+		localPrefixes = make([]netip.Prefix, 0, peersLen*2)
+		for i, peer := range option.Peers {
+			var peerPublicKey, preSharedKey string
+			{
+				bytes, err := base64.StdEncoding.DecodeString(peer.PublicKey)
+				if err != nil {
+					return nil, E.Cause(err, "decode public key for peer ", i)
+				}
+				peerPublicKey = hex.EncodeToString(bytes)
+			}
+			if peer.PreSharedKey != "" {
+				bytes, err := base64.StdEncoding.DecodeString(peer.PreSharedKey)
+				if err != nil {
+					return nil, E.Cause(err, "decode pre shared key for peer ", i)
+				}
+				preSharedKey = hex.EncodeToString(bytes)
+			}
+			destination := peer.Addr()
+			ipcConf += "\npublic_key=" + peerPublicKey
+			ipcConf += "\nendpoint=" + destination.String()
+			if preSharedKey != "" {
+				ipcConf += "\npreshared_key=" + preSharedKey
+			}
+			if len(peer.AllowedIPs) == 0 {
+				return nil, E.New("missing allowed_ips for peer ", i)
+			}
+			for _, allowedIP := range peer.AllowedIPs {
+				ipcConf += "\nallowed_ip=" + allowedIP
+			}
+			if len(peer.Reserved) > 0 {
+				if len(peer.Reserved) != 3 {
+					return nil, E.New("invalid reserved value for peer ", i, ", required 3 bytes, got ", len(peer.Reserved))
+				}
+				copy(reserved[:], option.Reserved)
+				outbound.bind.SetReservedForEndpoint(destination, reserved)
+			}
+			prefixes, err := peer.Prefixes()
+			if err != nil {
+				return nil, err
+			}
+			localPrefixes = append(localPrefixes, prefixes...)
+		}
+	} else {
+		var peerPublicKey, preSharedKey string
+		{
+			bytes, err := base64.StdEncoding.DecodeString(option.PublicKey)
+			if err != nil {
+				return nil, E.Cause(err, "decode peer public key")
+			}
+			peerPublicKey = hex.EncodeToString(bytes)
+		}
+		if option.PreSharedKey != "" {
+			bytes, err := base64.StdEncoding.DecodeString(option.PreSharedKey)
+			if err != nil {
+				return nil, E.Cause(err, "decode pre shared key")
+			}
+			preSharedKey = hex.EncodeToString(bytes)
+		}
+		ipcConf += "\npublic_key=" + peerPublicKey
+		ipcConf += "\nendpoint=" + connectAddr.String()
+		if preSharedKey != "" {
+			ipcConf += "\npreshared_key=" + preSharedKey
+		}
+		var err error
+		localPrefixes, err = option.Prefixes()
+		if err != nil {
+			return nil, err
+		}
+		var has4, has6 bool
+		for _, address := range localPrefixes {
+			if address.Addr().Is4() {
+				has4 = true
+			} else {
+				has6 = true
+			}
+		}
+		if has4 {
+			ipcConf += "\nallowed_ip=0.0.0.0/0"
+		}
+		if has6 {
+			ipcConf += "\nallowed_ip=::/0"
 		}
 	}
-	if has4 {
-		ipcConf += "\nallowed_ip=0.0.0.0/0"
-	}
-	if has6 {
-		ipcConf += "\nallowed_ip=::/0"
-	}
+
 	if option.PersistentKeepalive != 0 {
 		ipcConf += fmt.Sprintf("\npersistent_keepalive_interval=%d", option.PersistentKeepalive)
 	}
 	mtu := option.MTU
 	if mtu == 0 {
 		mtu = 1408
+	}
+	if len(localPrefixes) == 0 {
+		return nil, E.New("missing local address")
 	}
 	var err error
 	outbound.tunDevice, err = wireguard.NewStackDevice(localPrefixes, uint32(mtu))
@@ -220,11 +300,12 @@ func (w *WireGuard) DialContext(ctx context.Context, metadata *C.Metadata, opts 
 		return nil, w.startErr
 	}
 	if !metadata.Resolved() {
+		options = append(options, dialer.WithResolver(resolver.DefaultResolver))
 		options = append(options, dialer.WithNetDialer(wgNetDialer{tunDevice: w.tunDevice}))
 		conn, err = dialer.NewDialer(options...).DialContext(ctx, "tcp", metadata.RemoteAddress())
 	} else {
 		port, _ := strconv.Atoi(metadata.DstPort)
-		conn, err = w.tunDevice.DialContext(ctx, "tcp", M.SocksaddrFrom(metadata.DstIP, uint16(port)))
+		conn, err = w.tunDevice.DialContext(ctx, "tcp", M.SocksaddrFrom(metadata.DstIP, uint16(port)).Unwrap())
 	}
 	if err != nil {
 		return nil, err
@@ -256,7 +337,7 @@ func (w *WireGuard) ListenPacketContext(ctx context.Context, metadata *C.Metadat
 		metadata.DstIP = ip
 	}
 	port, _ := strconv.Atoi(metadata.DstPort)
-	pc, err = w.tunDevice.ListenPacket(ctx, M.SocksaddrFrom(metadata.DstIP, uint16(port)))
+	pc, err = w.tunDevice.ListenPacket(ctx, M.SocksaddrFrom(metadata.DstIP, uint16(port)).Unwrap())
 	if err != nil {
 		return nil, err
 	}

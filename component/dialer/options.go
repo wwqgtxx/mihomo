@@ -4,6 +4,8 @@ import (
 	"context"
 	"net"
 
+	"github.com/Dreamacro/clash/component/resolver"
+
 	"go.uber.org/atomic"
 )
 
@@ -23,6 +25,7 @@ type option struct {
 	addrReuse     bool
 	routingMark   int
 	tfo           bool
+	resolver      resolver.Resolver
 	netDialer     NetDialer
 }
 
@@ -43,6 +46,12 @@ func WithAddrReuse(reuse bool) Option {
 func WithRoutingMark(mark int) Option {
 	return func(opt *option) {
 		opt.routingMark = mark
+	}
+}
+
+func WithResolver(r resolver.Resolver) Option {
+	return func(opt *option) {
+		opt.resolver = r
 	}
 }
 

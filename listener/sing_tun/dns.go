@@ -18,7 +18,6 @@ import (
 	D "github.com/miekg/dns"
 
 	"github.com/sagernet/sing/common/buf"
-	E "github.com/sagernet/sing/common/exceptions"
 	M "github.com/sagernet/sing/common/metadata"
 	"github.com/sagernet/sing/common/network"
 )
@@ -150,7 +149,7 @@ func (h *ListenerHandler) NewPacketConnection(ctx context.Context, conn network.
 			dest, err := conn.ReadPacket(buff)
 			if err != nil {
 				buff.Release()
-				if E.IsClosed(err) {
+				if sing.ShouldIgnorePacketError(err) {
 					break
 				}
 				return err

@@ -15,16 +15,16 @@ require (
 	github.com/kentik/patricia v1.2.0
 	github.com/mdlayher/netlink v1.7.2-0.20221213171556-9881fafed8c7
 	github.com/metacubex/quic-go v0.33.2
-	github.com/metacubex/sing-shadowsocks v0.2.1
+	github.com/metacubex/sing-shadowsocks v0.2.2-0.20230409073201-1ce3505114ae
 	github.com/metacubex/sing-tun v0.1.3
 	github.com/metacubex/sing-wireguard v0.0.0-20230402083957-d134f603ac98
 	github.com/miekg/dns v1.1.52
 	github.com/openacid/low v0.1.21
 	github.com/oschwald/geoip2-golang v1.8.0
 	github.com/sagernet/netlink v0.0.0-20220905062125-8043b4a9aa97
-	github.com/sagernet/sing v0.2.1
-	github.com/sagernet/sing-shadowtls v0.1.0
-	github.com/sagernet/sing-vmess v0.1.3
+	github.com/sagernet/sing v0.2.2
+	github.com/sagernet/sing-shadowtls v0.1.1-0.20230408141548-81d74d2a8661
+	github.com/sagernet/sing-vmess v0.1.4-0.20230409073451-6921c3dd77c7
 	github.com/sagernet/tfo-go v0.0.0-20230303015439-ffcfd8c41cf9
 	github.com/sagernet/wireguard-go v0.0.0-20221116151939-c99467f53f2c
 	github.com/samber/lo v1.37.0
@@ -34,11 +34,11 @@ require (
 	go.etcd.io/bbolt v1.3.7
 	go.uber.org/atomic v1.10.0
 	go.uber.org/automaxprocs v1.5.2
-	golang.org/x/crypto v0.7.0
+	golang.org/x/crypto v0.8.0
 	golang.org/x/exp v0.0.0-20230321023759-10a507213a29
-	golang.org/x/net v0.8.0
+	golang.org/x/net v0.9.0
 	golang.org/x/sync v0.1.0
-	golang.org/x/sys v0.6.0
+	golang.org/x/sys v0.7.0
 	gopkg.in/yaml.v3 v3.0.1
 	lukechampine.com/blake3 v1.1.7
 )
@@ -55,7 +55,6 @@ require (
 	github.com/ericlagergren/subtle v0.0.0-20220507045147-890d697da010 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0 // indirect
-	github.com/gofrs/uuid v4.4.0+incompatible // indirect
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/google/btree v1.1.2 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
@@ -81,7 +80,7 @@ require (
 	github.com/vishvananda/netns v0.0.1 // indirect
 	gitlab.com/yawning/bsaes.git v0.0.0-20190805113838-0a714cd429ec // indirect
 	golang.org/x/mod v0.8.0 // indirect
-	golang.org/x/text v0.8.0 // indirect
+	golang.org/x/text v0.9.0 // indirect
 	golang.org/x/time v0.1.0 // indirect
 	golang.org/x/tools v0.6.0 // indirect
 )

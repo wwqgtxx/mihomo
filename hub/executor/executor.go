@@ -27,7 +27,6 @@ import (
 	authStore "github.com/Dreamacro/clash/listener/auth"
 	LC "github.com/Dreamacro/clash/listener/config"
 	"github.com/Dreamacro/clash/log"
-	R "github.com/Dreamacro/clash/rule"
 	"github.com/Dreamacro/clash/tunnel"
 )
 
@@ -128,7 +127,7 @@ func GetGeneral() *config.General {
 	return general
 }
 
-func loadProvider(ruleProviders map[string]R.RuleProvider, proxyProviders map[string]providerTypes.ProxyProvider) {
+func loadProvider(ruleProviders map[string]providerTypes.RuleProvider, proxyProviders map[string]providerTypes.ProxyProvider) {
 	load := func(pv providerTypes.Provider) {
 		if pv.VehicleType() == providerTypes.Compatible {
 			log.Infoln("Start initial compatible provider %s", pv.Name())
@@ -226,7 +225,7 @@ func updateProxies(proxies map[string]C.Proxy, providers map[string]providerType
 	tunnel.UpdateProxies(proxies, providers)
 }
 
-func updateRules(rules []C.Rule, subRules map[string][]C.Rule, providers map[string]R.RuleProvider) {
+func updateRules(rules []C.Rule, subRules map[string][]C.Rule, providers map[string]providerTypes.RuleProvider) {
 	tunnel.UpdateRules(rules, subRules, providers)
 }
 

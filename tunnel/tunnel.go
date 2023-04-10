@@ -22,9 +22,9 @@ import (
 	"github.com/Dreamacro/clash/component/sniffer"
 	C "github.com/Dreamacro/clash/constant"
 	"github.com/Dreamacro/clash/constant/provider"
+	providerTypes "github.com/Dreamacro/clash/constant/provider"
 	icontext "github.com/Dreamacro/clash/context"
 	"github.com/Dreamacro/clash/log"
-	R "github.com/Dreamacro/clash/rule"
 	"github.com/Dreamacro/clash/tunnel/statistic"
 
 	"go.uber.org/atomic"
@@ -36,7 +36,7 @@ var (
 	natTable       = nat.New()
 	rules          []C.Rule
 	subRules       map[string][]C.Rule
-	ruleProviders  map[string]R.RuleProvider
+	ruleProviders  map[string]providerTypes.RuleProvider
 	proxies        = make(map[string]C.Proxy)
 	providers      map[string]provider.ProxyProvider
 	sniffingEnable = false
@@ -117,12 +117,12 @@ func Rules() []C.Rule {
 }
 
 // RuleProviders return all compatible providers
-func RuleProviders() map[string]R.RuleProvider {
+func RuleProviders() map[string]providerTypes.RuleProvider {
 	return ruleProviders
 }
 
 // UpdateRules handle update rules
-func UpdateRules(newRules []C.Rule, newSubRules map[string][]C.Rule, newProviders map[string]R.RuleProvider) {
+func UpdateRules(newRules []C.Rule, newSubRules map[string][]C.Rule, newProviders map[string]providerTypes.RuleProvider) {
 	configMux.Lock()
 	rules = newRules
 	subRules = newSubRules

@@ -131,7 +131,7 @@ type Config struct {
 	Profile        *Profile
 	Rules          []C.Rule
 	SubRules       map[string][]C.Rule
-	RulesProviders map[string]R.RuleProvider
+	RulesProviders map[string]providerTypes.RuleProvider
 	Users          []auth.AuthUser
 	Proxies        map[string]C.Proxy
 	Providers      map[string]providerTypes.ProxyProvider
@@ -581,8 +581,8 @@ func parseListeners(cfg *RawConfig) (listeners map[string]C.InboundListener, err
 	return
 }
 
-func parseRuleProviders(cfg *RawConfig) (providersMap map[string]R.RuleProvider, err error) {
-	providersMap = make(map[string]R.RuleProvider)
+func parseRuleProviders(cfg *RawConfig) (providersMap map[string]providerTypes.RuleProvider, err error) {
+	providersMap = make(map[string]providerTypes.RuleProvider)
 	providersConfig := cfg.RuleProviders
 
 	// parse and initial providers

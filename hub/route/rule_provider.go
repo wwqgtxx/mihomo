@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	R "github.com/Dreamacro/clash/rule"
+	providerTypes "github.com/Dreamacro/clash/constant/provider"
 	"github.com/Dreamacro/clash/tunnel"
 
 	"github.com/go-chi/chi/v5"
@@ -31,12 +31,12 @@ func getRuleProviders(w http.ResponseWriter, r *http.Request) {
 }
 
 func getRuleProvider(w http.ResponseWriter, r *http.Request) {
-	provider := r.Context().Value(CtxKeyProvider).(R.RuleProvider)
+	provider := r.Context().Value(CtxKeyProvider).(providerTypes.RuleProvider)
 	render.JSON(w, r, provider)
 }
 
 func updateRuleProvider(w http.ResponseWriter, r *http.Request) {
-	provider := r.Context().Value(CtxKeyProvider).(R.RuleProvider)
+	provider := r.Context().Value(CtxKeyProvider).(providerTypes.RuleProvider)
 	if err := provider.Update(); err != nil {
 		render.Status(r, http.StatusServiceUnavailable)
 		render.JSON(w, r, newError(err.Error()))

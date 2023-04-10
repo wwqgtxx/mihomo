@@ -14,11 +14,13 @@ import (
 	"strconv"
 
 	"github.com/Dreamacro/clash/component/dialer"
+	"github.com/Dreamacro/clash/component/proxydialer"
 	C "github.com/Dreamacro/clash/constant"
 )
 
 type Http struct {
 	*Base
+	option    *HttpOption
 	user      string
 	pass      string
 	tlsConfig *tls.Config
@@ -64,6 +66,12 @@ func (h *Http) DialContext(ctx context.Context, metadata *C.Metadata, opts ...di
 
 // DialContextWithDialer implements C.ProxyAdapter
 func (h *Http) DialContextWithDialer(ctx context.Context, dialer C.Dialer, metadata *C.Metadata) (_ C.Conn, err error) {
+	if len(h.option.DialerProxy) > 0 {
+		dialer, err = proxydialer.NewByName(h.option.DialerProxy, dialer)
+		if err != nil {
+			return nil, err
+		}
+	}
 	c, err := dialer.DialContext(ctx, "tcp", h.addr)
 	if err != nil {
 		return nil, fmt.Errorf("%s connect error: %w", h.addr, err)
@@ -160,6 +168,7 @@ func NewHttp(option HttpOption) *Http {
 			iface: option.Interface,
 			rmark: option.RoutingMark,
 		},
+		option:    &option,
 		user:      option.UserName,
 		pass:      option.Password,
 		tlsConfig: tlsConfig,

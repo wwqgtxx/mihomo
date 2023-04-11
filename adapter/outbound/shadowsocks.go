@@ -216,8 +216,8 @@ func (ss *ShadowSocks) ListenPacketWithDialer(ctx context.Context, dialer C.Dial
 }
 
 // SupportWithDialer implements C.ProxyAdapter
-func (ss *ShadowSocks) SupportWithDialer() bool {
-	return true
+func (ss *ShadowSocks) SupportWithDialer() C.NetWork {
+	return C.ALLNet
 }
 
 // ListenPacketOnStreamConn implements C.ProxyAdapter
@@ -230,7 +230,7 @@ func (ss *ShadowSocks) ListenPacketOnStreamConn(c net.Conn, metadata *C.Metadata
 			return newPacketConn(uot.NewLazyConn(c, uot.Request{Destination: destination}), ss), nil
 		}
 	}
-	return nil, errors.New("no support")
+	return nil, C.ErrNotSupport
 }
 
 // SupportUOT implements C.ProxyAdapter

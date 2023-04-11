@@ -372,8 +372,8 @@ func (v *Vmess) ListenPacketOnStreamConn(c net.Conn, metadata *C.Metadata) (_ C.
 }
 
 // SupportWithDialer implements C.ProxyAdapter
-func (v *Vmess) SupportWithDialer() bool {
-	return true
+func (v *Vmess) SupportWithDialer() C.NetWork {
+	return C.ALLNet
 }
 
 // SupportUOT implements C.ProxyAdapter

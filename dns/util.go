@@ -62,7 +62,7 @@ func transform(servers []NameServer, resolver *Resolver) []dnsClient {
 	for _, s := range servers {
 		switch s.Net {
 		case "https":
-			ret = append(ret, newDoHClient(s.Addr, s.Interface, resolver, s.UseRemote))
+			ret = append(ret, newDoHClient(s.Addr, s.Interface, resolver, s.UseRemote, s.ProxyAdapter, s.ProxyName))
 			continue
 		case "dhcp":
 			ret = append(ret, newDHCPClient(s.Addr))
@@ -79,11 +79,13 @@ func transform(servers []NameServer, resolver *Resolver) []dnsClient {
 				UDPSize: 4096,
 				Timeout: 5 * time.Second,
 			},
-			port:      port,
-			host:      host,
-			iface:     s.Interface,
-			r:         resolver,
-			useRemote: s.UseRemote,
+			port:         port,
+			host:         host,
+			iface:        s.Interface,
+			r:            resolver,
+			useRemote:    s.UseRemote,
+			proxyAdapter: s.ProxyAdapter,
+			proxyName:    s.ProxyName,
 		})
 	}
 	return ret

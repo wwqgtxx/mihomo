@@ -841,6 +841,12 @@ func parseNameServer(servers []string, useRemoteDnsDefault bool) ([]dns.NameServ
 	return nameservers, nil
 }
 
+func init() {
+	dns.ParseNameServer = func(servers []string) ([]dns.NameServer, error) { // using by wireguard
+		return parseNameServer(servers, false)
+	}
+}
+
 func parseNameServerPolicy(nsPolicy map[string]string, useRemoteDnsDefault bool) (map[string]dns.NameServer, error) {
 	policy := map[string]dns.NameServer{}
 

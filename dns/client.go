@@ -10,6 +10,7 @@ import (
 
 	"github.com/Dreamacro/clash/component/dialer"
 	"github.com/Dreamacro/clash/component/resolver"
+	C "github.com/Dreamacro/clash/constant"
 
 	D "github.com/miekg/dns"
 	"github.com/zhangyunhao116/fastrand"
@@ -17,15 +18,13 @@ import (
 
 type client struct {
 	*D.Client
-	r         *Resolver
-	port      string
-	host      string
-	iface     string
-	useRemote bool
-}
-
-func (c *client) UseRemote() bool {
-	return c.useRemote
+	r            *Resolver
+	port         string
+	host         string
+	iface        string
+	useRemote    bool
+	proxyAdapter C.ProxyAdapter
+	proxyName    string
 }
 
 func (c *client) Exchange(m *D.Msg) (*D.Msg, error) {
@@ -62,11 +61,21 @@ func (c *client) ExchangeContext(ctx context.Context, m *D.Msg) (*D.Msg, error) 
 		options = append(options, dialer.WithInterface(c.iface))
 	}
 	var conn net.Conn
-	if c.useRemote {
+	if c.useRemote || c.proxyName != "" || c.proxyAdapter != nil {
 		if network == "" || network == "udp" { // force use tcp when do remote dns
 			network = "tcp"
 		}
-		conn, err = remoteDialer.DialContext(ctx, network, net.JoinHostPort(ip.String(), c.port))
+		if c.proxyAdapter != nil {
+			metadata := &C.Metadata{
+				Type:    C.DNS,
+				NetWork: C.TCP,
+				DstIP:   ip,
+				DstPort: c.port,
+			}
+			conn, err = c.proxyAdapter.DialContext(ctx, metadata)
+		} else {
+			conn, err = remoteDialer.DialTCP(address, c.proxyName)
+		}
 	} else {
 		conn, err = dialer.DialContext(ctx, network, net.JoinHostPort(ip.String(), c.port), options...)
 	}

@@ -25,6 +25,10 @@ func NewDialer(mType C.Type) *RemoteDialer {
 }
 
 func (d RemoteDialer) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
+	return d.DialTCP(addr, "")
+}
+
+func (d RemoteDialer) DialTCP(addr string, proxyName string) (net.Conn, error) {
 	host, port, err := net.SplitHostPort(addr)
 	if err != nil {
 		return nil, err
@@ -32,9 +36,10 @@ func (d RemoteDialer) DialContext(ctx context.Context, network, addr string) (ne
 
 	conn1, conn2 := net.Pipe()
 	metadata := &C.Metadata{
-		NetWork: C.TCP,
-		Host:    host,
-		DstPort: port,
+		NetWork:      C.TCP,
+		Host:         host,
+		DstPort:      port,
+		SpecialProxy: proxyName,
 	}
 	metadata.Type = d.mType
 	connContext := icontext.NewConnContext(conn2, metadata)

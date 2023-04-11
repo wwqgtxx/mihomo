@@ -41,7 +41,6 @@ func SetUseSystemDnsDial(newSystemDnsDial bool) {
 }
 
 type dnsClient interface {
-	UseRemote() bool
 	Exchange(m *D.Msg) (msg *D.Msg, err error)
 	ExchangeContext(ctx context.Context, m *D.Msg) (msg *D.Msg, err error)
 }
@@ -117,7 +116,7 @@ func (r *Resolver) LookupIP(ctx context.Context, host string) (ip []netip.Addr, 
 			return nil, resolver.ErrIPNotFound
 		}
 		ip = append(ip, ipv6s...)
-	case <-time.After(30 * time.Millisecond):
+	case <-time.After(100 * time.Millisecond):
 		// wait ipv6 result
 	}
 
@@ -430,10 +429,12 @@ func (r *Resolver) asyncExchange(ctx context.Context, client []dnsClient, msg *D
 }
 
 type NameServer struct {
-	Net       string
-	Addr      string
-	Interface string
-	UseRemote bool
+	Net          string
+	Addr         string
+	Interface    string
+	ProxyAdapter C.ProxyAdapter
+	ProxyName    string
+	UseRemote    bool
 }
 
 type FallbackFilter struct {
@@ -499,3 +500,5 @@ func NewResolver(config Config) (*Resolver, *Resolver) {
 
 	return defaultResolver, r
 }
+
+var ParseNameServer func(servers []string) ([]NameServer, error) // define in config/config.go

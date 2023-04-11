@@ -12,6 +12,7 @@ import (
 
 	"github.com/Dreamacro/clash/component/dialer"
 	"github.com/Dreamacro/clash/component/resolver"
+	C "github.com/Dreamacro/clash/constant"
 
 	D "github.com/miekg/dns"
 	"github.com/zhangyunhao116/fastrand"
@@ -25,11 +26,6 @@ const (
 type dohClient struct {
 	url       string
 	transport *http.Transport
-	useRemote bool
-}
-
-func (dc *dohClient) UseRemote() bool {
-	return dc.useRemote
 }
 
 func (dc *dohClient) Exchange(m *D.Msg) (msg *D.Msg, err error) {
@@ -88,14 +84,14 @@ func (dc *dohClient) doRequest(req *http.Request) (msg *D.Msg, err error) {
 	return msg, err
 }
 
-func newDoHClient(url, iface string, r *Resolver, useRemote bool) *dohClient {
+func newDoHClient(url, iface string, r *Resolver, useRemote bool, proxyAdapter C.ProxyAdapter, proxyName string) *dohClient {
 	return &dohClient{
 		url: url,
 		transport: &http.Transport{
 			ForceAttemptHTTP2: true,
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				if useRemote {
-					return remoteDialer.DialContext(ctx, network, addr)
+				if useRemote || proxyName != "" {
+					return remoteDialer.DialTCP(addr, proxyName)
 				}
 
 				host, port, err := net.SplitHostPort(addr)
@@ -114,6 +110,16 @@ func newDoHClient(url, iface string, r *Resolver, useRemote bool) *dohClient {
 				options := []dialer.Option{}
 				if iface != "" {
 					options = append(options, dialer.WithInterface(iface))
+				}
+
+				if proxyAdapter != nil {
+					metadata := &C.Metadata{
+						Type:    C.DNS,
+						NetWork: C.TCP,
+						DstIP:   ip,
+						DstPort: port,
+					}
+					return proxyAdapter.DialContext(ctx, metadata)
 				}
 
 				return dialer.DialContext(ctx, "tcp", net.JoinHostPort(ip.String(), port), options...)

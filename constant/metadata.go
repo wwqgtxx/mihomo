@@ -30,6 +30,7 @@ const (
 	MTPROXY
 	TUN
 	TUIC
+	INNER
 	DNS
 	PROVIDER
 )
@@ -81,6 +82,8 @@ func (t Type) String() string {
 		return "TUN"
 	case TUIC:
 		return "TUIC"
+	case INNER:
+		return "Inner"
 	case DNS:
 		return "DNS"
 	case PROVIDER:

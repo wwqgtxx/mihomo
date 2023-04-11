@@ -428,6 +428,14 @@ func (r *Resolver) asyncExchange(ctx context.Context, client []dnsClient, msg *D
 	return ch
 }
 
+// Invalid return this resolver can or can't be used
+func (r *Resolver) Invalid() bool {
+	if r == nil {
+		return false
+	}
+	return len(r.main) > 0
+}
+
 type NameServer struct {
 	Net          string
 	Addr         string

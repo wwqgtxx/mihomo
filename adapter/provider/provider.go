@@ -96,7 +96,7 @@ func stopProxyProvider(pd *ProxySetProvider) {
 	pd.Fetcher.Destroy()
 }
 
-func NewProxySetProvider(name string, interval time.Duration, filter string, excludeFilter string, vehicle types.Vehicle, hc *HealthCheck) (*ProxySetProvider, error) {
+func NewProxySetProvider(name string, interval time.Duration, filter string, excludeFilter string, dialerProxy string, vehicle types.Vehicle, hc *HealthCheck) (*ProxySetProvider, error) {
 	excludeFilterReg, err := regexp.Compile(excludeFilter)
 	if err != nil {
 		return nil, fmt.Errorf("invalid excludeFilter regex: %w", err)
@@ -155,6 +155,9 @@ func NewProxySetProvider(name string, interval time.Duration, filter string, exc
 				}
 				if _, ok := proxiesSet[name]; ok {
 					continue
+				}
+				if len(dialerProxy) > 0 {
+					mapping["dialer-proxy"] = dialerProxy
 				}
 				proxy, err := adapter.ParseProxy(mapping)
 				if err != nil {

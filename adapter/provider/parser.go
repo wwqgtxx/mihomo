@@ -32,6 +32,7 @@ type proxyProviderSchema struct {
 	Interval      int               `provider:"interval,omitempty"`
 	Filter        string            `provider:"filter,omitempty"`
 	ExcludeFilter string            `provider:"exclude-filter,omitempty"`
+	DialerProxy   string            `provider:"dialer-proxy,omitempty"`
 	HealthCheck   healthCheckSchema `provider:"health-check,omitempty"`
 }
 
@@ -73,5 +74,6 @@ func ParseProxyProvider(name string, mapping map[string]any, healthCheckLazyDefa
 	interval := time.Duration(uint(schema.Interval)) * time.Second
 	filter := schema.Filter
 	excludeFilter := schema.ExcludeFilter
-	return NewProxySetProvider(name, interval, filter, excludeFilter, vehicle, hc)
+	dialerProxy := schema.DialerProxy
+	return NewProxySetProvider(name, interval, filter, excludeFilter, dialerProxy, vehicle, hc)
 }

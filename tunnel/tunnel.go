@@ -556,7 +556,22 @@ func match(metadata *C.Metadata) (C.Proxy, C.Rule, error) {
 			if !ok {
 				continue
 			}
+
+			// parse multi-layer nesting
+			passed := false
+			for adapter := adapter; adapter != nil; adapter = adapter.Unwrap(metadata, false) {
+				if adapter.Type() == C.Pass {
+					passed = true
+					break
+				}
+			}
+			if passed {
+				log.Debugln("%s match Pass rule", adapter.Name())
+				continue
+			}
+
 			if metadata.NetWork == C.UDP && !adapter.SupportUDP() {
+				log.Debugln("%s UDP is not supported", adapter.Name())
 				continue
 			}
 

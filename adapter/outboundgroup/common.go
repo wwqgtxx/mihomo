@@ -56,7 +56,7 @@ func getProvidersProxies(providers []provider.ProxyProvider, touch bool, filter 
 	}
 
 	if len(proxies) == 0 {
-		return []C.Proxy{tunnel.Proxies()["REJECT"]}
+		return append(proxies, tunnel.Proxies()["COMPATIBLE"])
 	}
 	return proxies
 }

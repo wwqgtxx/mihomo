@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"sync"
 
 	"github.com/Dreamacro/clash/adapter/outbound"
 	"github.com/Dreamacro/clash/common/murmur3"
@@ -18,7 +19,7 @@ import (
 	"golang.org/x/net/publicsuffix"
 )
 
-type strategyFn = func(proxies []C.Proxy, metadata *C.Metadata) C.Proxy
+type strategyFn = func(proxies []C.Proxy, metadata *C.Metadata, touch bool) C.Proxy
 
 type LoadBalance struct {
 	*outbound.Base
@@ -105,7 +106,7 @@ func (lb *LoadBalance) SupportUDP() bool {
 }
 
 func strategyRandom() strategyFn {
-	return func(proxies []C.Proxy, metadata *C.Metadata) C.Proxy {
+	return func(proxies []C.Proxy, metadata *C.Metadata, touch bool) C.Proxy {
 		aliveProxies := make([]C.Proxy, 0, len(proxies))
 		for _, proxy := range proxies {
 			if proxy.Alive() {
@@ -129,12 +130,25 @@ func (lb *LoadBalance) IsL3Protocol(metadata *C.Metadata) bool {
 
 func strategyRoundRobin() strategyFn {
 	idx := 0
-	return func(proxies []C.Proxy, metadata *C.Metadata) C.Proxy {
+	idxMutex := sync.Mutex{}
+	return func(proxies []C.Proxy, metadata *C.Metadata, touch bool) C.Proxy {
+		idxMutex.Lock()
+		defer idxMutex.Unlock()
+
+		i := 0
 		length := len(proxies)
-		for i := 0; i < length; i++ {
-			idx = (idx + 1) % length
-			proxy := proxies[idx]
+
+		if touch {
+			defer func() {
+				idx = (idx + i) % length
+			}()
+		}
+
+		for ; i < length; i++ {
+			id := (idx + i) % length
+			proxy := proxies[id]
 			if proxy.Alive() {
+				i++
 				return proxy
 			}
 		}
@@ -145,7 +159,7 @@ func strategyRoundRobin() strategyFn {
 
 func strategyConsistentHashing() strategyFn {
 	maxRetry := 5
-	return func(proxies []C.Proxy, metadata *C.Metadata) C.Proxy {
+	return func(proxies []C.Proxy, metadata *C.Metadata, touch bool) C.Proxy {
 		key := uint64(murmur3.Sum32([]byte(getKey(metadata))))
 		buckets := int32(len(proxies))
 		for i := 0; i < maxRetry; i, key = i+1, key+1 {
@@ -170,7 +184,7 @@ func strategyConsistentHashing() strategyFn {
 // Unwrap implements C.ProxyAdapter
 func (lb *LoadBalance) Unwrap(metadata *C.Metadata, touch bool) C.Proxy {
 	proxies := lb.proxies(touch)
-	return lb.strategyFn(proxies, metadata)
+	return lb.strategyFn(proxies, metadata, touch)
 }
 
 func (lb *LoadBalance) proxies(touch bool) []C.Proxy {

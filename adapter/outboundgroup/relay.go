@@ -142,7 +142,7 @@ func (r *Relay) proxies(metadata *C.Metadata, touch bool) ([]C.Proxy, []C.Proxy)
 	}
 
 	for _, proxy := range proxies {
-		if proxy.Type() != C.Direct {
+		if proxy.Type() != C.Direct && proxy.Type() != C.Compatible {
 			targetProxies = append(targetProxies, proxy)
 		}
 	}

@@ -123,6 +123,9 @@ func rulesParse(buf []byte, behavior P.RuleBehavior, format P.RuleFormat) (any, 
 			firstLineLength = -1 // don't return ErrNoPayload when read last line
 			str = string(line)
 			str = strings.TrimSpace(str)
+			if len(str) == 0 {
+				continue
+			}
 			if str[0] == '#' { // comment
 				continue
 			}
@@ -130,7 +133,11 @@ func rulesParse(buf []byte, behavior P.RuleBehavior, format P.RuleFormat) (any, 
 				continue
 			}
 		case P.YamlRule:
-			if bytes.TrimSpace(line)[0] == '#' { // comment
+			trimLine := bytes.TrimSpace(line)
+			if len(trimLine) == 0 {
+				continue
+			}
+			if trimLine[0] == '#' { // comment
 				continue
 			}
 			firstLineBuffer.Write(line)

@@ -14,12 +14,12 @@ import (
 	"github.com/Dreamacro/clash/common/pool"
 	"github.com/Dreamacro/clash/common/structure"
 	C "github.com/Dreamacro/clash/constant"
-	providerTypes "github.com/Dreamacro/clash/constant/provider"
+	P "github.com/Dreamacro/clash/constant/provider"
 )
 
 // RuleProvider interface
 type RuleProvider interface {
-	providerTypes.Provider
+	P.Provider
 	Rules() []C.Rule
 }
 
@@ -36,7 +36,8 @@ type RuleSetProvider struct {
 type ruleSetProvider struct {
 	*provider.Fetcher
 	rules     []C.Rule
-	behavior  string
+	behavior  P.RuleBehavior
+	format    P.RuleFormat
 	ruleCount int
 }
 
@@ -45,7 +46,8 @@ func (rp *ruleSetProvider) MarshalJSON() ([]byte, error) {
 		"name":        rp.Name(),
 		"type":        rp.Type().String(),
 		"vehicleType": rp.VehicleType().String(),
-		"behavior":    rp.behavior,
+		"behavior":    rp.behavior.String(),
+		"format":      rp.format.String(),
 		"ruleCount":   rp.ruleCount,
 		"updatedAt":   rp.UpdateAt(),
 	})
@@ -73,8 +75,8 @@ func (rp *ruleSetProvider) Initial() error {
 	return nil
 }
 
-func (rp *ruleSetProvider) Type() providerTypes.ProviderType {
-	return providerTypes.Rule
+func (rp *ruleSetProvider) Type() P.ProviderType {
+	return P.Rule
 }
 
 func (rp *ruleSetProvider) Rules() []C.Rule {
@@ -90,7 +92,7 @@ type RuleTree interface {
 
 var ErrNoPayload = errors.New("file must have a `payload` field")
 
-func rulesParse(buf []byte, behavior string) (any, error) {
+func rulesParse(buf []byte, behavior P.RuleBehavior, format P.RuleFormat) (any, error) {
 	printMemStats("before")
 	schema := &RuleSchema{}
 
@@ -115,42 +117,59 @@ func rulesParse(buf []byte, behavior string) (any, error) {
 				return nil, ErrNoPayload
 			}
 		}
-		firstLineBuffer.Write(line)
-		if firstLineLength == 0 { // find payload head
-			firstLineLength = firstLineBuffer.Len()
-			firstLineBuffer.WriteString("  - ''") // a test line
+		var str string
+		switch format {
+		case P.TextRule:
+			firstLineLength = -1 // don't return ErrNoPayload when read last line
+			str = string(line)
+			str = strings.TrimSpace(str)
+			if str[0] == '#' { // comment
+				continue
+			}
+			if strings.HasPrefix(str, "//") { // comment in Premium core
+				continue
+			}
+		case P.YamlRule:
+			if bytes.TrimSpace(line)[0] == '#' { // comment
+				continue
+			}
+			firstLineBuffer.Write(line)
+			if firstLineLength == 0 { // find payload head
+				firstLineLength = firstLineBuffer.Len()
+				firstLineBuffer.WriteString("  - ''") // a test line
 
-			err := yaml.Unmarshal(firstLineBuffer.Bytes(), schema)
-			firstLineBuffer.Truncate(firstLineLength)
-			if err == nil && (len(schema.Payload) > 0 || len(schema.Rules) > 0) { // found
+				err := yaml.Unmarshal(firstLineBuffer.Bytes(), schema)
+				firstLineBuffer.Truncate(firstLineLength)
+				if err == nil && (len(schema.Payload) > 0 || len(schema.Rules) > 0) { // found
+					continue
+				}
+
+				// not found or err!=nil
+				firstLineBuffer.Truncate(0)
+				firstLineLength = 0
 				continue
 			}
 
-			// not found or err!=nil
-			firstLineBuffer.Truncate(0)
-			firstLineLength = 0
-			continue
+			// parse payload body
+			err := yaml.Unmarshal(firstLineBuffer.Bytes(), schema)
+			firstLineBuffer.Truncate(firstLineLength)
+			if err != nil {
+				continue
+			}
+			if len(schema.Payload) > 0 {
+				str = schema.Payload[0]
+			}
+			if len(schema.Rules) > 0 {
+				str = schema.Rules[0]
+			}
 		}
 
-		// parse payload body
-		err := yaml.Unmarshal(firstLineBuffer.Bytes(), schema)
-		firstLineBuffer.Truncate(firstLineLength)
-		if err != nil {
-			continue
-		}
-		var str string
-		if len(schema.Payload) > 0 {
-			str = schema.Payload[0]
-		}
-		if len(schema.Rules) > 0 {
-			str = schema.Rules[0]
-		}
 		if str == "" {
 			continue
 		}
 
 		switch behavior {
-		case "domain":
+		case P.Domain:
 			if rt == nil {
 				rt = NewDomainTree()
 			}
@@ -161,7 +180,7 @@ func rulesParse(buf []byte, behavior string) (any, error) {
 			if rules == nil {
 				rules = []C.Rule{rt}
 			}
-		case "ipcidr":
+		case P.IPCIDR:
 			if rt == nil {
 				rt = NewIPCIDRTree()
 			}
@@ -226,7 +245,7 @@ func printMemStats(mag string) {
 func (rp *ruleSetProvider) setRules(rules []C.Rule) {
 	rp.rules = rules
 	rp.ruleCount = len(rp.rules)
-	if rp.ruleCount == 1 && rp.behavior != "classical" {
+	if rp.ruleCount == 1 && rp.behavior != P.Classical {
 		if rt, ok := rp.rules[0].(RuleTree); ok {
 			rp.ruleCount = rt.RuleCount()
 		}
@@ -237,10 +256,11 @@ func stopRuleProvider(rd *RuleSetProvider) {
 	rd.Fetcher.Destroy()
 }
 
-func NewRuleSetProvider(name string, interval time.Duration, vehicle providerTypes.Vehicle, behavior string) *RuleSetProvider {
+func NewRuleSetProvider(name string, interval time.Duration, vehicle P.Vehicle, behavior P.RuleBehavior, format P.RuleFormat) *RuleSetProvider {
 	rp := &ruleSetProvider{
 		rules:    []C.Rule{},
 		behavior: behavior,
+		format:   format,
 	}
 
 	onUpdate := func(elm any) {
@@ -248,7 +268,7 @@ func NewRuleSetProvider(name string, interval time.Duration, vehicle providerTyp
 		rp.setRules(ret)
 	}
 
-	parse := func(bytes []byte) (any, error) { return rulesParse(bytes, rp.behavior) }
+	parse := func(bytes []byte) (any, error) { return rulesParse(bytes, behavior, format) }
 
 	fetcher := provider.NewFetcher(name, interval, vehicle, parse, onUpdate)
 	rp.Fetcher = fetcher
@@ -263,6 +283,7 @@ type ruleProviderSchema struct {
 	Type     string `provider:"type"`
 	Path     string `provider:"path"`
 	URL      string `provider:"url,omitempty"`
+	Format   string `provider:"format,omitempty"`
 	Interval int    `provider:"interval,omitempty"`
 }
 
@@ -274,9 +295,33 @@ func ParseRuleProvider(name string, mapping map[string]any) (RuleProvider, error
 		return nil, err
 	}
 
+	var behavior P.RuleBehavior
+
+	switch schema.Behavior {
+	case "domain":
+		behavior = P.Domain
+	case "ipcidr":
+		behavior = P.IPCIDR
+	case "classical":
+		behavior = P.Classical
+	default:
+		return nil, fmt.Errorf("unsupported behavior type: %s", schema.Behavior)
+	}
+
+	var format P.RuleFormat
+
+	switch schema.Format {
+	case "", "yaml":
+		format = P.YamlRule
+	case "text":
+		format = P.TextRule
+	default:
+		return nil, fmt.Errorf("unsupported format type: %s", schema.Format)
+	}
+
 	path := C.Path.Resolve(schema.Path)
 
-	var vehicle providerTypes.Vehicle
+	var vehicle P.Vehicle
 	switch schema.Type {
 	case "file":
 		vehicle = provider.NewFileVehicle(path)
@@ -286,8 +331,6 @@ func ParseRuleProvider(name string, mapping map[string]any) (RuleProvider, error
 		return nil, fmt.Errorf("%w: %s", provider.ErrVehicleType, schema.Type)
 	}
 
-	behavior := schema.Behavior
-
 	interval := time.Duration(uint(schema.Interval)) * time.Second
-	return NewRuleSetProvider(name, interval, vehicle, behavior), nil
+	return NewRuleSetProvider(name, interval, vehicle, behavior, format), nil
 }

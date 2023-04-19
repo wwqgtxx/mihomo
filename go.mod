@@ -15,14 +15,14 @@ require (
 	github.com/kentik/patricia v1.2.0
 	github.com/mdlayher/netlink v1.7.2-0.20221213171556-9881fafed8c7
 	github.com/metacubex/quic-go v0.33.2
-	github.com/metacubex/sing-shadowsocks v0.2.2-0.20230417103204-e2bcd32a73cc
-	github.com/metacubex/sing-tun v0.1.4-0.20230417114323-ef78a871e13f
+	github.com/metacubex/sing-shadowsocks v0.2.2-0.20230419154412-11ec6808f588
+	github.com/metacubex/sing-tun v0.1.4-0.20230419154912-049c66801ff8
 	github.com/metacubex/sing-wireguard v0.0.0-20230413082948-e51777dcf025
 	github.com/miekg/dns v1.1.53
 	github.com/openacid/low v0.1.21
 	github.com/oschwald/geoip2-golang v1.8.0
 	github.com/sagernet/netlink v0.0.0-20220905062125-8043b4a9aa97
-	github.com/sagernet/sing v0.2.4-0.20230417103520-0b4d134fe945
+	github.com/sagernet/sing v0.2.4-0.20230419153323-5fae6fa434c1
 	github.com/sagernet/sing-shadowtls v0.1.2-0.20230417103049-4f682e05f19b
 	github.com/sagernet/sing-vmess v0.1.5-0.20230417103030-8c3070ae3fb3
 	github.com/sagernet/tfo-go v0.0.0-20230303015439-ffcfd8c41cf9

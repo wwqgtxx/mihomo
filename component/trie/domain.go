@@ -126,6 +126,9 @@ func (t *DomainTrie[T]) Optimize() {
 func (t *DomainTrie[T]) Foreach(print func(domain string, data T)) {
 	for key, data := range t.root.getChildren() {
 		recursion([]string{key}, data, print)
+		if data != nil && data.inited {
+			print(joinDomain([]string{key}), data.data)
+		}
 	}
 }
 

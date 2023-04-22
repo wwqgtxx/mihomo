@@ -53,6 +53,9 @@ func ParseRule(tp, payload, target string, params []string, subRules map[string]
 		parsed, parseErr = NewInUser(payload, target)
 	case "IN-NAME":
 		parsed, parseErr = NewInName(payload, target)
+	case "IPSET":
+		noResolve := HasNoResolve(params)
+		parsed, parseErr = NewIPSet(payload, target, noResolve)
 	case "MATCH":
 		parsed = NewMatch(target)
 	case "RULE-SET":

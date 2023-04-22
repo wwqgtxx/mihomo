@@ -18,6 +18,7 @@ const (
 	ProcessPath
 	Network
 	Type_
+	IPSet
 	MATCH
 	RuleSet
 	DomainTree
@@ -64,6 +65,8 @@ func (rt RuleType) String() string {
 		return "Process"
 	case ProcessPath:
 		return "ProcessPath"
+	case IPSet:
+		return "IPSet"
 	case MATCH:
 		return "Match"
 	case RuleSet:

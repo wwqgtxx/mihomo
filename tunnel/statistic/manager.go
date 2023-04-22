@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"go.uber.org/atomic"
+	"github.com/Dreamacro/clash/common/atomic"
 )
 
 var DefaultManager *Manager

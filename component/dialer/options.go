@@ -4,15 +4,14 @@ import (
 	"context"
 	"net"
 
+	"github.com/Dreamacro/clash/common/atomic"
 	"github.com/Dreamacro/clash/component/resolver"
-
-	"go.uber.org/atomic"
 )
 
 var (
 	DefaultOptions     []Option
-	DefaultInterface   = atomic.NewString("")
-	GeneralInterface   = atomic.NewString("")
+	DefaultInterface   = atomic.NewTypedValue[string]("")
+	GeneralInterface   = atomic.NewTypedValue[string]("")
 	DefaultRoutingMark = atomic.NewInt32(0)
 )
 

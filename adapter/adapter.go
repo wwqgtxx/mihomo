@@ -9,13 +9,12 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/Dreamacro/clash/common/atomic"
 	"github.com/Dreamacro/clash/common/callback"
 	N "github.com/Dreamacro/clash/common/net"
 	"github.com/Dreamacro/clash/common/queue"
 	"github.com/Dreamacro/clash/component/dialer"
 	C "github.com/Dreamacro/clash/constant"
-
-	"go.uber.org/atomic"
 )
 
 type Proxy struct {

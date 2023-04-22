@@ -8,12 +8,12 @@ import (
 	"sync"
 
 	"github.com/Dreamacro/clash/adapter/inbound"
+	"github.com/Dreamacro/clash/common/atomic"
 	C "github.com/Dreamacro/clash/constant"
 	"github.com/Dreamacro/clash/listener/sing_shadowsocks"
 	"github.com/Dreamacro/clash/listener/sing_vmess"
 	"github.com/Dreamacro/clash/transport/vmess"
 	"github.com/gorilla/websocket"
-	"go.uber.org/atomic"
 )
 
 type ChanListener interface {

@@ -5,8 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Dreamacro/clash/common/atomic"
+
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/atomic"
 )
 
 func iterator(item []any) chan any {
@@ -44,7 +45,7 @@ func TestObservable_MultiSubscribe(t *testing.T) {
 	wg.Add(2)
 	waitCh := func(ch <-chan any) {
 		for range ch {
-			count.Inc()
+			count.Add(1)
 		}
 		wg.Done()
 	}

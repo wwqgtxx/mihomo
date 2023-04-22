@@ -10,8 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jpillora/backoff"
-
+	"github.com/Dreamacro/clash/common/atomic"
 	"github.com/Dreamacro/clash/common/channel"
 	N "github.com/Dreamacro/clash/common/net"
 	"github.com/Dreamacro/clash/component/inner_dialer"
@@ -27,7 +26,7 @@ import (
 	"github.com/Dreamacro/clash/log"
 	"github.com/Dreamacro/clash/tunnel/statistic"
 
-	"go.uber.org/atomic"
+	"github.com/jpillora/backoff"
 )
 
 var (

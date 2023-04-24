@@ -353,7 +353,7 @@ func patchSelectGroup(proxies map[string]C.Proxy) {
 			continue
 		}
 
-		selector.Set(selected)
+		selector.ForceSet(selected)
 	}
 }
 
@@ -379,7 +379,7 @@ func patchSelectGroupPlain(proxies map[string]C.Proxy) {
 			continue
 		}
 
-		selector.Set(selected)
+		selector.ForceSet(selected)
 	}
 }
 

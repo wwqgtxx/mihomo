@@ -13,18 +13,18 @@ require (
 	github.com/insomniacslk/dhcp v0.0.0-20230407062729-974c6f05fe16
 	github.com/jpillora/backoff v1.0.0
 	github.com/kentik/patricia v1.2.0
-	github.com/mdlayher/netlink v1.7.2-0.20221213171556-9881fafed8c7
+	github.com/mdlayher/netlink v1.7.2
 	github.com/metacubex/quic-go v0.33.2
-	github.com/metacubex/sing-shadowsocks v0.2.2-0.20230422111054-f54786eee8ba
+	github.com/metacubex/sing-shadowsocks v0.2.2-0.20230509230448-a5157cc00a1c
 	github.com/metacubex/sing-shadowsocks2 v0.0.0-20230510002911-25e95d677383
-	github.com/metacubex/sing-tun v0.1.4
+	github.com/metacubex/sing-tun v0.1.5-0.20230509224930-30065d4b6376
 	github.com/metacubex/sing-wireguard v0.0.0-20230426030325-41db09ae771a
-	github.com/miekg/dns v1.1.53
+	github.com/miekg/dns v1.1.54
 	github.com/openacid/low v0.1.21
 	github.com/oschwald/geoip2-golang v1.8.0
 	github.com/sagernet/netlink v0.0.0-20220905062125-8043b4a9aa97
 	github.com/sagernet/sing v0.2.5-0.20230509045155-f60c80c56f21
-	github.com/sagernet/sing-mux v0.0.0-20230425130511-b0a6ffd8406f
+	github.com/sagernet/sing-mux v0.0.0-20230427141602-9836fc9b052e
 	github.com/sagernet/sing-shadowtls v0.1.2-0.20230417103049-4f682e05f19b
 	github.com/sagernet/sing-vmess v0.1.5-0.20230417103030-8c3070ae3fb3
 	github.com/sagernet/tfo-go v0.0.0-20230303015439-ffcfd8c41cf9
@@ -35,11 +35,11 @@ require (
 	github.com/zhangyunhao116/fastrand v0.3.0
 	go.etcd.io/bbolt v1.3.7
 	go.uber.org/automaxprocs v1.5.2
-	golang.org/x/crypto v0.8.0
-	golang.org/x/exp v0.0.0-20230321023759-10a507213a29
-	golang.org/x/net v0.9.0
-	golang.org/x/sync v0.1.0
-	golang.org/x/sys v0.7.0
+	golang.org/x/crypto v0.9.0
+	golang.org/x/exp v0.0.0-20230425010034-47ecfdc1ba53
+	golang.org/x/net v0.10.0
+	golang.org/x/sync v0.2.0
+	golang.org/x/sys v0.8.0
 	gopkg.in/yaml.v3 v3.0.1
 	lukechampine.com/blake3 v1.1.7
 )
@@ -65,7 +65,7 @@ require (
 	github.com/klauspost/compress v1.15.15 // indirect
 	github.com/klauspost/cpuid/v2 v2.1.2 // indirect
 	github.com/kr/text v0.2.0 // indirect
-	github.com/mdlayher/socket v0.4.0 // indirect
+	github.com/mdlayher/socket v0.4.1 // indirect
 	github.com/metacubex/gvisor v0.0.0-20230417114019-3c3ee672d60c // indirect
 	github.com/oasisprotocol/deoxysii v0.0.0-20220228165953-2091330c22b7 // indirect
 	github.com/onsi/ginkgo/v2 v2.2.0 // indirect

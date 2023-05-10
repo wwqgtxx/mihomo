@@ -82,6 +82,8 @@ github.com/metacubex/quic-go v0.33.2 h1:DsDdTaLvGI0eVV0C/jzPrw5MBwK5VR20r5Mt9uU5
 github.com/metacubex/quic-go v0.33.2/go.mod h1:9nOiGX6kqV3+ZbkDKdTNzdFD726QQHPH6WDb36jUSpA=
 github.com/metacubex/sing-shadowsocks v0.2.2-0.20230422111054-f54786eee8ba h1:He8YwyK600lHAS1xxNsP4k/jnZ8zqQ34XjCGn925+Yk=
 github.com/metacubex/sing-shadowsocks v0.2.2-0.20230422111054-f54786eee8ba/go.mod h1:4uQQReKMTU7KTfOykVBe/oGJ00pl38d+BYJ99+mx26s=
+github.com/metacubex/sing-shadowsocks2 v0.0.0-20230510002911-25e95d677383 h1:YdLeRuENJZ9QL58Kf/qtMp1wZv9VGQJYMqZ2WEF6/FM=
+github.com/metacubex/sing-shadowsocks2 v0.0.0-20230510002911-25e95d677383/go.mod h1:r+JnKYxqLJIkRhpT9xb3b11icXsvM6yVjCxr2Smp1Og=
 github.com/metacubex/sing-tun v0.1.4 h1:OQDBNHjuPKrOprCiK+sLt97YQ0K6b9ZWmJB6z51ibZQ=
 github.com/metacubex/sing-tun v0.1.4/go.mod h1:BMfG00enVf90/CzcdX9PK3Dymgl7BZqHXJfexEyB7Cc=
 github.com/metacubex/sing-wireguard v0.0.0-20230426030325-41db09ae771a h1:cWKym33Qvl6HA3hj4/YuYD8hHyqQPb47wT5cJRAPgco=
@@ -118,8 +120,8 @@ github.com/sagernet/netlink v0.0.0-20220905062125-8043b4a9aa97 h1:iL5gZI3uFp0X6E
 github.com/sagernet/netlink v0.0.0-20220905062125-8043b4a9aa97/go.mod h1:xLnfdiJbSp8rNqYEdIW/6eDO4mVoogml14Bh2hSiFpM=
 github.com/sagernet/sing v0.0.0-20220817130738-ce854cda8522/go.mod h1:QVsS5L/ZA2Q5UhQwLrn0Trw+msNd/NPGEhBKR/ioWiY=
 github.com/sagernet/sing v0.1.8/go.mod h1:jt1w2u7lJQFFSGLiRrRIs5YWmx4kAPfWuOejuDW9qMk=
-github.com/sagernet/sing v0.2.5-0.20230425211221-a23ffbaeb5b9 h1:kpgKJbhesj6BBLTKIfBCJGQPm2ww7pNxn566C6TrHdA=
-github.com/sagernet/sing v0.2.5-0.20230425211221-a23ffbaeb5b9/go.mod h1:Ta8nHnDLAwqySzKhGoKk4ZIB+vJ3GTKj7UPrWYvM+4w=
+github.com/sagernet/sing v0.2.5-0.20230509045155-f60c80c56f21 h1:voT2nOCvukNfRLn9KxQYEYSu9/OZsCqEmD6tEFJAnBw=
+github.com/sagernet/sing v0.2.5-0.20230509045155-f60c80c56f21/go.mod h1:Ta8nHnDLAwqySzKhGoKk4ZIB+vJ3GTKj7UPrWYvM+4w=
 github.com/sagernet/sing-mux v0.0.0-20230425130511-b0a6ffd8406f h1:iEpOTgBTjt0vZJVXMTqYq13XyIu/337TWbq6WZ3CMWc=
 github.com/sagernet/sing-mux v0.0.0-20230425130511-b0a6ffd8406f/go.mod h1:pF+RnLvCAOhECrvauy6LYOpBakJ/vuaF1Wm4lPsWryI=
 github.com/sagernet/sing-shadowtls v0.1.2-0.20230417103049-4f682e05f19b h1:ouW/6IDCrxkBe19YSbdCd7buHix7b+UZ6BM4Zz74XF4=

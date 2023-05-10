@@ -16,13 +16,14 @@ require (
 	github.com/mdlayher/netlink v1.7.2-0.20221213171556-9881fafed8c7
 	github.com/metacubex/quic-go v0.33.2
 	github.com/metacubex/sing-shadowsocks v0.2.2-0.20230422111054-f54786eee8ba
+	github.com/metacubex/sing-shadowsocks2 v0.0.0-20230510002911-25e95d677383
 	github.com/metacubex/sing-tun v0.1.4
 	github.com/metacubex/sing-wireguard v0.0.0-20230426030325-41db09ae771a
 	github.com/miekg/dns v1.1.53
 	github.com/openacid/low v0.1.21
 	github.com/oschwald/geoip2-golang v1.8.0
 	github.com/sagernet/netlink v0.0.0-20220905062125-8043b4a9aa97
-	github.com/sagernet/sing v0.2.5-0.20230425211221-a23ffbaeb5b9
+	github.com/sagernet/sing v0.2.5-0.20230509045155-f60c80c56f21
 	github.com/sagernet/sing-mux v0.0.0-20230425130511-b0a6ffd8406f
 	github.com/sagernet/sing-shadowtls v0.1.2-0.20230417103049-4f682e05f19b
 	github.com/sagernet/sing-vmess v0.1.5-0.20230417103030-8c3070ae3fb3

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"strconv"
-	"time"
 
 	N "github.com/Dreamacro/clash/common/net"
 	"github.com/Dreamacro/clash/common/structure"
@@ -21,8 +20,7 @@ import (
 	v2rayObfs "github.com/Dreamacro/clash/transport/v2ray-plugin"
 
 	restlsC "github.com/3andne/restls-client-go"
-	singShadowsocks "github.com/metacubex/sing-shadowsocks"
-	"github.com/metacubex/sing-shadowsocks/shadowimpl"
+	"github.com/metacubex/sing-shadowsocks2"
 	"github.com/sagernet/sing/common/bufio"
 	M "github.com/sagernet/sing/common/metadata"
 	"github.com/sagernet/sing/common/uot"
@@ -31,7 +29,7 @@ import (
 type ShadowSocks struct {
 	*Base
 	//cipher core.Cipher
-	method singShadowsocks.Method
+	method shadowsocks.Method
 	option *ShadowSocksOption
 
 	// obfs
@@ -248,7 +246,9 @@ func NewShadowSocks(option ShadowSocksOption) (*ShadowSocks, error) {
 	//cipher := option.Cipher
 	//password := option.Password
 	//ciph, err := core.PickCipher(cipher, nil, password)
-	method, err := shadowimpl.FetchMethod(option.Cipher, option.Password, time.Now)
+	method, err := shadowsocks.CreateMethod(context.Background(), option.Cipher, shadowsocks.MethodOptions{
+		Password: option.Password,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("ss %s initialize error: %w", addr, err)
 	}

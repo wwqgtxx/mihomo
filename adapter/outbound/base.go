@@ -207,8 +207,9 @@ func (c *packetConn) ReaderReplaceable() bool {
 }
 
 func newPacketConn(pc net.PacketConn, a C.ProxyAdapter) C.PacketConn {
+	epc := N.NewEnhancePacketConn(pc)
 	if _, ok := pc.(syscall.Conn); !ok { // exclusion system conn like *net.UDPConn
-		pc = N.NewDeadlinePacketConn(pc) // most conn from outbound can't handle readDeadline correctly
+		epc = N.NewDeadlineEnhancePacketConn(epc) // most conn from outbound can't handle readDeadline correctly
 	}
-	return &packetConn{N.NewEnhancePacketConn(pc), []string{a.Name()}, a.Name(), utils.NewUUIDV4().String()}
+	return &packetConn{epc, []string{a.Name()}, a.Name(), utils.NewUUIDV4().String()}
 }

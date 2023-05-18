@@ -90,8 +90,8 @@ type WSOptions struct {
 	EarlyDataHeaderName string            `proxy:"early-data-header-name,omitempty"`
 }
 
-// StreamConn implements C.ProxyAdapter
-func (v *Vmess) StreamConn(c net.Conn, metadata *C.Metadata) (net.Conn, error) {
+// StreamConnContext implements C.ProxyAdapter
+func (v *Vmess) StreamConnContext(ctx context.Context, c net.Conn, metadata *C.Metadata) (net.Conn, error) {
 	var err error
 	switch v.option.Network {
 	case "ws":
@@ -132,7 +132,7 @@ func (v *Vmess) StreamConn(c net.Conn, metadata *C.Metadata) (net.Conn, error) {
 				wsOpts.TLSConfig.ServerName = host
 			}
 		}
-		c, err = vmess.StreamWebsocketConn(c, wsOpts)
+		c, err = vmess.StreamWebsocketConn(ctx, c, wsOpts)
 	case "http":
 		// readability first, so just copy default TLS logic
 		if v.option.TLS {
@@ -146,7 +146,7 @@ func (v *Vmess) StreamConn(c net.Conn, metadata *C.Metadata) (net.Conn, error) {
 				tlsOpts.Host = v.option.ServerName
 			}
 
-			c, err = vmess.StreamTLSConn(c, tlsOpts)
+			c, err = vmess.StreamTLSConn(ctx, c, tlsOpts)
 			if err != nil {
 				return nil, err
 			}
@@ -173,7 +173,7 @@ func (v *Vmess) StreamConn(c net.Conn, metadata *C.Metadata) (net.Conn, error) {
 			tlsOpts.Host = v.option.ServerName
 		}
 
-		c, err = vmess.StreamTLSConn(c, &tlsOpts)
+		c, err = vmess.StreamTLSConn(ctx, c, &tlsOpts)
 		if err != nil {
 			return nil, err
 		}
@@ -199,7 +199,7 @@ func (v *Vmess) StreamConn(c net.Conn, metadata *C.Metadata) (net.Conn, error) {
 				tlsOpts.Host = v.option.ServerName
 			}
 
-			c, err = vmess.StreamTLSConn(c, tlsOpts)
+			c, err = vmess.StreamTLSConn(ctx, c, tlsOpts)
 		}
 	}
 
@@ -285,7 +285,7 @@ func (v *Vmess) DialContextWithDialer(ctx context.Context, dialer C.Dialer, meta
 		safeConnClose(c, err)
 	}(c)
 
-	c, err = v.StreamConn(c, metadata)
+	c, err = v.StreamConnContext(ctx, c, metadata)
 	return NewConn(c, v), err
 }
 
@@ -346,7 +346,7 @@ func (v *Vmess) ListenPacketWithDialer(ctx context.Context, dialer C.Dialer, met
 		safeConnClose(c, err)
 	}(c)
 
-	c, err = v.StreamConn(c, metadata)
+	c, err = v.StreamConnContext(ctx, c, metadata)
 	if err != nil {
 		return nil, fmt.Errorf("new vmess client error: %v", err)
 	}

@@ -245,7 +245,6 @@ func handleUDPConn(packet C.PacketAdapter) {
 	var fAddr netip.Addr
 	if resolver.IsExistFakeIP(metadata.DstIP) {
 		fAddr = metadata.DstIP
-		fAddr = fAddr.Unmap()
 	}
 
 	if err := preHandleMetadata(metadata); err != nil {
@@ -356,11 +355,10 @@ func handleUDPConn(packet C.PacketAdapter) {
 			)
 		}
 
-		oAddr := metadata.DstIP
-		oAddr = oAddr.Unmap()
+		oAddrPort := metadata.AddrPort()
 		natTable.Set(key, pc)
 
-		go handleUDPToLocal(packet, pc, key, oAddr, fAddr)
+		go handleUDPToLocal(packet, pc, key, oAddrPort, fAddr)
 
 		handle()
 	}()

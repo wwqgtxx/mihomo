@@ -154,12 +154,16 @@ func (m *Metadata) Pure() *Metadata {
 	return m
 }
 
+func (m *Metadata) AddrPort() netip.AddrPort {
+	port, _ := strconv.ParseUint(m.DstPort, 10, 16)
+	return netip.AddrPortFrom(m.DstIP.Unmap(), uint16(port))
+}
+
 func (m *Metadata) UDPAddr() *net.UDPAddr {
 	if m.NetWork != UDP || !m.DstIP.IsValid() {
 		return nil
 	}
-	port, _ := strconv.ParseUint(m.DstPort, 10, 16)
-	return net.UDPAddrFromAddrPort(netip.AddrPortFrom(m.DstIP, uint16(port)))
+	return net.UDPAddrFromAddrPort(m.AddrPort())
 }
 
 func (m *Metadata) String() string {
@@ -193,4 +197,3 @@ func (m *Metadata) SetRemoteAddress(rawAddress string) error {
 
 	return nil
 }
-

@@ -316,9 +316,9 @@ func NewShadowSocks(option ShadowSocksOption) (*ShadowSocks, error) {
 
 	}
 	switch option.UDPOverTCPVersion {
-	case 1, 2:
+	case uot.Version, uot.LegacyVersion:
 	case 0:
-		option.UDPOverTCPVersion = 2
+		option.UDPOverTCPVersion = uot.LegacyVersion
 	default:
 		return nil, fmt.Errorf("ss %s unknown udp over tcp protocol version: %d", addr, option.UDPOverTCPVersion)
 	}

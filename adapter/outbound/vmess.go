@@ -64,7 +64,7 @@ type VmessOption struct {
 
 	PacketAddr          bool   `proxy:"packet-addr,omitempty"`
 	XUDP                bool   `proxy:"xudp,omitempty"`
-	PacketEncoding      string `proxy:"packet_encoding,omitempty"`
+	PacketEncoding      string `proxy:"packet-encoding,omitempty"`
 	AuthenticatedLength bool   `proxy:"authenticated-length,omitempty"`
 }
 

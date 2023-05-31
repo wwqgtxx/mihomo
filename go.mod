@@ -17,7 +17,7 @@ require (
 	github.com/metacubex/quic-go v0.33.3-0.20230510010206-687b537b6a58
 	github.com/metacubex/sing-shadowsocks v0.2.2-0.20230509230448-a5157cc00a1c
 	github.com/metacubex/sing-shadowsocks2 v0.0.0-20230529235701-a238874242ca
-	github.com/metacubex/sing-tun v0.1.5-0.20230509224930-30065d4b6376
+	github.com/metacubex/sing-tun v0.1.5-0.20230530125750-171afb2dfd8e
 	github.com/metacubex/sing-wireguard v0.0.0-20230426030325-41db09ae771a
 	github.com/miekg/dns v1.1.54
 	github.com/openacid/low v0.1.21
@@ -55,6 +55,7 @@ require (
 	github.com/ericlagergren/siv v0.0.0-20220507050439-0b757b3aa5f1 // indirect
 	github.com/ericlagergren/subtle v0.0.0-20220507045147-890d697da010 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
+	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0 // indirect
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/google/btree v1.1.2 // indirect
@@ -76,6 +77,7 @@ require (
 	github.com/quic-go/qtls-go1-20 v0.1.1 // indirect
 	github.com/sagernet/go-tun2socks v1.16.12-0.20220818015926-16cb67876a61 // indirect
 	github.com/sagernet/smux v0.0.0-20230312102458-337ec2a5af37 // indirect
+	github.com/scjalliance/comshim v0.0.0-20230315213746-5e51f40bd3b9 // indirect
 	github.com/sina-ghaderi/poly1305 v0.0.0-20220724002748-c5926b03988b // indirect
 	github.com/sina-ghaderi/rabaead v0.0.0-20220730151906-ab6e06b96e8c // indirect
 	github.com/sina-ghaderi/rabbitio v0.0.0-20220730151941-9ce26f4f872e // indirect

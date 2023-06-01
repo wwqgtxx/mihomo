@@ -299,10 +299,13 @@ func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 				"tcp://8.8.8.8",
 				"1.0.0.1",
 				"tcp://1.0.0.1",
+				"system://",
 			},
 			NameServer: []string{
 				"https://8.8.8.8/dns-query",
 				"https://1.0.0.1/dns-query",
+				"https://[2001:4860:4860::8888]/dns-query",
+				"https://[2606:4700:4700::1111]/dns-query",
 			},
 			FakeIPFilter: []string{
 				"dns.msftnsci.com",
@@ -771,6 +774,10 @@ func parseNameServer(servers []string, useRemoteDnsDefault bool) ([]dns.NameServ
 	nameservers := []dns.NameServer{}
 
 	for idx, server := range servers {
+		if server == "system" {
+			server = "system://"
+		}
+
 		// parse remote dns request
 		useRemote := strings.HasPrefix(server, "remote-")
 		if useRemote {
@@ -825,6 +832,8 @@ func parseNameServer(servers []string, useRemoteDnsDefault bool) ([]dns.NameServ
 		case "dhcp":
 			addr = u.Host
 			dnsNetType = "dhcp" // UDP from DHCP
+		case "system":
+			dnsNetType = "system" // System DNS
 		default:
 			return nil, fmt.Errorf("DNS NameServer[%d] unsupport scheme: %s", idx, u.Scheme)
 		}
@@ -919,6 +928,9 @@ func parseDNS(rawCfg *RawConfig, hosts *trie.DomainTrie[netip.Addr]) (*DNS, erro
 	}
 	// check default nameserver is pure ip addr
 	for _, ns := range dnsCfg.DefaultNameserver {
+		if ns.Net == "system" {
+			continue
+		}
 		host, _, err := net.SplitHostPort(ns.Addr)
 		if err != nil || net.ParseIP(host) == nil {
 			return nil, errors.New("default nameserver should be pure IP")

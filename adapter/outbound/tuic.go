@@ -89,11 +89,7 @@ func (t *Tuic) SupportWithDialer() C.NetWork {
 	return C.ALLNet
 }
 
-func (t *Tuic) dial(ctx context.Context, opts ...dialer.Option) (pc net.PacketConn, addr net.Addr, err error) {
-	return t.dialWithDialer(ctx, dialer.NewDialer(opts...))
-}
-
-func (t *Tuic) dialWithDialer(ctx context.Context, dialer C.Dialer) (pc net.PacketConn, addr net.Addr, err error) {
+func (t *Tuic) dialWithDialer(ctx context.Context, dialer C.Dialer) (transport *quic.Transport, addr net.Addr, err error) {
 	if len(t.option.DialerProxy) > 0 {
 		dialer, err = proxydialer.NewByName(t.option.DialerProxy, dialer)
 		if err != nil {
@@ -105,10 +101,14 @@ func (t *Tuic) dialWithDialer(ctx context.Context, dialer C.Dialer) (pc net.Pack
 		return nil, nil, err
 	}
 	addr = udpAddr
+	var pc net.PacketConn
 	pc, err = dialer.ListenPacket(ctx, "udp", "", udpAddr.AddrPort())
 	if err != nil {
 		return nil, nil, err
 	}
+	transport = &quic.Transport{Conn: pc}
+	transport.SetCreatedConn(true) // auto close conn
+	transport.SetSingleUse(true)   // auto close transport
 	return
 }
 
@@ -209,9 +209,7 @@ func NewTuic(option TuicOption) (*Tuic, error) {
 	if len(option.Ip) > 0 {
 		addr = net.JoinHostPort(option.Ip, strconv.Itoa(option.Port))
 	}
-	host := option.Server
 	if option.DisableSni {
-		host = ""
 		tlsConfig.ServerName = ""
 	}
 	tkn := tuic.GenTKN(option.Token)
@@ -242,7 +240,6 @@ func NewTuic(option TuicOption) (*Tuic, error) {
 	clientOption := &tuic.ClientOption{
 		TlsConfig:             tlsConfig,
 		QuicConfig:            quicConfig,
-		Host:                  host,
 		Token:                 tkn,
 		UdpRelayMode:          option.UdpRelayMode,
 		CongestionController:  option.CongestionController,

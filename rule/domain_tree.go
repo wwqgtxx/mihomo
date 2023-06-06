@@ -3,7 +3,6 @@ package rules
 import (
 	"github.com/Dreamacro/clash/component/trie"
 	C "github.com/Dreamacro/clash/constant"
-	"github.com/Dreamacro/clash/transport/socks5"
 )
 
 type DomainTree struct {
@@ -22,10 +21,7 @@ func (d *DomainTree) RuleType() C.RuleType {
 }
 
 func (d *DomainTree) Match(metadata *C.Metadata) (bool, string) {
-	if metadata.AddrType() != socks5.AtypDomainName {
-		return false, ""
-	}
-	return d.ds.Has(metadata.Host), d.adapter
+	return d.ds.Has(metadata.RuleHost()), d.adapter
 }
 
 func (d *DomainTree) Insert(domain string) error {

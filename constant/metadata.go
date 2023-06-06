@@ -2,6 +2,7 @@ package constant
 
 import (
 	"encoding/json"
+	"fmt"
 	"net"
 	"net/netip"
 	"strconv"
@@ -114,6 +115,8 @@ type Metadata struct {
 	ProcessPath  string     `json:"processPath"`
 	SpecialProxy string     `json:"specialProxy"`
 	SpecialRules string     `json:"specialRules"`
+	// Only domain rule
+	SniffHost string `json:"sniffHost"`
 }
 
 func (m *Metadata) RemoteAddress() string {
@@ -125,6 +128,15 @@ func (m *Metadata) SourceAddress() string {
 		return m.Type.String()
 	}
 	return net.JoinHostPort(m.SrcIP.String(), m.SrcPort)
+}
+
+func (m *Metadata) SourceDetail() string {
+	switch {
+	case m.Process != "":
+		return fmt.Sprintf("%s(%s)", m.SourceAddress(), m.Process)
+	default:
+		return fmt.Sprintf("%s", m.SourceAddress())
+	}
 }
 
 func (m *Metadata) AddrType() int {
@@ -140,6 +152,14 @@ func (m *Metadata) AddrType() int {
 
 func (m *Metadata) Resolved() bool {
 	return m.DstIP.IsValid()
+}
+
+func (m *Metadata) RuleHost() string {
+	if len(m.SniffHost) == 0 {
+		return m.Host
+	} else {
+		return m.SniffHost
+	}
 }
 
 // Pure is used to solve unexpected behavior

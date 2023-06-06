@@ -5,7 +5,9 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/Dreamacro/clash/common/utils"
 	C "github.com/Dreamacro/clash/constant"
+	"github.com/Dreamacro/clash/constant/sniffer"
 )
 
 var (
@@ -13,7 +15,20 @@ var (
 	errNotClientHello = errors.New("not client hello")
 )
 
+var _ sniffer.Sniffer = (*TLSSniffer)(nil)
+
 type TLSSniffer struct {
+	*BaseSniffer
+}
+
+func NewTLSSniffer(snifferConfig SnifferConfig) (*TLSSniffer, error) {
+	ports := snifferConfig.Ports
+	if len(ports) == 0 {
+		ports = utils.IntRanges[uint16]{utils.NewRange[uint16](443, 443)}
+	}
+	return &TLSSniffer{
+		BaseSniffer: NewBaseSniffer(ports, C.TCP),
+	}, nil
 }
 
 func (tls *TLSSniffer) Protocol() string {

@@ -7,20 +7,19 @@ import (
 	"net/netip"
 	"net/url"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/Dreamacro/clash/adapter"
 	"github.com/Dreamacro/clash/adapter/outbound"
 	"github.com/Dreamacro/clash/adapter/outboundgroup"
 	"github.com/Dreamacro/clash/adapter/provider"
-	"github.com/Dreamacro/clash/common/generics/utils"
+	"github.com/Dreamacro/clash/common/utils"
 	"github.com/Dreamacro/clash/component/auth"
 	"github.com/Dreamacro/clash/component/fakeip"
+	SNIFF "github.com/Dreamacro/clash/component/sniffer"
 	"github.com/Dreamacro/clash/component/trie"
 	C "github.com/Dreamacro/clash/constant"
 	providerTypes "github.com/Dreamacro/clash/constant/provider"
-	"github.com/Dreamacro/clash/constant/sniffer"
 	snifferTypes "github.com/Dreamacro/clash/constant/sniffer"
 	"github.com/Dreamacro/clash/dns"
 	L "github.com/Dreamacro/clash/listener"
@@ -109,10 +108,9 @@ type Profile struct {
 
 type Sniffer struct {
 	Enable          bool
-	Sniffers        []sniffer.Type
+	Sniffers        map[snifferTypes.Type]SNIFF.SnifferConfig
 	ForceDomain     *trie.DomainSet
 	SkipDomain      *trie.DomainSet
-	Ports           *[]utils.Range[uint16]
 	ForceDnsMapping bool
 	ParsePureIp     bool
 }
@@ -211,13 +209,18 @@ type RawConfig struct {
 }
 
 type RawSniffer struct {
-	Enable          bool     `yaml:"enable" json:"enable"`
-	Sniffing        []string `yaml:"sniffing" json:"sniffing"`
-	ForceDomain     []string `yaml:"force-domain" json:"force-domain"`
-	SkipDomain      []string `yaml:"skip-domain" json:"skip-domain"`
-	Ports           []string `yaml:"port-whitelist" json:"port-whitelist"`
-	ForceDnsMapping bool     `yaml:"force-dns-mapping" json:"force-dns-mapping"`
-	ParsePureIp     bool     `yaml:"parse-pure-ip" json:"parse-pure-ip"`
+	Enable          bool                         `yaml:"enable" json:"enable"`
+	OverrideDest    bool                         `yaml:"override-destination" json:"override-destination"`
+	ForceDomain     []string                     `yaml:"force-domain" json:"force-domain"`
+	SkipDomain      []string                     `yaml:"skip-domain" json:"skip-domain"`
+	ForceDnsMapping bool                         `yaml:"force-dns-mapping" json:"force-dns-mapping"`
+	ParsePureIp     bool                         `yaml:"parse-pure-ip" json:"parse-pure-ip"`
+	Sniff           map[string]RawSniffingConfig `yaml:"sniff" json:"sniff"`
+}
+
+type RawSniffingConfig struct {
+	Ports        []string `yaml:"ports" json:"ports"`
+	OverrideDest *bool    `yaml:"override-destination" json:"override-destination"`
 }
 
 // Parse config
@@ -273,12 +276,14 @@ func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 		},
 		Sniffer: RawSniffer{
 			Enable:          true,
-			Sniffing:        []string{snifferTypes.TLS.String(), snifferTypes.HTTP.String()},
 			ForceDomain:     []string{},
 			SkipDomain:      []string{},
-			Ports:           []string{"80", "443"},
 			ForceDnsMapping: true,
 			ParsePureIp:     false,
+			Sniff: map[string]RawSniffingConfig{
+				snifferTypes.HTTP.String(): {Ports: []string{"80"}},
+				snifferTypes.TLS.String():  {Ports: []string{"443"}},
+			},
 		},
 		DNS: RawDNS{
 			Enable:      true,
@@ -1010,55 +1015,34 @@ func parseSniffer(snifferRaw RawSniffer) (*Sniffer, error) {
 		ForceDnsMapping: snifferRaw.ForceDnsMapping,
 		ParsePureIp:     snifferRaw.ParsePureIp,
 	}
+	loadSniffer := make(map[snifferTypes.Type]SNIFF.SnifferConfig)
 
-	var ports []utils.Range[uint16]
-	if len(snifferRaw.Ports) == 0 {
-		ports = append(ports, *utils.NewRange[uint16](80, 80))
-		ports = append(ports, *utils.NewRange[uint16](443, 443))
-	} else {
-		for _, portRange := range snifferRaw.Ports {
-			portRaws := strings.Split(portRange, "-")
-			p, err := strconv.ParseUint(portRaws[0], 10, 16)
-			if err != nil {
-				return nil, fmt.Errorf("%s format error", portRange)
-			}
-
-			start := uint16(p)
-			if len(portRaws) > 1 {
-				p, err = strconv.ParseUint(portRaws[1], 10, 16)
-				if err != nil {
-					return nil, fmt.Errorf("%s format error", portRange)
-				}
-
-				end := uint16(p)
-				ports = append(ports, *utils.NewRange(start, end))
-			} else {
-				ports = append(ports, *utils.NewRange(start, start))
-			}
-		}
-	}
-
-	sniffer.Ports = &ports
-
-	loadSniffer := make(map[snifferTypes.Type]struct{})
-
-	for _, snifferName := range snifferRaw.Sniffing {
+	for sniffType, sniffConfig := range snifferRaw.Sniff {
 		find := false
+		ports, err := utils.NewIntRangesFromList[uint16](sniffConfig.Ports)
+		if err != nil {
+			return nil, err
+		}
+		overrideDest := snifferRaw.OverrideDest
+		if sniffConfig.OverrideDest != nil {
+			overrideDest = *sniffConfig.OverrideDest
+		}
 		for _, snifferType := range snifferTypes.List {
-			if snifferType.String() == strings.ToUpper(snifferName) {
+			if snifferType.String() == strings.ToUpper(sniffType) {
 				find = true
-				loadSniffer[snifferType] = struct{}{}
+				loadSniffer[snifferType] = SNIFF.SnifferConfig{
+					Ports:        ports,
+					OverrideDest: overrideDest,
+				}
 			}
 		}
 
 		if !find {
-			return nil, fmt.Errorf("not find the sniffer[%s]", snifferName)
+			return nil, fmt.Errorf("not find the sniffer[%s]", sniffType)
 		}
 	}
 
-	for st := range loadSniffer {
-		sniffer.Sniffers = append(sniffer.Sniffers, st)
-	}
+	sniffer.Sniffers = loadSniffer
 
 	forceDomainTrie := trie.New[struct{}]()
 	for _, domain := range snifferRaw.ForceDomain {

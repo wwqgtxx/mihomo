@@ -20,4 +20,7 @@ go build -tags with_gvisor -o bin/clashr-darwin-amd64
 set GOARCH=arm64
 set GOOS=darwin
 go build -tags with_gvisor -o bin/clashr-darwin-arm64
+set GOARCH=
+set GOMIPS=
+set GOOS=
 pause

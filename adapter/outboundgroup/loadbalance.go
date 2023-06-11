@@ -9,8 +9,8 @@ import (
 	"sync"
 
 	"github.com/Dreamacro/clash/adapter/outbound"
-	"github.com/Dreamacro/clash/common/murmur3"
 	"github.com/Dreamacro/clash/common/singledo"
+	"github.com/Dreamacro/clash/common/utils"
 	"github.com/Dreamacro/clash/component/dialer"
 	C "github.com/Dreamacro/clash/constant"
 	"github.com/Dreamacro/clash/constant/provider"
@@ -160,7 +160,7 @@ func strategyRoundRobin() strategyFn {
 func strategyConsistentHashing() strategyFn {
 	maxRetry := 5
 	return func(proxies []C.Proxy, metadata *C.Metadata, touch bool) C.Proxy {
-		key := uint64(murmur3.Sum32([]byte(getKey(metadata))))
+		key := utils.MapHash(getKey(metadata))
 		buckets := int32(len(proxies))
 		for i := 0; i < maxRetry; i, key = i+1, key+1 {
 			idx := jumpHash(key, buckets)

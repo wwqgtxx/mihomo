@@ -94,6 +94,39 @@ func (t Type) String() string {
 	}
 }
 
+func ParseType(t string) (*Type, error) {
+	var res Type
+	switch t {
+	case "HTTP":
+		res = HTTP
+	case "HTTPCONNECT":
+		res = HTTPCONNECT
+	case "SOCKS4":
+		res = SOCKS4
+	case "SOCKS5":
+		res = SOCKS5
+	case "SHADOWSOCKS":
+		res = SHADOWSOCKS
+	case "VMESS":
+		res = VMESS
+	case "REDIR":
+		res = REDIR
+	case "TPROXY":
+		res = TPROXY
+	case "TUNNEL":
+		res = TUNNEL
+	case "TUN":
+		res = TUN
+	case "TUIC":
+		res = TUIC
+	case "INNER":
+		res = INNER
+	default:
+		return nil, fmt.Errorf("unknown type: %s", t)
+	}
+	return &res, nil
+}
+
 func (t Type) MarshalJSON() ([]byte, error) {
 	return json.Marshal(t.String())
 }
@@ -109,6 +142,7 @@ type Metadata struct {
 	InIP         netip.Addr `json:"inboundIP"`
 	InPort       string     `json:"inboundPort"`
 	InName       string     `json:"inboundName"`
+	InUser       string     `json:"inboundUser"`
 	Host         string     `json:"host"`
 	DNSMode      DNSMode    `json:"dnsMode"`
 	Process      string     `json:"process"`

@@ -265,6 +265,7 @@ func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 		TuicServer: LC.TuicServer{
 			Enable:                false,
 			Token:                 nil,
+			Users:                 nil,
 			Certificate:           "",
 			PrivateKey:            "",
 			Listen:                "",

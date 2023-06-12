@@ -47,8 +47,12 @@ func ParseRule(tp, payload, target string, params []string, subRules map[string]
 		parsed, parseErr = NewProcess(payload, target, false)
 	case "NETWORK":
 		parsed, parseErr = NewNetwork(payload, target)
-	case "TYPE":
-		parsed, parseErr = NewType(payload, target)
+	case "IN-TYPE":
+		parsed, parseErr = NewInType(payload, target)
+	case "IN-USER":
+		parsed, parseErr = NewInUser(payload, target)
+	case "IN-NAME":
+		parsed, parseErr = NewInName(payload, target)
 	case "MATCH":
 		parsed = NewMatch(target)
 	case "RULE-SET":

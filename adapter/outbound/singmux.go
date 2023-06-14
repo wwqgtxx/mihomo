@@ -85,7 +85,7 @@ func (s *SingMux) ListenPacketContext(ctx context.Context, metadata *C.Metadata,
 
 func (s *SingMux) SupportUDP() bool {
 	if s.onlyTcp {
-		return s.ProxyAdapter.SupportUOT()
+		return s.ProxyAdapter.SupportUDP()
 	}
 	return true
 }

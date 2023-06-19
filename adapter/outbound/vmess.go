@@ -21,8 +21,8 @@ import (
 	"github.com/Dreamacro/clash/transport/socks5"
 	"github.com/Dreamacro/clash/transport/vmess"
 
-	singVmess "github.com/sagernet/sing-vmess"
-	"github.com/sagernet/sing-vmess/packetaddr"
+	singVmess "github.com/metacubex/sing-vmess"
+	"github.com/metacubex/sing-vmess/packetaddr"
 	M "github.com/sagernet/sing/common/metadata"
 	"golang.org/x/net/http2"
 )

@@ -14,7 +14,7 @@ import (
 	"github.com/gofrs/uuid/v5"
 )
 
-type tracker interface {
+type Tracker interface {
 	ID() string
 	Close() error
 	C.Connection

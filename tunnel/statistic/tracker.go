@@ -17,10 +17,11 @@ import (
 type Tracker interface {
 	ID() string
 	Close() error
+	Info() *TrackerInfo
 	C.Connection
 }
 
-type trackerInfo struct {
+type TrackerInfo struct {
 	UUID          uuid.UUID     `json:"id"`
 	Metadata      *C.Metadata   `json:"metadata"`
 	UploadTotal   *atomic.Int64 `json:"upload"`
@@ -33,7 +34,7 @@ type trackerInfo struct {
 
 type tcpTracker struct {
 	C.Conn `json:"-"`
-	*trackerInfo
+	*TrackerInfo
 	manager *Manager
 
 	pushToManager bool `json:"-"`
@@ -41,6 +42,10 @@ type tcpTracker struct {
 
 func (tt *tcpTracker) ID() string {
 	return tt.UUID.String()
+}
+
+func (tt *tcpTracker) Info() *TrackerInfo {
+	return tt.TrackerInfo
 }
 
 func (tt *tcpTracker) Read(b []byte) (int, error) {
@@ -114,7 +119,7 @@ func NewTCPTracker(conn C.Conn, manager *Manager, metadata *C.Metadata, rule C.R
 	t := &tcpTracker{
 		Conn:    conn,
 		manager: manager,
-		trackerInfo: &trackerInfo{
+		TrackerInfo: &TrackerInfo{
 			UUID:          utils.NewUUIDV4(),
 			Start:         time.Now(),
 			Metadata:      metadata,
@@ -136,8 +141,8 @@ func NewTCPTracker(conn C.Conn, manager *Manager, metadata *C.Metadata, rule C.R
 	}
 
 	if rule != nil {
-		t.trackerInfo.Rule = rule.RuleType().String()
-		t.trackerInfo.RulePayload = rule.Payload()
+		t.TrackerInfo.Rule = rule.RuleType().String()
+		t.TrackerInfo.RulePayload = rule.Payload()
 	}
 
 	manager.Join(t)
@@ -146,7 +151,7 @@ func NewTCPTracker(conn C.Conn, manager *Manager, metadata *C.Metadata, rule C.R
 
 type udpTracker struct {
 	C.PacketConn `json:"-"`
-	*trackerInfo
+	*TrackerInfo
 	manager *Manager
 
 	pushToManager bool `json:"-"`
@@ -154,6 +159,10 @@ type udpTracker struct {
 
 func (ut *udpTracker) ID() string {
 	return ut.UUID.String()
+}
+
+func (ut *udpTracker) Info() *TrackerInfo {
+	return ut.TrackerInfo
 }
 
 func (ut *udpTracker) ReadFrom(b []byte) (int, net.Addr, error) {
@@ -199,7 +208,7 @@ func NewUDPTracker(conn C.PacketConn, manager *Manager, metadata *C.Metadata, ru
 	ut := &udpTracker{
 		PacketConn: conn,
 		manager:    manager,
-		trackerInfo: &trackerInfo{
+		TrackerInfo: &TrackerInfo{
 			UUID:          utils.NewUUIDV4(),
 			Start:         time.Now(),
 			Metadata:      metadata,
@@ -221,8 +230,8 @@ func NewUDPTracker(conn C.PacketConn, manager *Manager, metadata *C.Metadata, ru
 	}
 
 	if rule != nil {
-		ut.trackerInfo.Rule = rule.RuleType().String()
-		ut.trackerInfo.RulePayload = rule.Payload()
+		ut.TrackerInfo.Rule = rule.RuleType().String()
+		ut.TrackerInfo.RulePayload = rule.Payload()
 	}
 
 	manager.Join(ut)

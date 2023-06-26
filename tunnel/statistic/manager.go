@@ -55,9 +55,9 @@ func (m *Manager) Now() (up int64, down int64) {
 }
 
 func (m *Manager) Snapshot() *Snapshot {
-	connections := []Tracker{}
+	var connections []*TrackerInfo
 	m.connections.Range(func(key, value any) bool {
-		connections = append(connections, value.(Tracker))
+		connections = append(connections, value.(Tracker).Info())
 		return true
 	})
 
@@ -95,7 +95,7 @@ func (m *Manager) handle() {
 }
 
 type Snapshot struct {
-	DownloadTotal int64     `json:"downloadTotal"`
-	UploadTotal   int64     `json:"uploadTotal"`
-	Connections   []Tracker `json:"connections"`
+	DownloadTotal int64          `json:"downloadTotal"`
+	UploadTotal   int64          `json:"uploadTotal"`
+	Connections   []*TrackerInfo `json:"connections"`
 }

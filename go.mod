@@ -5,6 +5,7 @@ go 1.20
 require (
 	github.com/3andne/restls-client-go v0.1.4
 	github.com/aead/chacha20 v0.0.0-20180709150244-8b13a72661da
+	github.com/dlclark/regexp2 v1.10.0
 	github.com/go-chi/chi/v5 v5.0.8
 	github.com/go-chi/cors v1.2.1
 	github.com/go-chi/render v1.0.2

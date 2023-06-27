@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"regexp"
 	"runtime"
 	"strings"
 	"time"
@@ -14,6 +13,7 @@ import (
 	types "github.com/Dreamacro/clash/constant/provider"
 	"github.com/Dreamacro/clash/tunnel/statistic"
 
+	"github.com/dlclark/regexp2"
 	"gopkg.in/yaml.v3"
 )
 
@@ -110,13 +110,13 @@ func stopProxyProvider(pd *ProxySetProvider) {
 }
 
 func NewProxySetProvider(name string, interval time.Duration, filter string, excludeFilter string, dialerProxy string, vehicle types.Vehicle, hc *HealthCheck) (*ProxySetProvider, error) {
-	excludeFilterReg, err := regexp.Compile(excludeFilter)
+	excludeFilterReg, err := regexp2.Compile(excludeFilter, regexp2.None)
 	if err != nil {
 		return nil, fmt.Errorf("invalid excludeFilter regex: %w", err)
 	}
-	var filterRegs []*regexp.Regexp
+	var filterRegs []*regexp2.Regexp
 	for _, filter := range strings.Split(filter, "`") {
-		filterReg, err := regexp.Compile(filter)
+		filterReg, err := regexp2.Compile(filter, regexp2.None)
 		if err != nil {
 			return nil, fmt.Errorf("invalid filter regex: %w", err)
 		}
@@ -160,11 +160,15 @@ func NewProxySetProvider(name string, interval time.Duration, filter string, exc
 				if !ok {
 					continue
 				}
-				if len(excludeFilter) > 0 && excludeFilterReg.MatchString(name) {
-					continue
+				if len(excludeFilter) > 0 {
+					if mat, _ := excludeFilterReg.FindStringMatch(name); mat != nil {
+						continue
+					}
 				}
-				if !filterReg.MatchString(name) {
-					continue
+				if len(filter) > 0 {
+					if mat, _ := filterReg.FindStringMatch(name); mat == nil {
+						continue
+					}
 				}
 				if _, ok := proxiesSet[name]; ok {
 					continue

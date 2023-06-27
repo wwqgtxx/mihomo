@@ -1,13 +1,14 @@
 package outboundgroup
 
 import (
-	"regexp"
 	"strings"
 	"time"
 
 	C "github.com/Dreamacro/clash/constant"
 	"github.com/Dreamacro/clash/constant/provider"
 	"github.com/Dreamacro/clash/tunnel"
+
+	"github.com/dlclark/regexp2"
 )
 
 const (
@@ -30,9 +31,9 @@ func getProvidersProxies(providers []provider.ProxyProvider, touch bool, filter 
 	}
 	matchedProxies := []C.Proxy{}
 	if len(filter) > 0 {
-		var filterRegs []*regexp.Regexp
+		var filterRegs []*regexp2.Regexp
 		for _, filter := range strings.Split(filter, "`") {
-			filterReg, err := regexp.Compile(filter)
+			filterReg, err := regexp2.Compile(filter, regexp2.None)
 			if err != nil {
 				continue
 			}
@@ -41,7 +42,8 @@ func getProvidersProxies(providers []provider.ProxyProvider, touch bool, filter 
 		proxiesSet := map[string]struct{}{}
 		for _, filterReg := range filterRegs {
 			for _, p := range proxies {
-				if name := p.Name(); filterReg.MatchString(name) {
+				name := p.Name()
+				if mat, _ := filterReg.FindStringMatch(name); mat != nil {
 					if _, ok := proxiesSet[name]; !ok {
 						proxiesSet[name] = struct{}{}
 						matchedProxies = append(matchedProxies, p)

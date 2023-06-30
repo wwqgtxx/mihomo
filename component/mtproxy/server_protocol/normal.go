@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
+	"strconv"
 
 	"github.com/Dreamacro/clash/component/mtproxy/common"
 )
@@ -70,6 +72,9 @@ func (c *normalServerProtocol) Handshake(socket net.Conn) (net.Conn, error) {
 	}
 
 	c.connectionProtocol = common.ConnectionProtocolIPv4
+	if forceIPv6, _ := strconv.ParseBool(os.Getenv("MTPROXY_FORCE_IPV6")); forceIPv6 {
+		c.connectionProtocol = common.ConnectionProtocolIPv6
+	}
 
 	buf := bytes.NewReader(decryptedFrame.DC())
 	if err := binary.Read(buf, binary.LittleEndian, &c.dc); err != nil {

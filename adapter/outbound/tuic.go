@@ -151,7 +151,7 @@ func NewTuic(option TuicOption) (*Tuic, error) {
 		}
 	}
 
-	if len(option.ALPN) > 0 {
+	if option.ALPN != nil { // structure's Decode will ensure value not nil when input has value even it was set an empty array
 		tlsConfig.NextProtos = option.ALPN
 	} else {
 		tlsConfig.NextProtos = []string{"h3"}

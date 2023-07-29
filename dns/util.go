@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"github.com/samber/lo"
 	"net"
 	"net/netip"
 	"time"
@@ -15,16 +14,16 @@ import (
 	"github.com/Dreamacro/clash/log"
 
 	D "github.com/miekg/dns"
+	"github.com/samber/lo"
 )
 
 func minimalTTL(records []D.RR) uint32 {
-	minObj := lo.MinBy(records, func(r1 D.RR, r2 D.RR) bool {
-		return r1.Header().Ttl < r2.Header().Ttl
-	})
-	if minObj != nil {
-		return minObj.Header().Ttl
+	if len(records) == 0 {
+		return 0
 	}
-	return 0
+	return lo.MinBy(records, func(r1 D.RR, r2 D.RR) bool {
+		return r1.Header().Ttl < r2.Header().Ttl
+	}).Header().Ttl
 }
 
 func updateTTL(records []D.RR, ttl uint32) {
@@ -37,28 +36,12 @@ func updateTTL(records []D.RR, ttl uint32) {
 	}
 }
 
-func putMsgToCache(c *cache.LruCache[string, *D.Msg], key string, msg *D.Msg) {
-	putMsgToCacheWithExpire(c, key, msg, 0)
-}
-
-func putMsgToCacheWithExpire(c *cache.LruCache[string, *D.Msg], key string, msg *D.Msg, sec uint32) {
-	if sec == 0 {
-		if sec = minimalTTL(msg.Answer); sec == 0 {
-			if sec = minimalTTL(msg.Ns); sec == 0 {
-				sec = minimalTTL(msg.Extra)
-			}
-		}
-		if sec == 0 {
-			return
-		}
-
-		if sec > 120 {
-			sec = 120 // at least 2 minutes to cache
-		}
-
+func putMsgToCache(c *cache.LruCache[string, *D.Msg], key string, q D.Question, msg *D.Msg) {
+	ttl := minimalTTL(msg.Answer)
+	if ttl == 0 {
+		return
 	}
-
-	c.SetWithExpire(key, msg.Copy(), time.Now().Add(time.Duration(sec)*time.Second))
+	c.SetWithExpire(key, msg.Copy(), time.Now().Add(time.Duration(ttl)*time.Second))
 }
 
 func setMsgTTL(msg *D.Msg, ttl uint32) {

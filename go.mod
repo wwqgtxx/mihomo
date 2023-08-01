@@ -6,28 +6,28 @@ require (
 	github.com/3andne/restls-client-go v0.1.4
 	github.com/aead/chacha20 v0.0.0-20180709150244-8b13a72661da
 	github.com/dlclark/regexp2 v1.10.0
-	github.com/go-chi/chi/v5 v5.0.8
+	github.com/go-chi/chi/v5 v5.0.10
 	github.com/go-chi/cors v1.2.1
-	github.com/go-chi/render v1.0.2
+	github.com/go-chi/render v1.0.3
 	github.com/gofrs/uuid/v5 v5.0.0
 	github.com/gorilla/websocket v1.5.0
-	github.com/insomniacslk/dhcp v0.0.0-20230612134759-b20c9ba983df
+	github.com/insomniacslk/dhcp v0.0.0-20230731140434-0f9eb93a696c
 	github.com/jpillora/backoff v1.0.0
 	github.com/kentik/patricia v1.2.0
 	github.com/mdlayher/netlink v1.7.2
 	github.com/metacubex/quic-go v0.37.2-0.20230801015013-c321217d291b
-	github.com/metacubex/sing-shadowsocks v0.2.3-0.20230714014829-3669e0591014
-	github.com/metacubex/sing-shadowsocks2 v0.1.1-0.20230714014119-27b8d12c6d0b
-	github.com/metacubex/sing-tun v0.1.9-0.20230714030349-b6aed664150f
-	github.com/metacubex/sing-vmess v0.1.5-0.20230713151521-79843393b710
+	github.com/metacubex/sing-shadowsocks v0.2.4
+	github.com/metacubex/sing-shadowsocks2 v0.1.3
+	github.com/metacubex/sing-tun v0.1.11
+	github.com/metacubex/sing-vmess v0.1.8-0.20230801054944-603005461ff8
 	github.com/metacubex/sing-wireguard v0.0.0-20230611155257-1498ae315a28
 	github.com/miekg/dns v1.1.55
 	github.com/openacid/low v0.1.21
 	github.com/oschwald/geoip2-golang v1.9.0
 	github.com/sagernet/netlink v0.0.0-20220905062125-8043b4a9aa97
-	github.com/sagernet/sing v0.2.8-0.20230703002104-c68251b6d059
-	github.com/sagernet/sing-mux v0.1.1-0.20230703132253-2cedde0fbc90
-	github.com/sagernet/sing-shadowtls v0.1.3-0.20230703132509-93bbad3057e4
+	github.com/sagernet/sing v0.2.9
+	github.com/sagernet/sing-mux v0.1.2
+	github.com/sagernet/sing-shadowtls v0.1.4
 	github.com/sagernet/tfo-go v0.0.0-20230303015439-ffcfd8c41cf9
 	github.com/sagernet/wireguard-go v0.0.0-20230420044414-a7bac1754e77
 	github.com/samber/lo v1.38.1
@@ -35,9 +35,9 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/zhangyunhao116/fastrand v0.3.0
 	go.etcd.io/bbolt v1.3.7
-	go.uber.org/automaxprocs v1.5.2
+	go.uber.org/automaxprocs v1.5.3
 	golang.org/x/crypto v0.11.0
-	golang.org/x/exp v0.0.0-20230711153332-06a737ee72cb
+	golang.org/x/exp v0.0.0-20230728194245-b0cb94b80691
 	golang.org/x/net v0.12.0
 	golang.org/x/sync v0.3.0
 	golang.org/x/sys v0.10.0

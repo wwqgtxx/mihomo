@@ -83,9 +83,27 @@ func New[K comparable, V any](options ...Option[K, V]) *LruCache[K, V] {
 // Get returns the any representation of a cached response and a bool
 // set to true if the key was found.
 func (c *LruCache[K, V]) Get(key K) (V, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	el := c.get(key)
 	if el == nil {
 		return zero.GetZero[V](), false
+	}
+	value := el.value
+
+	return value, true
+}
+
+func (c *LruCache[K, V]) GetOrStore(key K, constructor func() V) (V, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	el := c.get(key)
+	if el == nil {
+		value := constructor()
+		c.set(key, value)
+		return value, false
 	}
 	value := el.value
 
@@ -97,6 +115,9 @@ func (c *LruCache[K, V]) Get(key K) (V, bool) {
 // and a bool set to true if the key was found.
 // This method will NOT check the maxAge of element and will NOT update the expires.
 func (c *LruCache[K, V]) GetWithExpire(key K) (V, time.Time, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	el := c.get(key)
 	if el == nil {
 		return zero.GetZero[V](), time.Time{}, false
@@ -116,11 +137,18 @@ func (c *LruCache[K, V]) Exist(key K) bool {
 
 // Set stores the any representation of a response for a given key.
 func (c *LruCache[K, V]) Set(key K, value V) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.set(key, value)
+}
+
+func (c *LruCache[K, V]) set(key K, value V) {
 	expires := int64(0)
 	if c.maxAge > 0 {
 		expires = time.Now().Unix() + c.maxAge
 	}
-	c.SetWithExpire(key, value, time.Unix(expires, 0))
+	c.setWithExpire(key, value, time.Unix(expires, 0))
 }
 
 // SetWithExpire stores the any representation of a response for a given key and given expires.
@@ -129,6 +157,10 @@ func (c *LruCache[K, V]) SetWithExpire(key K, value V, expires time.Time) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	c.setWithExpire(key, value, expires)
+}
+
+func (c *LruCache[K, V]) setWithExpire(key K, value V, expires time.Time) {
 	if le, ok := c.cache[key]; ok {
 		c.lru.MoveToBack(le)
 		e := le.Value
@@ -166,9 +198,6 @@ func (c *LruCache[K, V]) CloneTo(n *LruCache[K, V]) {
 }
 
 func (c *LruCache[K, V]) get(key K) *entry[K, V] {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	le, ok := c.cache[key]
 	if !ok {
 		return nil
@@ -192,12 +221,11 @@ func (c *LruCache[K, V]) get(key K) *entry[K, V] {
 // Delete removes the value associated with a key.
 func (c *LruCache[K, V]) Delete(key K) {
 	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	if le, ok := c.cache[key]; ok {
 		c.deleteElement(le)
 	}
-
-	c.mu.Unlock()
 }
 
 func (c *LruCache[K, V]) maybeDeleteOldest() {
@@ -220,10 +248,10 @@ func (c *LruCache[K, V]) deleteElement(le *list.Element[*entry[K, V]]) {
 
 func (c *LruCache[K, V]) Clear() error {
 	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	c.cache = make(map[K]*list.Element[*entry[K, V]])
 
-	c.mu.Unlock()
 	return nil
 }
 

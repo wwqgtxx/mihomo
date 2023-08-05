@@ -15,7 +15,7 @@ require (
 	github.com/jpillora/backoff v1.0.0
 	github.com/kentik/patricia v1.2.0
 	github.com/mdlayher/netlink v1.7.2
-	github.com/metacubex/quic-go v0.37.2-0.20230801015013-c321217d291b
+	github.com/metacubex/quic-go v0.37.3-0.20230805044943-1fefbff06fed
 	github.com/metacubex/sing-shadowsocks v0.2.4
 	github.com/metacubex/sing-shadowsocks2 v0.1.3
 	github.com/metacubex/sing-tun v0.1.11
@@ -74,7 +74,7 @@ require (
 	github.com/oschwald/maxminddb-golang v1.11.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.14 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/quic-go/qtls-go1-20 v0.3.0 // indirect
+	github.com/quic-go/qtls-go1-20 v0.3.1 // indirect
 	github.com/sagernet/go-tun2socks v1.16.12-0.20220818015926-16cb67876a61 // indirect
 	github.com/sagernet/smux v0.0.0-20230312102458-337ec2a5af37 // indirect
 	github.com/scjalliance/comshim v0.0.0-20230315213746-5e51f40bd3b9 // indirect

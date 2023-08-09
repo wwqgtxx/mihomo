@@ -15,7 +15,7 @@ require (
 	github.com/jpillora/backoff v1.0.0
 	github.com/kentik/patricia v1.2.0
 	github.com/mdlayher/netlink v1.7.2
-	github.com/metacubex/quic-go v0.37.4-0.20230806014204-ef9b221eec12
+	github.com/metacubex/quic-go v0.37.4-0.20230809092428-5acf8eb2de86
 	github.com/metacubex/sing-shadowsocks v0.2.4
 	github.com/metacubex/sing-shadowsocks2 v0.1.3
 	github.com/metacubex/sing-tun v0.1.11

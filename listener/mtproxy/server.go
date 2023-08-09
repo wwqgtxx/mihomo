@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net"
 	"net/netip"
+	"strconv"
 	"strings"
 
 	"github.com/Dreamacro/clash/adapter/inbound"
@@ -155,18 +156,21 @@ func (l *Listener) HandleConn(conn net.Conn, in chan<- C.ConnContext, additions 
 			host, port, _ := net.SplitHostPort(addr)
 			remoteHost, remotePort, _ := net.SplitHostPort(conn.RemoteAddr().String())
 			remoteIp, _ := netip.ParseAddr(remoteHost)
+			uintPort, _ := strconv.ParseUint(port, 10, 16)
+			uintRemotePort, _ := strconv.ParseUint(remotePort, 10, 16)
 			metadata := &C.Metadata{
 				NetWork: C.TCP,
 				Host:    host,
-				DstPort: port,
+				DstPort: uint16(uintPort),
 				SrcIP:   remoteIp,
-				SrcPort: remotePort,
+				SrcPort: uint16(uintRemotePort),
 			}
 			metadata.Type = C.MTPROXY
 			if host, port, err := net.SplitHostPort(conn.LocalAddr().String()); err == nil {
 				ip, _ := netip.ParseAddr(host)
+				uintPort, _ := strconv.ParseUint(port, 10, 16)
 				metadata.InIP = ip
-				metadata.InPort = port
+				metadata.InPort = uint16(uintPort)
 			}
 			for _, addition := range additions {
 				addition.Apply(metadata)

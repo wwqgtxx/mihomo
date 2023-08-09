@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/Dreamacro/clash/component/dialer"
@@ -98,6 +99,10 @@ func newDoHClient(url, iface string, r *Resolver, useRemote bool, proxyAdapter C
 				if err != nil {
 					return nil, err
 				}
+				uintPort, err := strconv.ParseUint(port, 10, 16)
+				if err != nil {
+					return nil, err
+				}
 
 				ips, err := resolver.LookupIPWithResolver(ctx, host, r)
 				if err != nil {
@@ -117,7 +122,7 @@ func newDoHClient(url, iface string, r *Resolver, useRemote bool, proxyAdapter C
 						Type:    C.DNS,
 						NetWork: C.TCP,
 						DstIP:   ip,
-						DstPort: port,
+						DstPort: uint16(uintPort),
 					}
 					return proxyAdapter.DialContext(ctx, metadata)
 				}

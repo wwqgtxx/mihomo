@@ -11,8 +11,8 @@ type Port struct {
 	adapter  string
 	port     string
 	ruleType C.RuleType
-	portL    int
-	portR    int
+	portL    uint16
+	portR    uint16
 }
 
 func (p *Port) RuleType() C.RuleType {
@@ -27,13 +27,7 @@ func (p *Port) Match(metadata *C.Metadata) (bool, string) {
 	case C.SrcPort:
 		targetPort = metadata.SrcPort
 	}
-	if p.portL == p.portR {
-		return p.port == targetPort, p.adapter
-	}
-	port, err := strconv.Atoi(targetPort)
-	if err != nil {
-		return false, ""
-	}
+	port := targetPort
 	return port >= p.portL && port <= p.portR, p.adapter
 }
 
@@ -61,22 +55,26 @@ func NewPort(port string, adapter string, ruleType C.RuleType) (*Port, error) {
 	}
 	var err error
 	portS := strings.Split(port, "-")
+	var uint64Port uint64
 	switch len(portS) {
 	case 1:
-		p.portL, err = strconv.Atoi(port)
+		uint64Port, err = strconv.ParseUint(port, 10, 16)
 		if err != nil {
 			return nil, err
 		}
+		p.portL = uint16(uint64Port)
 		p.portR = p.portL
 	case 2:
-		p.portL, err = strconv.Atoi(portS[0])
+		uint64Port, err = strconv.ParseUint(portS[0], 10, 16)
 		if err != nil {
 			return nil, err
 		}
-		p.portR, err = strconv.Atoi(portS[1])
+		p.portL = uint16(uint64Port)
+		uint64Port, err = strconv.ParseUint(portS[1], 10, 16)
 		if err != nil {
 			return nil, err
 		}
+		p.portR = uint16(uint64Port)
 	default:
 		return nil, errPayload
 	}

@@ -137,10 +137,10 @@ type Metadata struct {
 	Type         Type       `json:"type"`
 	SrcIP        netip.Addr `json:"sourceIP"`
 	DstIP        netip.Addr `json:"destinationIP"`
-	SrcPort      string     `json:"sourcePort"`
-	DstPort      string     `json:"destinationPort"`
+	SrcPort      uint16     `json:"sourcePort,string"`      // `,string` is used to compatible with old version json output
+	DstPort      uint16     `json:"destinationPort,string"` // `,string` is used to compatible with old version json output
 	InIP         netip.Addr `json:"inboundIP"`
-	InPort       string     `json:"inboundPort"`
+	InPort       uint16     `json:"inboundPort,string"` // `,string` is used to compatible with old version json output
 	InName       string     `json:"inboundName"`
 	InUser       string     `json:"inboundUser"`
 	Host         string     `json:"host"`
@@ -154,14 +154,14 @@ type Metadata struct {
 }
 
 func (m *Metadata) RemoteAddress() string {
-	return net.JoinHostPort(m.String(), m.DstPort)
+	return net.JoinHostPort(m.String(), strconv.FormatUint(uint64(m.DstPort), 10))
 }
 
 func (m *Metadata) SourceAddress() string {
 	if !m.SrcIP.IsValid() {
 		return m.Type.String()
 	}
-	return net.JoinHostPort(m.SrcIP.String(), m.SrcPort)
+	return net.JoinHostPort(m.SrcIP.String(), strconv.FormatUint(uint64(m.SrcPort), 10))
 }
 
 func (m *Metadata) SourceDetail() string {
@@ -174,7 +174,7 @@ func (m *Metadata) SourceDetail() string {
 }
 
 func (m *Metadata) SourceValid() bool {
-	return m.SrcPort != "" && m.SrcIP.IsValid()
+	return m.SrcPort != 0 && m.SrcIP.IsValid()
 }
 
 func (m *Metadata) AddrType() int {
@@ -213,8 +213,7 @@ func (m *Metadata) Pure() *Metadata {
 }
 
 func (m *Metadata) AddrPort() netip.AddrPort {
-	port, _ := strconv.ParseUint(m.DstPort, 10, 16)
-	return netip.AddrPortFrom(m.DstIP.Unmap(), uint16(port))
+	return netip.AddrPortFrom(m.DstIP.Unmap(), m.DstPort)
 }
 
 func (m *Metadata) UDPAddr() *net.UDPAddr {
@@ -244,6 +243,11 @@ func (m *Metadata) SetRemoteAddress(rawAddress string) error {
 		return err
 	}
 
+	var uint16Port uint16
+	if port, err := strconv.ParseUint(port, 10, 16); err == nil {
+		uint16Port = uint16(port)
+	}
+
 	if ip, err := netip.ParseAddr(host); err != nil {
 		m.Host = host
 		m.DstIP = netip.Addr{}
@@ -251,7 +255,7 @@ func (m *Metadata) SetRemoteAddress(rawAddress string) error {
 		m.Host = ""
 		m.DstIP = ip.Unmap()
 	}
-	m.DstPort = port
+	m.DstPort = uint16Port
 
 	return nil
 }

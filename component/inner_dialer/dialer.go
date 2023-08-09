@@ -3,6 +3,7 @@ package inner_dialer
 import (
 	"context"
 	"net"
+	"strconv"
 
 	C "github.com/Dreamacro/clash/constant"
 	icontext "github.com/Dreamacro/clash/context"
@@ -33,12 +34,16 @@ func (d RemoteDialer) DialTCP(addr string, proxyName string) (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
+	uintPort, err := strconv.ParseUint(port, 10, 16)
+	if err != nil {
+		return nil, err
+	}
 
 	conn1, conn2 := net.Pipe()
 	metadata := &C.Metadata{
 		NetWork:      C.TCP,
 		Host:         host,
-		DstPort:      port,
+		DstPort:      uint16(uintPort),
 		SpecialProxy: proxyName,
 	}
 	metadata.Type = d.mType

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"net"
-	"strconv"
 	"time"
 
 	"github.com/Dreamacro/clash/component/resolver"
@@ -23,7 +22,7 @@ func serializesSocksAddr(metadata *C.Metadata) []byte {
 	var buf [][]byte
 	addrType := metadata.AddrType()
 	aType := uint8(addrType)
-	p, _ := strconv.ParseUint(metadata.DstPort, 10, 16)
+	p := uint(metadata.DstPort)
 	port := []byte{uint8(p >> 8), uint8(p & 0xff)}
 	switch addrType {
 	case socks5.AtypDomainName:

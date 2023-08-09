@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/Dreamacro/clash/common/atomic"
@@ -257,10 +258,14 @@ func urlToMetadata(rawURL string) (addr C.Metadata, err error) {
 			return
 		}
 	}
+	uintPort, err := strconv.ParseUint(port, 10, 16)
+	if err != nil {
+		return
+	}
 
 	addr = C.Metadata{
 		Host:    u.Hostname(),
-		DstPort: port,
+		DstPort: uint16(uintPort),
 	}
 	return
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/netip"
+	"strconv"
 	"strings"
 
 	"github.com/Dreamacro/clash/component/dialer"
@@ -66,11 +67,12 @@ func (c *client) ExchangeContext(ctx context.Context, m *D.Msg) (*D.Msg, error) 
 			network = "tcp"
 		}
 		if c.proxyAdapter != nil {
+			uintPort, _ := strconv.ParseUint(c.port, 10, 16)
 			metadata := &C.Metadata{
 				Type:    C.DNS,
 				NetWork: C.TCP,
 				DstIP:   ip,
-				DstPort: c.port,
+				DstPort: uint16(uintPort),
 			}
 			conn, err = c.proxyAdapter.DialContext(ctx, metadata)
 		} else {

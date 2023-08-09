@@ -67,6 +67,7 @@ type Inbound struct {
 	AllowLan          bool          `json:"allow-lan"`
 	BindAddress       string        `json:"bind-address"`
 	InboundTfo        bool          `json:"inbound-tfo"`
+	InboundMPTCP      bool          `json:"inbound-mptcp"`
 }
 
 // Controller
@@ -172,6 +173,7 @@ type RawConfig struct {
 	VmessConfig            string       `yaml:"vmess-config"`
 	MTProxyConfig          string       `yaml:"mtproxy-config"`
 	InboundTfo             bool         `yaml:"inbound-tfo"`
+	InboundMPTCP           bool         `yaml:"inbound-mptcp"`
 	Authentication         []string     `yaml:"authentication"`
 	AllowLan               bool         `yaml:"allow-lan"`
 	BindAddress            string       `yaml:"bind-address"`
@@ -434,6 +436,7 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 			AllowLan:          cfg.AllowLan,
 			BindAddress:       cfg.BindAddress,
 			InboundTfo:        cfg.InboundTfo,
+			InboundMPTCP: cfg.InboundMPTCP,
 		},
 		Controller: Controller{
 			ExternalController: cfg.ExternalController,

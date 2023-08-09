@@ -19,6 +19,7 @@ type Base struct {
 	tp    C.AdapterType
 	udp   bool
 	tfo   bool
+	mpTcp bool
 	rmark int
 }
 
@@ -108,11 +109,16 @@ func (b *Base) DialOptions(opts ...dialer.Option) []dialer.Option {
 		opts = append(opts, dialer.WithTFO(true))
 	}
 
+	if b.mpTcp {
+		opts = append(opts, dialer.WithMPTCP(true))
+	}
+
 	return opts
 }
 
 type BasicOption struct {
 	TFO         bool   `proxy:"tfo,omitempty" group:"tfo,omitempty"`
+	MPTCP       bool   `proxy:"mptcp,omitempty" group:"mptcp,omitempty"`
 	Interface   string `proxy:"interface-name,omitempty" group:"interface-name,omitempty"`
 	RoutingMark int    `proxy:"routing-mark,omitempty" group:"routing-mark,omitempty"`
 	DialerProxy string `proxy:"dialer-proxy,omitempty"` // don't apply this option into groups, but can set a group name in a proxy
@@ -123,6 +129,8 @@ type BaseOption struct {
 	Addr        string
 	Type        C.AdapterType
 	UDP         bool
+	TFO         bool
+	MPTCP       bool
 	Interface   string
 	RoutingMark int
 }
@@ -133,6 +141,8 @@ func NewBase(opt BaseOption) *Base {
 		addr:  opt.Addr,
 		tp:    opt.Type,
 		udp:   opt.UDP,
+		tfo:   opt.TFO,
+		mpTcp: opt.MPTCP,
 		iface: opt.Interface,
 		rmark: opt.RoutingMark,
 	}

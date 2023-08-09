@@ -24,6 +24,7 @@ type option struct {
 	addrReuse     bool
 	routingMark   int
 	tfo           bool
+	mpTcp         bool
 	resolver      resolver.Resolver
 	netDialer     NetDialer
 }
@@ -57,6 +58,12 @@ func WithResolver(r resolver.Resolver) Option {
 func WithTFO(tfo bool) Option {
 	return func(opt *option) {
 		opt.tfo = tfo
+	}
+}
+
+func WithMPTCP(mpTcp bool) Option {
+	return func(opt *option) {
+		opt.mpTcp = mpTcp
 	}
 }
 

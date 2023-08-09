@@ -185,6 +185,7 @@ func NewSocks5(option Socks5Option) *Socks5 {
 			tp:    C.Socks5,
 			udp:   option.UDP,
 			tfo:   option.TFO,
+			mpTcp: option.MPTCP,
 			iface: option.Interface,
 			rmark: option.RoutingMark,
 		},

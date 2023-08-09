@@ -440,6 +440,7 @@ func NewVmess(option VmessOption) (*Vmess, error) {
 			tp:    C.Vmess,
 			udp:   option.UDP,
 			tfo:   option.TFO,
+			mpTcp: option.MPTCP,
 			iface: option.Interface,
 			rmark: option.RoutingMark,
 		},

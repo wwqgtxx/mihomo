@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"net/netip"
+	"strings"
 	"time"
 
 	"github.com/Dreamacro/clash/common/cache"
@@ -17,13 +18,16 @@ import (
 	"github.com/samber/lo"
 )
 
+const serverFailureCacheTTL uint32 = 5
+
 func minimalTTL(records []D.RR) uint32 {
-	if len(records) == 0 {
+	rr := lo.MinBy(records, func(r1 D.RR, r2 D.RR) bool {
+		return r1.Header().Ttl < r2.Header().Ttl
+	})
+	if rr == nil {
 		return 0
 	}
-	return lo.MinBy(records, func(r1 D.RR, r2 D.RR) bool {
-		return r1.Header().Ttl < r2.Header().Ttl
-	}).Header().Ttl
+	return rr.Header().Ttl
 }
 
 func updateTTL(records []D.RR, ttl uint32) {
@@ -37,7 +41,20 @@ func updateTTL(records []D.RR, ttl uint32) {
 }
 
 func putMsgToCache(c *cache.LruCache[string, *D.Msg], key string, q D.Question, msg *D.Msg) {
-	ttl := minimalTTL(msg.Answer)
+	// skip dns cache for acme challenge
+	if q.Qtype == D.TypeTXT && strings.HasPrefix(q.Name, "_acme-challenge.") {
+		log.Debugln("[DNS] dns cache ignored because of acme challenge for: %s", q.Name)
+		return
+	}
+
+	var ttl uint32
+	if msg.Rcode == D.RcodeServerFailure {
+		// [...] a resolver MAY cache a server failure response.
+		// If it does so it MUST NOT cache it for longer than five (5) minutes [...]
+		ttl = serverFailureCacheTTL
+	} else {
+		ttl = minimalTTL(append(append(msg.Answer, msg.Ns...), msg.Extra...))
+	}
 	if ttl == 0 {
 		return
 	}

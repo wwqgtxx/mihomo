@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 
+	N "github.com/Dreamacro/clash/common/net"
 	"github.com/Dreamacro/clash/component/dialer"
 	"github.com/Dreamacro/clash/component/proxydialer"
 	C "github.com/Dreamacro/clash/constant"
@@ -122,7 +123,7 @@ func (t *Trojan) DialContextWithDialer(ctx context.Context, dialer C.Dialer, met
 	if err != nil {
 		return nil, fmt.Errorf("%s connect error: %w", t.addr, err)
 	}
-	tcpKeepAlive(c)
+	N.TCPKeepAlive(c)
 
 	defer func(c net.Conn) {
 		safeConnClose(c, err)
@@ -175,7 +176,7 @@ func (t *Trojan) ListenPacketWithDialer(ctx context.Context, dialer C.Dialer, me
 	defer func(c net.Conn) {
 		safeConnClose(c, err)
 	}(c)
-	tcpKeepAlive(c)
+	N.TCPKeepAlive(c)
 	c, err = t.plainStream(ctx, c)
 	if err != nil {
 		return nil, fmt.Errorf("%s connect error: %w", t.addr, err)
@@ -249,7 +250,7 @@ func NewTrojan(option TrojanOption) (*Trojan, error) {
 			if err != nil {
 				return nil, fmt.Errorf("%s connect error: %s", t.addr, err.Error())
 			}
-			tcpKeepAlive(c)
+			N.TCPKeepAlive(c)
 			return c, nil
 		}
 

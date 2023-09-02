@@ -70,7 +70,7 @@ func New(addr string, in chan<- C.ConnContext, additions ...inbound.Addition) (*
 }
 
 func handleConn(conn net.Conn, in chan<- C.ConnContext, cache *cache.LruCache[string, bool], additions ...inbound.Addition) {
-	conn.(*net.TCPConn).SetKeepAlive(true)
+	N.TCPKeepAlive(conn)
 
 	bufConn := N.NewBufferedConn(conn)
 	head, err := bufConn.Peek(1)

@@ -98,7 +98,7 @@ func New(config string, in chan<- C.ConnContext, additions ...inbound.Addition) 
 					}
 					continue
 				}
-				_ = c.(*net.TCPConn).SetKeepAlive(true)
+				N.TCPKeepAlive(c)
 				go hl.HandleConn(c, in)
 			}
 		}()

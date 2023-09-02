@@ -8,11 +8,13 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/Dreamacro/clash/adapter"
 	"github.com/Dreamacro/clash/adapter/outbound"
 	"github.com/Dreamacro/clash/adapter/outboundgroup"
 	"github.com/Dreamacro/clash/adapter/provider"
+	N "github.com/Dreamacro/clash/common/net"
 	"github.com/Dreamacro/clash/common/utils"
 	"github.com/Dreamacro/clash/component/auth"
 	"github.com/Dreamacro/clash/component/fakeip"
@@ -48,6 +50,7 @@ type General struct {
 	PreResolveProcessName  bool         `json:"pre-resolve-process-name"`
 	TCPConcurrent          bool         `json:"tcp-concurrent"`
 	Sniffing               bool         `json:"sniffing"`
+	KeepAliveInterval      int          `json:"keep-alive-interval"`
 }
 
 // Inbound
@@ -193,6 +196,7 @@ type RawConfig struct {
 	TouchAfterLazyPassNum  int          `yaml:"touch-after-lazy-pass-num"`
 	PreResolveProcessName  bool         `yaml:"pre-resolve-process-name"`
 	TCPConcurrent          bool         `yaml:"tcp-concurrent"`
+	KeepAliveInterval      int          `yaml:"keep-alive-interval"`
 
 	Sniffer       RawSniffer                `yaml:"sniffer"`
 	RuleProviders map[string]map[string]any `yaml:"rule-providers"`
@@ -420,6 +424,12 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 		}
 	}
 
+	if cfg.KeepAliveInterval == 0 {
+		cfg.KeepAliveInterval = 30
+	}
+	N.KeepAliveInterval = time.Duration(cfg.KeepAliveInterval) * time.Second
+	log.Infoln("Keep Alive Interval set %+v", N.KeepAliveInterval)
+
 	return &General{
 		Inbound: Inbound{
 			Port:              cfg.Port,
@@ -455,6 +465,7 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 		TouchAfterLazyPassNum:  cfg.TouchAfterLazyPassNum,
 		PreResolveProcessName:  cfg.PreResolveProcessName,
 		TCPConcurrent:          cfg.TCPConcurrent,
+		KeepAliveInterval: cfg.KeepAliveInterval,
 	}, nil
 }
 

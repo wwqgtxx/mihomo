@@ -58,7 +58,7 @@ func New(config string, tcpIn chan<- C.ConnContext, udpIn chan<- C.PacketAdapter
 					}
 					continue
 				}
-				_ = c.(*net.TCPConn).SetKeepAlive(true)
+				N.TCPKeepAlive(c)
 				go handleECConn(c, cl, tcpIn, additions...)
 			}
 		}()

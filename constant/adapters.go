@@ -240,15 +240,17 @@ type NatTable interface {
 
 	GetOrCreateLock(key string) (*sync.Cond, bool)
 
-	Delete(key string)
+	DeleteLock(key string)
 
-	GetLocalConn(lAddr, rAddr string) *net.UDPConn
+	GetForLocalConn(lAddr, rAddr string) *net.UDPConn
 
-	AddLocalConn(lAddr, rAddr string, conn *net.UDPConn) bool
+	AddForLocalConn(lAddr, rAddr string, conn *net.UDPConn) bool
 
-	RangeLocalConn(lAddr string, f func(key, value any) bool)
+	RangeForLocalConn(lAddr string, f func(key string, value *net.UDPConn) bool)
 
-	GetOrCreateLockForLocalConn(lAddr, key string) (*sync.Cond, bool)
+	GetOrCreateLockForLocalConn(lAddr string, key string) (*sync.Cond, bool)
 
-	DeleteLocalConnMap(lAddr, key string)
+	DeleteForLocalConn(lAddr, key string)
+
+	DeleteLockForLocalConn(lAddr, key string)
 }

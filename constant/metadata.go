@@ -31,6 +31,7 @@ const (
 	MTPROXY
 	TUN
 	TUIC
+	HYSTERIA2
 	INNER
 	DNS
 	PROVIDER
@@ -83,6 +84,8 @@ func (t Type) String() string {
 		return "TUN"
 	case TUIC:
 		return "TUIC"
+	case HYSTERIA2:
+		return "Hysteria2"
 	case INNER:
 		return "Inner"
 	case DNS:
@@ -119,6 +122,8 @@ func ParseType(t string) (*Type, error) {
 		res = TUN
 	case "TUIC":
 		res = TUIC
+	case "HYSTERIA2":
+		res = HYSTERIA2
 	case "INNER":
 		res = INNER
 	default:

@@ -27,6 +27,7 @@ const (
 	Http
 	Vmess
 	Trojan
+	Hysteria2
 	WireGuard
 	Tuic
 
@@ -175,6 +176,8 @@ func (at AdapterType) String() string {
 		return "Vmess"
 	case Trojan:
 		return "Trojan"
+	case Hysteria2:
+		return "Hysteria2"
 	case WireGuard:
 		return "WireGuard"
 	case Tuic:

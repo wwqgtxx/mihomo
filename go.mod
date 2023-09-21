@@ -16,18 +16,18 @@ require (
 	github.com/kentik/patricia v1.2.0
 	github.com/mdlayher/netlink v1.7.2
 	github.com/metacubex/quic-go v0.38.1-0.20230821081539-517fdb17fb28
-	github.com/metacubex/sing-shadowsocks v0.2.4
-	github.com/metacubex/sing-shadowsocks2 v0.1.3
-	github.com/metacubex/sing-tun v0.1.11
-	github.com/metacubex/sing-vmess v0.1.8-0.20230801054944-603005461ff8
+	github.com/metacubex/sing-shadowsocks v0.2.5
+	github.com/metacubex/sing-shadowsocks2 v0.1.4
+	github.com/metacubex/sing-tun v0.1.12
+	github.com/metacubex/sing-vmess v0.1.9-0.20230921005247-a0488d7dac74
 	github.com/metacubex/sing-wireguard v0.0.0-20230611155257-1498ae315a28
-	github.com/miekg/dns v1.1.55
+	github.com/miekg/dns v1.1.56
 	github.com/openacid/low v0.1.21
 	github.com/oschwald/geoip2-golang v1.9.0
 	github.com/puzpuzpuz/xsync/v2 v2.5.0
 	github.com/sagernet/netlink v0.0.0-20220905062125-8043b4a9aa97
-	github.com/sagernet/sing v0.2.10-0.20230807080248-4db0062caa0a
-	github.com/sagernet/sing-mux v0.1.3-0.20230811111955-dc1639b5204c
+	github.com/sagernet/sing v0.2.11
+	github.com/sagernet/sing-mux v0.1.3
 	github.com/sagernet/sing-shadowtls v0.1.4
 	github.com/sagernet/tfo-go v0.0.0-20230816093905-5a5c285d44a6
 	github.com/sagernet/wireguard-go v0.0.0-20230807125731-5d4a7ef2dc5f
@@ -37,11 +37,11 @@ require (
 	github.com/zhangyunhao116/fastrand v0.3.0
 	go.etcd.io/bbolt v1.3.7
 	go.uber.org/automaxprocs v1.5.3
-	golang.org/x/crypto v0.12.0
+	golang.org/x/crypto v0.13.0
 	golang.org/x/exp v0.0.0-20230811145659-89c5cff77bcb
-	golang.org/x/net v0.14.0
+	golang.org/x/net v0.15.0
 	golang.org/x/sync v0.3.0
-	golang.org/x/sys v0.11.0
+	golang.org/x/sys v0.12.0
 	gopkg.in/yaml.v3 v3.0.1
 	lukechampine.com/blake3 v1.2.1
 )
@@ -58,7 +58,7 @@ require (
 	github.com/ericlagergren/subtle v0.0.0-20220507045147-890d697da010 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/gaukas/godicttls v0.0.4 // indirect
-	github.com/go-ole/go-ole v1.2.6 // indirect
+	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572 // indirect
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/google/btree v1.1.2 // indirect
@@ -86,10 +86,10 @@ require (
 	github.com/u-root/uio v0.0.0-20230220225925-ffce2a382923 // indirect
 	github.com/vishvananda/netns v0.0.1 // indirect
 	gitlab.com/yawning/bsaes.git v0.0.0-20190805113838-0a714cd429ec // indirect
-	golang.org/x/mod v0.11.0 // indirect
-	golang.org/x/text v0.12.0 // indirect
+	golang.org/x/mod v0.12.0 // indirect
+	golang.org/x/text v0.13.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
-	golang.org/x/tools v0.10.0 // indirect
+	golang.org/x/tools v0.13.0 // indirect
 )
 
-replace github.com/sagernet/sing => github.com/metacubex/sing v0.0.0-20230817143035-28d23f152579
+replace github.com/sagernet/sing => github.com/metacubex/sing v0.0.0-20230921005553-6eacdd2c7a24

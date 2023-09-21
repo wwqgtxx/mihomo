@@ -171,7 +171,8 @@ func (r *Resolver) ExchangeContext(ctx context.Context, m *D.Msg) (msg *D.Msg, e
 			setMsgTTL(msg, uint32(1)) // Continue fetch
 			continueFetch = true
 		} else {
-			setMsgTTL(msg, uint32(time.Until(expireTime).Seconds()))
+			// updating TTL by subtracting common delta time from each DNS record
+			updateMsgTTL(msg, uint32(time.Until(expireTime).Seconds()))
 		}
 		return
 	}
@@ -197,7 +198,7 @@ func (r *Resolver) exchangeWithoutCache(ctx context.Context, m *D.Msg) (msg *D.M
 
 			msg := result.(*D.Msg)
 
-			putMsgToCache(r.lruCache, q.String(), q, msg)
+			putMsgToCache(r.lruCache, q.String(), msg)
 		}()
 
 		isIPReq := isIPRequest(q)

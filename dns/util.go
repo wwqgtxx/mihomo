@@ -5,9 +5,9 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"github.com/samber/lo"
 	"net"
 	"net/netip"
-	"strings"
 	"time"
 
 	"github.com/Dreamacro/clash/common/cache"
@@ -17,26 +17,48 @@ import (
 	D "github.com/miekg/dns"
 )
 
-func putMsgToCache(c *cache.LruCache[string, *D.Msg], key string, q D.Question, msg *D.Msg) {
-	// skip dns cache for acme challenge
-	if q.Qtype == D.TypeTXT && strings.HasPrefix(q.Name, "_acme-challenge.") {
-		log.Debugln("[DNS] dns cache ignored because of acme challenge for: %s", q.Name)
+func minimalTTL(records []D.RR) uint32 {
+	minObj := lo.MinBy(records, func(r1 D.RR, r2 D.RR) bool {
+		return r1.Header().Ttl < r2.Header().Ttl
+	})
+	if minObj != nil {
+		return minObj.Header().Ttl
+	}
+	return 0
+}
+
+func updateTTL(records []D.RR, ttl uint32) {
+	if len(records) == 0 {
 		return
 	}
-	var ttl uint32
-	switch {
-	case len(msg.Answer) != 0:
-		ttl = msg.Answer[0].Header().Ttl
-	case len(msg.Ns) != 0:
-		ttl = msg.Ns[0].Header().Ttl
-	case len(msg.Extra) != 0:
-		ttl = msg.Extra[0].Header().Ttl
-	default:
-		log.Debugln("[DNS] response msg empty: %#v", msg)
-		return
+	delta := minimalTTL(records) - ttl
+	for i := range records {
+		records[i].Header().Ttl = lo.Clamp(records[i].Header().Ttl-delta, 1, records[i].Header().Ttl)
+	}
+}
+
+func putMsgToCache(c *cache.LruCache[string, *D.Msg], key string, msg *D.Msg) {
+	putMsgToCacheWithExpire(c, key, msg, 0)
+}
+
+func putMsgToCacheWithExpire(c *cache.LruCache[string, *D.Msg], key string, msg *D.Msg, sec uint32) {
+	if sec == 0 {
+		if sec = minimalTTL(msg.Answer); sec == 0 {
+			if sec = minimalTTL(msg.Ns); sec == 0 {
+				sec = minimalTTL(msg.Extra)
+			}
+		}
+		if sec == 0 {
+			return
+		}
+
+		if sec > 120 {
+			sec = 120 // at least 2 minutes to cache
+		}
+
 	}
 
-	c.SetWithExpire(key, msg.Copy(), time.Now().Add(time.Second*time.Duration(ttl)))
+	c.SetWithExpire(key, msg.Copy(), time.Now().Add(time.Duration(sec)*time.Second))
 }
 
 func setMsgTTL(msg *D.Msg, ttl uint32) {
@@ -53,8 +75,14 @@ func setMsgTTL(msg *D.Msg, ttl uint32) {
 	}
 }
 
+func updateMsgTTL(msg *D.Msg, ttl uint32) {
+	updateTTL(msg.Answer, ttl)
+	updateTTL(msg.Ns, ttl)
+	updateTTL(msg.Extra, ttl)
+}
+
 func isIPRequest(q D.Question) bool {
-	return q.Qclass == D.ClassINET && (q.Qtype == D.TypeA || q.Qtype == D.TypeAAAA)
+	return q.Qclass == D.ClassINET && (q.Qtype == D.TypeA || q.Qtype == D.TypeAAAA || q.Qtype == D.TypeCNAME)
 }
 
 func transform(servers []NameServer, resolver *Resolver) []dnsClient {

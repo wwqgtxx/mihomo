@@ -46,6 +46,7 @@ type Hysteria2Option struct {
 	SNI            string   `proxy:"sni,omitempty"`
 	SkipCertVerify bool     `proxy:"skip-cert-verify,omitempty"`
 	ALPN           []string `proxy:"alpn,omitempty"`
+	CWND           int      `proxy:"cwnd,omitempty"`
 }
 
 type hy2SingDialer struct {
@@ -150,6 +151,7 @@ func NewHysteria2(option Hysteria2Option) (*Hysteria2, error) {
 		Password:           option.Password,
 		TLSConfig:          tlsConfig,
 		UDPDisabled:        false,
+		CWND:               option.CWND,
 	}
 
 	client, err := hysteria2.NewClient(clientOptions)

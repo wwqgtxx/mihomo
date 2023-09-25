@@ -2,7 +2,6 @@ package outbound
 
 import (
 	"context"
-	"net"
 	"runtime"
 
 	CN "github.com/Dreamacro/clash/common/net"
@@ -13,14 +12,13 @@ import (
 	mux "github.com/sagernet/sing-mux"
 	E "github.com/sagernet/sing/common/exceptions"
 	M "github.com/sagernet/sing/common/metadata"
-	N "github.com/sagernet/sing/common/network"
 )
 
 type SingMux struct {
 	C.ProxyAdapter
 	base    ProxyBase
 	client  *mux.Client
-	dialer  *muxSingDialer
+	dialer  proxydialer.SingDialer
 	onlyTcp bool
 }
 
@@ -39,27 +37,9 @@ type ProxyBase interface {
 	DialOptions(opts ...dialer.Option) []dialer.Option
 }
 
-type muxSingDialer struct {
-	dialer    dialer.Dialer
-	proxy     C.ProxyAdapter
-	statistic bool
-}
-
-var _ N.Dialer = (*muxSingDialer)(nil)
-
-func (d *muxSingDialer) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
-	var cDialer C.Dialer = proxydialer.New(d.proxy, d.dialer, d.statistic)
-	return cDialer.DialContext(ctx, network, destination.String())
-}
-
-func (d *muxSingDialer) ListenPacket(ctx context.Context, destination M.Socksaddr) (net.PacketConn, error) {
-	var cDialer C.Dialer = proxydialer.New(d.proxy, d.dialer, d.statistic)
-	return cDialer.ListenPacket(ctx, "udp", "", destination.AddrPort())
-}
-
 func (s *SingMux) DialContext(ctx context.Context, metadata *C.Metadata, opts ...dialer.Option) (_ C.Conn, err error) {
 	options := s.base.DialOptions(opts...)
-	s.dialer.dialer = dialer.NewDialer(options...)
+	s.dialer.SetDialer(dialer.NewDialer(options...))
 	c, err := s.client.DialContext(ctx, "tcp", M.ParseSocksaddr(metadata.RemoteAddress()))
 	if err != nil {
 		return nil, err
@@ -72,7 +52,7 @@ func (s *SingMux) ListenPacketContext(ctx context.Context, metadata *C.Metadata,
 		return s.ProxyAdapter.ListenPacketContext(ctx, metadata, opts...)
 	}
 	options := s.base.DialOptions(opts...)
-	s.dialer.dialer = dialer.NewDialer(options...)
+	s.dialer.SetDialer(dialer.NewDialer(options...))
 	pc, err := s.client.ListenPacket(ctx, M.ParseSocksaddr(metadata.RemoteAddress()))
 	if err != nil {
 		return nil, err
@@ -102,7 +82,7 @@ func closeSingMux(s *SingMux) {
 }
 
 func NewSingMux(option SingMuxOption, proxy C.ProxyAdapter, base ProxyBase) (C.ProxyAdapter, error) {
-	singDialer := &muxSingDialer{dialer: dialer.NewDialer(), proxy: proxy, statistic: option.Statistic}
+	singDialer := proxydialer.NewSingDialer(proxy, dialer.NewDialer(), option.Statistic)
 	client, err := mux.NewClient(mux.Options{
 		Dialer:         singDialer,
 		Protocol:       option.Protocol,

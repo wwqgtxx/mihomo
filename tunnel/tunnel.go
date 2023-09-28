@@ -54,6 +54,25 @@ var (
 	UDPFallbackMatch = atomic.NewBool(false)
 )
 
+type tunnel struct{}
+
+var Tunnel C.Tunnel = tunnel{}
+
+func (t tunnel) HandleTCPConn(connCtx C.ConnContext) {
+	handleTCPConn(connCtx)
+}
+
+func (t tunnel) HandleUDPPacket(packet C.PacketAdapter) {
+	select {
+	case udpQueue.In() <- packet:
+	default:
+	}
+}
+
+func (t tunnel) NatTable() C.NatTable {
+	return natTable
+}
+
 func SetFakeIPRange(p netip.Prefix) {
 	fakeIPRange = p
 }
@@ -90,16 +109,18 @@ func SetPreResolveProcessName(b bool) {
 }
 
 func init() {
-	inner_dialer.Init(TCPIn(), UDPIn())
+	inner_dialer.Init(Tunnel)
 	go process()
 }
 
 // TCPIn return fan-in queue
+// Deprecated: using Tunnel instead
 func TCPIn() chan<- C.ConnContext {
 	return tcpQueue.In()
 }
 
 // UDPIn return fan-in udp queue
+// Deprecated: using Tunnel instead
 func UDPIn() chan<- C.PacketAdapter {
 	return udpQueue.In()
 }

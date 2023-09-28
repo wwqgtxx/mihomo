@@ -21,7 +21,7 @@ type Listener struct {
 	udpListeners []*socks.UDPListener
 }
 
-func New(config string, tcpIn chan<- C.ConnContext, udpIn chan<- C.PacketAdapter, additions ...inbound.Addition) (*Listener, error) {
+func New(config string, tunnel C.Tunnel, additions ...inbound.Addition) (*Listener, error) {
 	if len(additions) == 0 {
 		additions = []inbound.Addition{
 			inbound.WithInName("DEFAULT-MIXEC"),
@@ -29,13 +29,13 @@ func New(config string, tcpIn chan<- C.ConnContext, udpIn chan<- C.PacketAdapter
 		}
 	}
 	ml := &Listener{false, config, nil, nil}
-	cl := GetChanListener(tcpIn, additions...)
+	cl := GetChanListener(tunnel, additions...)
 
 	for _, addr := range strings.Split(config, ",") {
 		addr := addr
 
 		//UDP
-		sul, err := socks.NewUDP(addr, udpIn, additions...)
+		sul, err := socks.NewUDP(addr, tunnel, additions...)
 		if err != nil {
 			return nil, err
 		}
@@ -59,7 +59,7 @@ func New(config string, tcpIn chan<- C.ConnContext, udpIn chan<- C.PacketAdapter
 					continue
 				}
 				N.TCPKeepAlive(c)
-				go handleECConn(c, cl, tcpIn, additions...)
+				go handleECConn(c, cl, tunnel, additions...)
 			}
 		}()
 	}
@@ -81,7 +81,7 @@ func (l *Listener) Config() string {
 	return l.config
 }
 
-func handleECConn(conn net.Conn, cl ChanListener, in chan<- C.ConnContext, additions ...inbound.Addition) {
+func handleECConn(conn net.Conn, cl ChanListener, tunnel C.Tunnel, additions ...inbound.Addition) {
 	bufConn := N.NewBufferedConn(conn)
 	head, err := bufConn.Peek(1)
 	if err != nil {
@@ -90,13 +90,13 @@ func handleECConn(conn net.Conn, cl ChanListener, in chan<- C.ConnContext, addit
 
 	switch head[0] {
 	case socks4.Version: // 0x04
-		socks.HandleSocks4(bufConn, in, additions...)
+		socks.HandleSocks4(bufConn, tunnel, additions...)
 		return
 	case socks5.Version: // 0x05
-		socks.HandleSocks5(bufConn, in, additions...)
+		socks.HandleSocks5(bufConn, tunnel, additions...)
 		return
 	case mtproxy.FakeTLSFirstByte: // 0x16
-		if mtproxy.HandleFakeTLS(bufConn, in, additions...) {
+		if mtproxy.HandleFakeTLS(bufConn, tunnel, additions...) {
 			return
 		}
 	}

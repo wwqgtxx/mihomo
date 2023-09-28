@@ -36,7 +36,7 @@ type Listener struct {
 
 var _listener *Listener
 
-func New(config string, in chan<- C.ConnContext, additions ...inbound.Addition) (*Listener, error) {
+func New(config string, tunnel C.Tunnel, additions ...inbound.Addition) (*Listener, error) {
 	var hl *Listener
 	if len(additions) == 0 {
 		additions = []inbound.Addition{
@@ -99,7 +99,7 @@ func New(config string, in chan<- C.ConnContext, additions ...inbound.Addition) 
 					continue
 				}
 				N.TCPKeepAlive(c)
-				go hl.HandleConn(c, in)
+				go hl.HandleConn(c, tunnel)
 			}
 		}()
 	}
@@ -134,7 +134,7 @@ func (l *Listener) SecretMode() common.SecretMode {
 	return l.serverInfo.SecretMode
 }
 
-func (l *Listener) HandleConn(conn net.Conn, in chan<- C.ConnContext, additions ...inbound.Addition) {
+func (l *Listener) HandleConn(conn net.Conn, tunnel C.Tunnel, additions ...inbound.Addition) {
 	serverProtocol := l.serverInfo.ServerProtocolMaker(
 		l.serverInfo.Secret,
 		l.serverInfo.SecretMode,
@@ -176,7 +176,7 @@ func (l *Listener) HandleConn(conn net.Conn, in chan<- C.ConnContext, additions 
 				addition.Apply(metadata)
 			}
 			connContext := context.NewConnContext(conn2, metadata)
-			in <- connContext
+			go tunnel.HandleTCPConn(connContext)
 			return conn1, nil
 		})
 	if err != nil {
@@ -187,9 +187,9 @@ func (l *Listener) HandleConn(conn net.Conn, in chan<- C.ConnContext, additions 
 	N.Relay(serverConn, telegramConn)
 }
 
-func HandleFakeTLS(conn net.Conn, in chan<- C.ConnContext, additions ...inbound.Addition) bool {
+func HandleFakeTLS(conn net.Conn, tunnel C.Tunnel, additions ...inbound.Addition) bool {
 	if _listener != nil && _listener.SecretMode() == common.SecretModeTLS {
-		go _listener.HandleConn(conn, in, additions...)
+		go _listener.HandleConn(conn, tunnel, additions...)
 		return true
 	}
 	return false

@@ -68,7 +68,7 @@ func CalculateInterfaceName(name string) (tunName string) {
 	return
 }
 
-func New(options LC.Tun, tcpIn chan<- C.ConnContext, udpIn chan<- C.PacketAdapter, additions ...inbound.Addition) (l *Listener, err error) {
+func New(options LC.Tun, tunnel C.Tunnel, additions ...inbound.Addition) (l *Listener, err error) {
 	if len(additions) == 0 {
 		additions = []inbound.Addition{
 			inbound.WithInName("DEFAULT-TUN"),
@@ -132,8 +132,7 @@ func New(options LC.Tun, tcpIn chan<- C.ConnContext, udpIn chan<- C.PacketAdapte
 
 	handler := &ListenerHandler{
 		ListenerHandler: sing.ListenerHandler{
-			TcpIn:      tcpIn,
-			UdpIn:      udpIn,
+			Tunnel:     tunnel,
 			Type:       C.TUN,
 			Additions:  additions,
 			UDPTimeout: time.Second * time.Duration(udpTimeout),

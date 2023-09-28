@@ -160,11 +160,7 @@ func loadProvider(ruleProviders map[string]providerTypes.RuleProvider, proxyProv
 }
 
 func updateListeners(listeners map[string]C.InboundListener) {
-	tcpIn := tunnel.TCPIn()
-	udpIn := tunnel.UDPIn()
-	natTable := tunnel.NatTable()
-
-	listener.PatchInboundListeners(listeners, tcpIn, udpIn, natTable, true)
+	listener.PatchInboundListeners(listeners, tunnel.Tunnel, true)
 }
 
 func updateExperimental(c *config.Config) {
@@ -233,9 +229,7 @@ func updateTun(general *config.General) {
 	if general == nil {
 		return
 	}
-	tcpIn := tunnel.TCPIn()
-	udpIn := tunnel.UDPIn()
-	listener.ReCreateTun(general.Tun, tcpIn, udpIn)
+	listener.ReCreateTun(general.Tun, tunnel.Tunnel)
 }
 
 func updateSniffer(sniffer *config.Sniffer) {
@@ -262,7 +256,7 @@ func updateSniffer(sniffer *config.Sniffer) {
 }
 
 func updateTunnels(tunnels []LC.Tunnel) {
-	listener.PatchTunnel(tunnels, tunnel.TCPIn(), tunnel.UDPIn())
+	listener.PatchTunnel(tunnels, tunnel.Tunnel)
 }
 
 func updateGeneral(general *config.General, force bool) {
@@ -298,20 +292,16 @@ func updateGeneral(general *config.General, force bool) {
 	bindAddress := general.BindAddress
 	listener.SetBindAddress(bindAddress)
 
-	tcpIn := tunnel.TCPIn()
-	udpIn := tunnel.UDPIn()
-	natTable := tunnel.NatTable()
-
-	listener.ReCreateHTTP(general.Port, tcpIn)
-	listener.ReCreateSocks(general.SocksPort, tcpIn, udpIn)
-	listener.ReCreateRedir(general.RedirPort, tcpIn, udpIn, natTable)
-	listener.ReCreateTProxy(general.TProxyPort, tcpIn, udpIn, natTable)
-	listener.ReCreateMixed(general.MixedPort, tcpIn, udpIn)
-	listener.ReCreateMixEC(general.MixECConfig, tcpIn, udpIn)
-	listener.ReCreateShadowSocks(general.ShadowSocksConfig, tcpIn, udpIn)
-	listener.ReCreateVmess(general.VmessConfig, tcpIn, udpIn)
-	listener.ReCreateMTProxy(general.MTProxyConfig, tcpIn, udpIn)
-	listener.ReCreateTuic(general.TuicServer, tcpIn, udpIn)
+	listener.ReCreateHTTP(general.Port, tunnel.Tunnel)
+	listener.ReCreateSocks(general.SocksPort, tunnel.Tunnel)
+	listener.ReCreateRedir(general.RedirPort, tunnel.Tunnel)
+	listener.ReCreateTProxy(general.TProxyPort, tunnel.Tunnel)
+	listener.ReCreateMixed(general.MixedPort, tunnel.Tunnel)
+	listener.ReCreateMixEC(general.MixECConfig, tunnel.Tunnel)
+	listener.ReCreateShadowSocks(general.ShadowSocksConfig, tunnel.Tunnel)
+	listener.ReCreateVmess(general.VmessConfig, tunnel.Tunnel)
+	listener.ReCreateMTProxy(general.MTProxyConfig, tunnel.Tunnel)
+	listener.ReCreateTuic(general.TuicServer, tunnel.Tunnel)
 }
 
 func updateUsers(users []auth.AuthUser) {

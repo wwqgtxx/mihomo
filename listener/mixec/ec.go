@@ -55,7 +55,7 @@ var _chanListener *chanListener
 
 type ecHandler struct {
 	http.Handler
-	in        chan<- C.ConnContext
+	tunnel    C.Tunnel
 	additions []inbound.Addition
 }
 
@@ -65,7 +65,7 @@ func (h ecHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return
 		}
-		if !sing_vmess.HandleVmess(conn, h.in, h.additions...) {
+		if !sing_vmess.HandleVmess(conn, h.tunnel, h.additions...) {
 			_ = conn.Close()
 		}
 		return
@@ -75,7 +75,7 @@ func (h ecHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return
 		}
-		if !sing_shadowsocks.HandleShadowSocks(conn, h.in, h.additions...) {
+		if !sing_shadowsocks.HandleShadowSocks(conn, h.tunnel, h.additions...) {
 			_ = conn.Close()
 		}
 		return
@@ -84,14 +84,14 @@ func (h ecHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.Handler.ServeHTTP(w, r)
 }
 
-func GetChanListener(in chan<- C.ConnContext, additions ...inbound.Addition) ChanListener {
+func GetChanListener(tunnel C.Tunnel, additions ...inbound.Addition) ChanListener {
 	once.Do(func() {
 		_chanListener = &chanListener{
 			make(chan net.Conn),
 			net.TCPAddrFromAddrPort(netip.AddrPortFrom(netip.IPv4Unspecified(), 0)),
 			atomic.NewBool(false),
 		}
-		go http.Serve(_chanListener, ecHandler{C.GetECHandler(), in, additions})
+		go http.Serve(_chanListener, ecHandler{C.GetECHandler(), tunnel, additions})
 	})
 	return _chanListener
 }

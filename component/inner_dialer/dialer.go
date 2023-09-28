@@ -9,12 +9,10 @@ import (
 	icontext "github.com/Dreamacro/clash/context"
 )
 
-var tcpIn chan<- C.ConnContext
-var udpIn chan<- C.PacketAdapter
+var tunnel C.Tunnel
 
-func Init(tcp chan<- C.ConnContext, udp chan<- C.PacketAdapter) {
-	tcpIn = tcp
-	udpIn = udp
+func Init(t C.Tunnel) {
+	tunnel = t
 }
 
 type RemoteDialer struct {
@@ -48,7 +46,7 @@ func (d RemoteDialer) DialTCP(addr string, proxyName string) (net.Conn, error) {
 	}
 	metadata.Type = d.mType
 	connContext := icontext.NewConnContext(conn2, metadata)
-	tcpIn <- connContext
+	go tunnel.HandleTCPConn(connContext)
 
 	return conn1, nil
 }

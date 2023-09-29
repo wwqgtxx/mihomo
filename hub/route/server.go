@@ -255,11 +255,27 @@ type Log struct {
 	Type    string `json:"type"`
 	Payload string `json:"payload"`
 }
+type LogStructuredField struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+type LogStructured struct {
+	Time    string               `json:"time"`
+	Level   string               `json:"level"`
+	Message string               `json:"message"`
+	Fields  []LogStructuredField `json:"fields"`
+}
 
 func getLogs(w http.ResponseWriter, r *http.Request) {
 	levelText := r.URL.Query().Get("level")
 	if levelText == "" {
 		levelText = "info"
+	}
+
+	formatText := r.URL.Query().Get("format")
+	isStructured := false
+	if formatText == "structured" {
+		isStructured = true
 	}
 
 	level, ok := log.LogLevelMapping[levelText]
@@ -299,17 +315,32 @@ func getLogs(w http.ResponseWriter, r *http.Request) {
 		close(ch)
 	}()
 
-	for log := range ch {
-		if log.LogLevel < level {
+	for logM := range ch {
+		if logM.LogLevel < level {
 			continue
 		}
 		buf.Reset()
 
-		if err := json.NewEncoder(buf).Encode(Log{
-			Type:    log.Type(),
-			Payload: log.Payload,
-		}); err != nil {
-			break
+		if !isStructured {
+			if err := json.NewEncoder(buf).Encode(Log{
+				Type:    logM.Type(),
+				Payload: logM.Payload,
+			}); err != nil {
+				break
+			}
+		} else {
+			newLevel := logM.Type()
+			if newLevel == "warning" {
+				newLevel = "warn"
+			}
+			if err := json.NewEncoder(buf).Encode(LogStructured{
+				Time:    time.Now().Format(time.TimeOnly),
+				Level:   newLevel,
+				Message: logM.Payload,
+				Fields:  []LogStructuredField{},
+			}); err != nil {
+				break
+			}
 		}
 
 		var err error

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/netip"
 	"os"
+	"strconv"
 	"sync"
 
 	"github.com/Dreamacro/clash/adapter"
@@ -165,6 +166,12 @@ func updateListeners(listeners map[string]C.InboundListener) {
 
 func updateExperimental(c *config.Config) {
 	tunnel.UDPFallbackMatch.Store(c.Experimental.UDPFallbackMatch)
+	if c.Experimental.QUICGoDisableGSO {
+		_ = os.Setenv("QUIC_GO_DISABLE_GSO", strconv.FormatBool(true))
+	}
+	if c.Experimental.QUICGoDisableECN {
+		_ = os.Setenv("QUIC_GO_DISABLE_ECN", strconv.FormatBool(true))
+	}
 }
 
 func updateDNS(c *config.DNS) {

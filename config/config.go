@@ -122,6 +122,8 @@ type Sniffer struct {
 // Experimental config
 type Experimental struct {
 	UDPFallbackMatch bool `yaml:"udp-fallback-match"`
+	QUICGoDisableGSO bool `yaml:"quic-go-disable-gso"`
+	QUICGoDisableECN bool `yaml:"quic-go-disable-ecn"`
 }
 
 // Config is clash config manager
@@ -446,7 +448,7 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 			AllowLan:          cfg.AllowLan,
 			BindAddress:       cfg.BindAddress,
 			InboundTfo:        cfg.InboundTfo,
-			InboundMPTCP: cfg.InboundMPTCP,
+			InboundMPTCP:      cfg.InboundMPTCP,
 		},
 		Controller: Controller{
 			ExternalController: cfg.ExternalController,
@@ -465,7 +467,7 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 		TouchAfterLazyPassNum:  cfg.TouchAfterLazyPassNum,
 		PreResolveProcessName:  cfg.PreResolveProcessName,
 		TCPConcurrent:          cfg.TCPConcurrent,
-		KeepAliveInterval: cfg.KeepAliveInterval,
+		KeepAliveInterval:      cfg.KeepAliveInterval,
 	}, nil
 }
 

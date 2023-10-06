@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -19,7 +20,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
 	"github.com/go-chi/render"
-	"github.com/gorilla/websocket"
+	"github.com/gobwas/ws"
+	"github.com/gobwas/ws/wsutil"
 )
 
 var (
@@ -27,12 +29,6 @@ var (
 	serverAddr   = ""
 
 	uiPath = ""
-
-	upgrader = websocket.Upgrader{
-		CheckOrigin: func(r *http.Request) bool {
-			return true
-		},
-	}
 
 	builtinMimeTypesLower = map[string]string{
 		".css":  "text/css; charset=utf-8",
@@ -178,7 +174,7 @@ func authentication(next http.Handler) http.Handler {
 		}
 
 		// Browser websocket not support custom header
-		if websocket.IsWebSocketUpgrade(r) && r.URL.Query().Get("token") != "" {
+		if r.Header.Get("Upgrade") == "websocket" && r.URL.Query().Get("token") != "" {
 			token := r.URL.Query().Get("token")
 			if token != serverSecret {
 				render.Status(r, http.StatusUnauthorized)
@@ -209,10 +205,10 @@ func hello(w http.ResponseWriter, r *http.Request) {
 }
 
 func traffic(w http.ResponseWriter, r *http.Request) {
-	var wsConn *websocket.Conn
-	if websocket.IsWebSocketUpgrade(r) {
+	var wsConn net.Conn
+	if r.Header.Get("Upgrade") == "websocket" {
 		var err error
-		wsConn, err = upgrader.Upgrade(w, r, nil)
+		wsConn, _, _, err = ws.UpgradeHTTP(r, w)
 		if err != nil {
 			return
 		}
@@ -242,7 +238,7 @@ func traffic(w http.ResponseWriter, r *http.Request) {
 			_, err = w.Write(buf.Bytes())
 			w.(http.Flusher).Flush()
 		} else {
-			err = wsConn.WriteMessage(websocket.TextMessage, buf.Bytes())
+			err = wsutil.WriteMessage(wsConn, ws.StateServerSide, ws.OpText, buf.Bytes())
 		}
 
 		if err != nil {
@@ -285,10 +281,10 @@ func getLogs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var wsConn *websocket.Conn
-	if websocket.IsWebSocketUpgrade(r) {
+	var wsConn net.Conn
+	if r.Header.Get("Upgrade") == "websocket" {
 		var err error
-		wsConn, err = upgrader.Upgrade(w, r, nil)
+		wsConn, _, _, err = ws.UpgradeHTTP(r, w)
 		if err != nil {
 			return
 		}
@@ -348,7 +344,7 @@ func getLogs(w http.ResponseWriter, r *http.Request) {
 			_, err = w.Write(buf.Bytes())
 			w.(http.Flusher).Flush()
 		} else {
-			err = wsConn.WriteMessage(websocket.TextMessage, buf.Bytes())
+			err = wsutil.WriteMessage(wsConn, ws.StateServerSide, ws.OpText, buf.Bytes())
 		}
 
 		if err != nil {

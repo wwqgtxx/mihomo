@@ -1,6 +1,7 @@
 package vmess
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"crypto/tls"
@@ -14,26 +15,23 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/Dreamacro/clash/common/buf"
 	N "github.com/Dreamacro/clash/common/net"
 
-	"github.com/gorilla/websocket"
+	"github.com/gobwas/ws"
+	"github.com/gobwas/ws/wsutil"
 	"github.com/zhangyunhao116/fastrand"
 )
 
 type websocketConn struct {
-	conn       *websocket.Conn
-	reader     io.Reader
-	remoteAddr net.Addr
+	net.Conn
+	state          ws.State
+	reader         *wsutil.Reader
+	controlHandler wsutil.FrameHandlerFunc
 
 	rawWriter N.ExtendedWriter
-
-	// https://godoc.org/github.com/gorilla/websocket#hdr-Concurrency
-	rMux sync.Mutex
-	wMux sync.Mutex
 }
 
 type websocketWithEarlyDataConn struct {
@@ -56,36 +54,51 @@ type WebsocketConfig struct {
 	TLSConfig           *tls.Config
 	MaxEarlyData        int
 	EarlyDataHeaderName string
+	ClientFingerprint   string
 }
 
 // Read implements net.Conn.Read()
-func (wsc *websocketConn) Read(b []byte) (int, error) {
-	wsc.rMux.Lock()
-	defer wsc.rMux.Unlock()
+func (wsc *websocketConn) Read(b []byte) (n int, err error) {
+	var header ws.Header
 	for {
-		reader, err := wsc.getReader()
-		if err != nil {
-			return 0, err
+		n, err = wsc.reader.Read(b)
+		// in gobwas/ws: "The error is io.EOF only if all of message bytes were read."
+		// but maybe next frame still have data, so drop it
+		if errors.Is(err, io.EOF) {
+			err = nil
 		}
-
-		nBytes, err := reader.Read(b)
-		if err == io.EOF {
-			wsc.reader = nil
+		if !errors.Is(err, wsutil.ErrNoFrameAdvance) {
+			return
+		}
+		header, err = wsc.reader.NextFrame()
+		if err != nil {
+			return
+		}
+		if header.OpCode.IsControl() {
+			err = wsc.controlHandler(header, wsc.reader)
+			if err != nil {
+				return
+			}
 			continue
 		}
-		return nBytes, err
+		if header.OpCode&(ws.OpBinary|ws.OpText) == 0 {
+			err = wsc.reader.Discard()
+			if err != nil {
+				return
+			}
+			continue
+		}
 	}
 }
 
 // Write implements io.Writer.
-func (wsc *websocketConn) Write(b []byte) (int, error) {
-	return N.Write(wsc, b)
-	//wsc.wMux.Lock()
-	//defer wsc.wMux.Unlock()
-	//if err := wsc.conn.WriteMessage(websocket.BinaryMessage, b); err != nil {
-	//	return 0, err
-	//}
-	//return len(b), nil
+func (wsc *websocketConn) Write(b []byte) (n int, err error) {
+	err = wsutil.WriteMessage(wsc.Conn, wsc.state, ws.OpBinary, b)
+	if err != nil {
+		return
+	}
+	n = len(b)
+	return
 }
 
 func (wsc *websocketConn) WriteBuffer(buffer *buf.Buffer) error {
@@ -107,7 +120,7 @@ func (wsc *websocketConn) WriteBuffer(buffer *buf.Buffer) error {
 
 	header := buffer.ExtendHeader(headerLen)
 	_ = header[2] // bounds check hint to compiler
-	header[0] = websocket.BinaryMessage | 1<<7
+	header[0] = byte(ws.OpBinary) | 0x80
 	header[1] = 1 << 7
 
 	if dataLen < 126 {
@@ -120,12 +133,12 @@ func (wsc *websocketConn) WriteBuffer(buffer *buf.Buffer) error {
 		binary.BigEndian.PutUint64(header[2:], uint64(dataLen))
 	}
 
-	maskKey := fastrand.Uint32()
-	binary.LittleEndian.PutUint32(header[1+payloadBitLength:], maskKey)
-	N.MaskWebSocket(maskKey, data)
+	if wsc.state.ClientSide() {
+		maskKey := fastrand.Uint32()
+		binary.LittleEndian.PutUint32(header[1+payloadBitLength:], maskKey)
+		N.MaskWebSocket(maskKey, data)
+	}
 
-	wsc.wMux.Lock()
-	defer wsc.wMux.Unlock()
 	return wsc.rawWriter.WriteBuffer(buffer)
 }
 
@@ -134,57 +147,14 @@ func (wsc *websocketConn) FrontHeadroom() int {
 }
 
 func (wsc *websocketConn) Upstream() any {
-	return wsc.conn.UnderlyingConn()
+	return wsc.Conn
 }
 
 func (wsc *websocketConn) Close() error {
-	var errors []string
-	if err := wsc.conn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""), time.Now().Add(time.Second*5)); err != nil {
-		errors = append(errors, err.Error())
-	}
-	if err := wsc.conn.Close(); err != nil {
-		errors = append(errors, err.Error())
-	}
-	if len(errors) > 0 {
-		return fmt.Errorf("failed to close connection: %s", strings.Join(errors, ","))
-	}
+	_ = wsc.Conn.SetWriteDeadline(time.Now().Add(time.Second * 5))
+	_ = wsutil.WriteMessage(wsc.Conn, wsc.state, ws.OpClose, ws.NewCloseFrameBody(ws.StatusNormalClosure, ""))
+	_ = wsc.Conn.Close()
 	return nil
-}
-
-func (wsc *websocketConn) getReader() (io.Reader, error) {
-	if wsc.reader != nil {
-		return wsc.reader, nil
-	}
-
-	_, reader, err := wsc.conn.NextReader()
-	if err != nil {
-		return nil, err
-	}
-	wsc.reader = reader
-	return reader, nil
-}
-
-func (wsc *websocketConn) LocalAddr() net.Addr {
-	return wsc.conn.LocalAddr()
-}
-
-func (wsc *websocketConn) RemoteAddr() net.Addr {
-	return wsc.remoteAddr
-}
-
-func (wsc *websocketConn) SetDeadline(t time.Time) error {
-	if err := wsc.SetReadDeadline(t); err != nil {
-		return err
-	}
-	return wsc.SetWriteDeadline(t)
-}
-
-func (wsc *websocketConn) SetReadDeadline(t time.Time) error {
-	return wsc.conn.SetReadDeadline(t)
-}
-
-func (wsc *websocketConn) SetWriteDeadline(t time.Time) error {
-	return wsc.conn.SetWriteDeadline(t)
 }
 
 func (wsedc *websocketWithEarlyDataConn) Dial(earlyData []byte) error {
@@ -309,6 +279,17 @@ func (wsedc *websocketWithEarlyDataConn) Upstream() any {
 	return wsedc.underlay
 }
 
+//func (wsedc *websocketWithEarlyDataConn) LazyHeadroom() bool {
+//	return wsedc.Conn == nil
+//}
+//
+//func (wsedc *websocketWithEarlyDataConn) Upstream() any {
+//	if wsedc.Conn == nil { // ensure return a nil interface not an interface with nil value
+//		return nil
+//	}
+//	return wsedc.Conn
+//}
+
 func (wsedc *websocketWithEarlyDataConn) NeedHandshake() bool {
 	return wsedc.Conn == nil
 }
@@ -329,19 +310,15 @@ func streamWebsocketWithEarlyDataConn(conn net.Conn, c *WebsocketConfig) (net.Co
 }
 
 func streamWebsocketConn(ctx context.Context, conn net.Conn, c *WebsocketConfig, earlyData *bytes.Buffer) (net.Conn, error) {
-	dialer := &websocket.Dialer{
-		NetDial: func(network, addr string) (net.Conn, error) {
+	dialer := ws.Dialer{
+		NetDial: func(ctx context.Context, network, addr string) (net.Conn, error) {
 			return conn, nil
 		},
-		ReadBufferSize:   4 * 1024,
-		WriteBufferSize:  4 * 1024,
-		HandshakeTimeout: time.Second * 8,
+		TLSConfig: c.TLSConfig,
 	}
-
 	scheme := "ws"
 	if c.TLS {
 		scheme = "wss"
-		dialer.TLSClientConfig = c.TLSConfig
 	}
 
 	u, err := url.Parse(c.Path)
@@ -356,38 +333,47 @@ func streamWebsocketConn(ctx context.Context, conn net.Conn, c *WebsocketConfig,
 		RawQuery: u.RawQuery,
 	}
 
-	headers := http.Header{}
+	headers := http.Header{"User-Agent": []string{"Go-http-client/1.1"}} // match golang's net/http
 	if c.Headers != nil {
-		for k := range c.Headers {
-			headers.Add(k, c.Headers.Get(k))
+		cHeaders := c.Headers
+		// gobwas/ws send "Host" directly in Upgrade() by `httpWriteHeader(bw, headerHost, u.Host)`
+		// if headers has "Host" will send repeatedly
+		if host := cHeaders.Get("Host"); host != "" {
+			cHeaders.Del("Host")
+			uri.Host = host
+		}
+		for k := range cHeaders {
+			headers.Add(k, cHeaders.Get(k))
 		}
 	}
 
 	if earlyData != nil {
+		earlyDataString := earlyData.String()
 		if c.EarlyDataHeaderName == "" {
-			uri.Path += earlyData.String()
+			uri.Path += earlyDataString
 		} else {
-			headers.Set(c.EarlyDataHeaderName, earlyData.String())
+			// gobwas/ws will check server's response "Sec-Websocket-Protocol" so must add Protocols to ws.Dialer
+			// if not will cause ws.ErrHandshakeBadSubProtocol
+			if c.EarlyDataHeaderName == "Sec-WebSocket-Protocol" {
+				// gobwas/ws will set "Sec-Websocket-Protocol" according dialer.Protocols
+				// to avoid send repeatedly don't set it to headers
+				dialer.Protocols = []string{earlyDataString}
+			} else {
+				headers.Set(c.EarlyDataHeaderName, earlyDataString)
+			}
+
 		}
 	}
 
-	wsConn, resp, err := dialer.DialContext(ctx, uri.String(), headers)
+	dialer.Header = ws.HandshakeHeaderHTTP(headers)
+
+	conn, reader, _, err := dialer.Dial(ctx, uri.String())
 	if err != nil {
-		reason := err
-		if resp != nil {
-			reason = errors.New(resp.Status)
-		}
-		return nil, fmt.Errorf("dial %s error: %w", uri.Host, reason)
+		return nil, fmt.Errorf("dial %s error: %w", uri.Host, err)
 	}
 
-	conn = &websocketConn{
-		conn:       wsConn,
-		rawWriter:  N.NewExtendedWriter(wsConn.UnderlyingConn()),
-		remoteAddr: conn.RemoteAddr(),
-	}
+	conn = newWebsocketConn(conn, reader, ws.StateClientSide)
 	// websocketConn can't correct handle ReadDeadline
-	// gorilla/websocket will cache the os.ErrDeadlineExceeded from conn.Read()
-	// it will cause read fail and event panic in *websocket.Conn.NextReader()
 	// so call N.NewDeadlineConn to add a safe wrapper
 	return N.NewDeadlineConn(conn), nil
 }
@@ -412,7 +398,29 @@ func StreamWebsocketConn(ctx context.Context, conn net.Conn, c *WebsocketConfig)
 	return streamWebsocketConn(ctx, conn, c, nil)
 }
 
-var upgrader = websocket.Upgrader{}
+func newWebsocketConn(conn net.Conn, br *bufio.Reader, state ws.State) *websocketConn {
+	controlHandler := wsutil.ControlFrameHandler(conn, state)
+	var reader io.Reader
+	if br != nil && br.Buffered() > 0 {
+		reader = br
+	} else {
+		reader = conn
+	}
+	return &websocketConn{
+		Conn:  conn,
+		state: state,
+		reader: &wsutil.Reader{
+			Source:          reader,
+			State:           state,
+			SkipHeaderCheck: true,
+			CheckUTF8:       false,
+			OnIntermediate:  controlHandler,
+		},
+		controlHandler: controlHandler,
+		rawWriter:      N.NewExtendedWriter(conn),
+	}
+}
+
 var replacer = strings.NewReplacer("+", "-", "/", "_", "=", "")
 
 func decodeEd(s string) ([]byte, error) {
@@ -426,7 +434,6 @@ func decodeXray0rtt(requestHeader http.Header) ([]byte, http.Header) {
 	if secProtocol := requestHeader.Get("Sec-WebSocket-Protocol"); len(secProtocol) > 0 {
 		if buf, err := decodeEd(secProtocol); err == nil { // sure could base64 decode
 			edBuf = buf
-			responseHeader.Set("Sec-WebSocket-Protocol", secProtocol)
 		}
 	}
 	return edBuf, responseHeader
@@ -434,14 +441,13 @@ func decodeXray0rtt(requestHeader http.Header) ([]byte, http.Header) {
 
 func StreamUpgradedWebsocketConn(w http.ResponseWriter, r *http.Request) (net.Conn, error) {
 	edBuf, responseHeader := decodeXray0rtt(r.Header)
-	wsConn, err := upgrader.Upgrade(w, r, responseHeader)
+	wsConn, rw, _, err := ws.HTTPUpgrader{
+		Header: responseHeader,
+	}.Upgrade(r, w)
 	if err != nil {
 		return nil, err
 	}
-	conn := &websocketConn{
-		conn:       wsConn,
-		remoteAddr: wsConn.RemoteAddr(),
-	}
+	conn := newWebsocketConn(wsConn, rw.Reader, ws.StateServerSide)
 	if len(edBuf) > 0 {
 		return &websocketWithReaderConn{conn, io.MultiReader(bytes.NewReader(edBuf), conn)}, nil
 	}

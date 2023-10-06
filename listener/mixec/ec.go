@@ -13,7 +13,6 @@ import (
 	"github.com/Dreamacro/clash/listener/sing_shadowsocks"
 	"github.com/Dreamacro/clash/listener/sing_vmess"
 	"github.com/Dreamacro/clash/transport/vmess"
-	"github.com/gorilla/websocket"
 )
 
 type ChanListener interface {
@@ -60,7 +59,7 @@ type ecHandler struct {
 }
 
 func (h ecHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/socket.io" && websocket.IsWebSocketUpgrade(r) {
+	if r.URL.Path == "/socket.io" && r.Header.Get("Upgrade") == "websocket" {
 		conn, err := vmess.StreamUpgradedWebsocketConn(w, r)
 		if err != nil {
 			return
@@ -70,7 +69,7 @@ func (h ecHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	if r.URL.Path == "/ws" && websocket.IsWebSocketUpgrade(r) {
+	if r.URL.Path == "/ws" && r.Header.Get("Upgrade") == "websocket" {
 		conn, err := vmess.StreamUpgradedWebsocketConn(w, r)
 		if err != nil {
 			return

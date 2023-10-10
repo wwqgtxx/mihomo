@@ -16,9 +16,9 @@ func SkipAuthPrefixes() []netip.Prefix {
 }
 
 func SkipAuthRemoteAddr(addr net.Addr) bool {
-	if addr, _, err := parseAddr(addr); err == nil {
+	if addrPort, err := parseAddr(addr); err == nil {
 		for _, prefix := range skipAuthPrefixes {
-			if prefix.Contains(addr) {
+			if prefix.Contains(addrPort.Addr()) {
 				return true
 			}
 		}

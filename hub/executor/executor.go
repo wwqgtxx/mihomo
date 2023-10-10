@@ -110,6 +110,7 @@ func GetGeneral() *config.General {
 			VmessConfig:       ports.VmessConfig,
 			MTProxyConfig:     ports.MTProxyConfig,
 			Authentication:    authenticator,
+			SkipAuthPrefixes:  inbound.SkipAuthPrefixes(),
 			AllowLan:          listener.AllowLan(),
 			BindAddress:       listener.BindAddress(),
 		},
@@ -295,6 +296,7 @@ func updateGeneral(general *config.General, force bool) {
 
 	allowLan := general.AllowLan
 	listener.SetAllowLan(allowLan)
+	inbound.SetSkipAuthPrefixes(general.SkipAuthPrefixes)
 
 	bindAddress := general.BindAddress
 	listener.SetBindAddress(bindAddress)

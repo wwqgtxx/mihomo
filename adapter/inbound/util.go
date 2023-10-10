@@ -64,7 +64,7 @@ func parseAddr(addr net.Addr) (netip.Addr, uint16, error) {
 	if addr == nil {
 		return netip.Addr{}, 0, errors.New("nil addr")
 	}
-	if rawAddr, ok := addr.(interface{ RawAddr() net.Addr }); ok {
+	if rawAddr, ok := addr.(interface{ RawAddr() net.Addr }); ok && rawAddr != nil {
 		ip, port, err := parseAddr(rawAddr.RawAddr())
 		if err == nil {
 			return ip, port, err

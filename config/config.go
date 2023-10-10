@@ -55,22 +55,23 @@ type General struct {
 
 // Inbound
 type Inbound struct {
-	Port              int           `json:"port"`
-	SocksPort         int           `json:"socks-port"`
-	RedirPort         int           `json:"redir-port"`
-	TProxyPort        int           `json:"tproxy-port"`
-	MixedPort         int           `json:"mixed-port"`
-	Tun               LC.Tun        `json:"tun"`
-	TuicServer        LC.TuicServer `json:"tuic-server"`
-	MixECConfig       string        `json:"mixec-config"`
-	ShadowSocksConfig string        `json:"ss-config"`
-	VmessConfig       string        `json:"vmess-config"`
-	MTProxyConfig     string        `json:"mtproxy-config"`
-	Authentication    []string      `json:"authentication"`
-	AllowLan          bool          `json:"allow-lan"`
-	BindAddress       string        `json:"bind-address"`
-	InboundTfo        bool          `json:"inbound-tfo"`
-	InboundMPTCP      bool          `json:"inbound-mptcp"`
+	Port              int            `json:"port"`
+	SocksPort         int            `json:"socks-port"`
+	RedirPort         int            `json:"redir-port"`
+	TProxyPort        int            `json:"tproxy-port"`
+	MixedPort         int            `json:"mixed-port"`
+	Tun               LC.Tun         `json:"tun"`
+	TuicServer        LC.TuicServer  `json:"tuic-server"`
+	MixECConfig       string         `json:"mixec-config"`
+	ShadowSocksConfig string         `json:"ss-config"`
+	VmessConfig       string         `json:"vmess-config"`
+	MTProxyConfig     string         `json:"mtproxy-config"`
+	Authentication    []string       `json:"authentication"`
+	SkipAuthPrefixes  []netip.Prefix `json:"skip-auth-prefixes"`
+	AllowLan          bool           `json:"allow-lan"`
+	BindAddress       string         `json:"bind-address"`
+	InboundTfo        bool           `json:"inbound-tfo"`
+	InboundMPTCP      bool           `json:"inbound-mptcp"`
 }
 
 // Controller
@@ -168,37 +169,38 @@ type RawFallbackFilter struct {
 }
 
 type RawConfig struct {
-	Port                   int          `yaml:"port"`
-	SocksPort              int          `yaml:"socks-port"`
-	RedirPort              int          `yaml:"redir-port"`
-	TProxyPort             int          `yaml:"tproxy-port"`
-	MixedPort              int          `yaml:"mixed-port"`
-	MixECConfig            string       `yaml:"mixec-config"`
-	ShadowSocksConfig      string       `yaml:"ss-config"`
-	VmessConfig            string       `yaml:"vmess-config"`
-	MTProxyConfig          string       `yaml:"mtproxy-config"`
-	InboundTfo             bool         `yaml:"inbound-tfo"`
-	InboundMPTCP           bool         `yaml:"inbound-mptcp"`
-	Authentication         []string     `yaml:"authentication"`
-	AllowLan               bool         `yaml:"allow-lan"`
-	BindAddress            string       `yaml:"bind-address"`
-	Mode                   T.TunnelMode `yaml:"mode"`
-	LogLevel               log.LogLevel `yaml:"log-level"`
-	IPv6                   bool         `yaml:"ipv6"`
-	ExternalController     string       `yaml:"external-controller"`
-	ExternalUI             string       `yaml:"external-ui"`
-	Secret                 string       `yaml:"secret"`
-	Interface              string       `yaml:"interface-name"`
-	RoutingMark            int          `yaml:"routing-mark"`
-	Tunnels                []LC.Tunnel  `yaml:"tunnels"`
-	UseRemoteDnsDefault    bool         `yaml:"use-remote-dns-default"`
-	UseSystemDnsDial       bool         `yaml:"use-system-dns-dial"`
-	HealthCheckURL         string       `yaml:"health-check-url"`
-	HealthCheckLazyDefault bool         `yaml:"health-check-lazy-default"`
-	TouchAfterLazyPassNum  int          `yaml:"touch-after-lazy-pass-num"`
-	PreResolveProcessName  bool         `yaml:"pre-resolve-process-name"`
-	TCPConcurrent          bool         `yaml:"tcp-concurrent"`
-	KeepAliveInterval      int          `yaml:"keep-alive-interval"`
+	Port                   int            `yaml:"port"`
+	SocksPort              int            `yaml:"socks-port"`
+	RedirPort              int            `yaml:"redir-port"`
+	TProxyPort             int            `yaml:"tproxy-port"`
+	MixedPort              int            `yaml:"mixed-port"`
+	MixECConfig            string         `yaml:"mixec-config"`
+	ShadowSocksConfig      string         `yaml:"ss-config"`
+	VmessConfig            string         `yaml:"vmess-config"`
+	MTProxyConfig          string         `yaml:"mtproxy-config"`
+	InboundTfo             bool           `yaml:"inbound-tfo"`
+	InboundMPTCP           bool           `yaml:"inbound-mptcp"`
+	Authentication         []string       `yaml:"authentication"`
+	SkipAuthPrefixes       []netip.Prefix `yaml:"skip-auth-prefixes"`
+	AllowLan               bool           `yaml:"allow-lan"`
+	BindAddress            string         `yaml:"bind-address"`
+	Mode                   T.TunnelMode   `yaml:"mode"`
+	LogLevel               log.LogLevel   `yaml:"log-level"`
+	IPv6                   bool           `yaml:"ipv6"`
+	ExternalController     string         `yaml:"external-controller"`
+	ExternalUI             string         `yaml:"external-ui"`
+	Secret                 string         `yaml:"secret"`
+	Interface              string         `yaml:"interface-name"`
+	RoutingMark            int            `yaml:"routing-mark"`
+	Tunnels                []LC.Tunnel    `yaml:"tunnels"`
+	UseRemoteDnsDefault    bool           `yaml:"use-remote-dns-default"`
+	UseSystemDnsDial       bool           `yaml:"use-system-dns-dial"`
+	HealthCheckURL         string         `yaml:"health-check-url"`
+	HealthCheckLazyDefault bool           `yaml:"health-check-lazy-default"`
+	TouchAfterLazyPassNum  int            `yaml:"touch-after-lazy-pass-num"`
+	PreResolveProcessName  bool           `yaml:"pre-resolve-process-name"`
+	TCPConcurrent          bool           `yaml:"tcp-concurrent"`
+	KeepAliveInterval      int            `yaml:"keep-alive-interval"`
 
 	Sniffer       RawSniffer                `yaml:"sniffer"`
 	RuleProviders map[string]map[string]any `yaml:"rule-providers"`
@@ -446,6 +448,7 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 			VmessConfig:       cfg.VmessConfig,
 			MTProxyConfig:     cfg.MTProxyConfig,
 			AllowLan:          cfg.AllowLan,
+			SkipAuthPrefixes:  cfg.SkipAuthPrefixes,
 			BindAddress:       cfg.BindAddress,
 			InboundTfo:        cfg.InboundTfo,
 			InboundMPTCP:      cfg.InboundMPTCP,

@@ -33,18 +33,18 @@ type HealthCheckOption struct {
 type HealthCheck struct {
 	url        string
 	proxies    []C.Proxy
-	interval   uint
+	interval   time.Duration
 	lazy       bool
-	lastTouch  *atomic.Int64
+	lastTouch  atomic.TypedValue[time.Time]
 	done       chan struct{}
 	gType      string
 	gName      string
-	checking   *atomic.Bool
-	cleanerRun *atomic.Bool
+	checking   atomic.Bool
+	cleanerRun atomic.Bool
 }
 
 func (hc *HealthCheck) process() {
-	ticker := time.NewTicker(time.Duration(hc.interval) * time.Second)
+	ticker := time.NewTicker(hc.interval)
 	passNum := 0
 
 	go hc.lazyCheck()
@@ -56,7 +56,7 @@ func (hc *HealthCheck) process() {
 				passNum = 0
 			} else {
 				passNum++
-				if passNum > 0 && passNum > touchAfterLazyPassNum {
+				if passNum > 0 && touchAfterLazyPassNum > 0 && passNum > touchAfterLazyPassNum {
 					hc.touch()
 				}
 			}
@@ -68,8 +68,9 @@ func (hc *HealthCheck) process() {
 }
 
 func (hc *HealthCheck) lazyCheck() bool {
-	now := time.Now().Unix()
-	if !hc.lazy || now-hc.lastTouch.Load() < int64(hc.interval) {
+	lastTouch := hc.lastTouch.Load()
+	since := time.Since(lastTouch)
+	if !hc.lazy || since < hc.interval {
 		hc.check()
 		return true
 	} else {
@@ -87,7 +88,7 @@ func (hc *HealthCheck) auto() bool {
 }
 
 func (hc *HealthCheck) touch() {
-	hc.lastTouch.Store(time.Now().Unix())
+	hc.lastTouch.Store(time.Now())
 }
 
 func (hc *HealthCheck) check() {
@@ -195,16 +196,13 @@ func NewHealthCheck(proxies []C.Proxy, url string, interval uint, lazy bool, gTy
 		url = "http://cp.cloudflare.com/generate_204"
 	}
 	return &HealthCheck{
-		proxies:    proxies,
-		url:        url,
-		interval:   interval,
-		lazy:       lazy,
-		lastTouch:  atomic.NewInt64(0),
-		done:       make(chan struct{}, 1),
-		gType:      gType,
-		gName:      gName,
-		checking:   atomic.NewBool(false),
-		cleanerRun: atomic.NewBool(false),
+		proxies:  proxies,
+		url:      url,
+		interval: time.Duration(interval) * time.Second,
+		lazy:     lazy,
+		done:     make(chan struct{}, 1),
+		gType:    gType,
+		gName:    gName,
 	}
 }
 

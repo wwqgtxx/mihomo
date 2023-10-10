@@ -11,7 +11,7 @@ var DefaultManager *Manager
 
 func init() {
 	DefaultManager = &Manager{
-		connections: xsync.NewMapOf[Tracker](),
+		connections:   xsync.NewMapOf[Tracker](),
 		uploadTemp:    atomic.NewInt64(0),
 		downloadTemp:  atomic.NewInt64(0),
 		uploadBlip:    atomic.NewInt64(0),
@@ -24,13 +24,13 @@ func init() {
 }
 
 type Manager struct {
-	connections *xsync.MapOf[string, Tracker]
-	uploadTemp    *atomic.Int64
-	downloadTemp  *atomic.Int64
-	uploadBlip    *atomic.Int64
-	downloadBlip  *atomic.Int64
-	uploadTotal   *atomic.Int64
-	downloadTotal *atomic.Int64
+	connections   *xsync.MapOf[string, Tracker]
+	uploadTemp    atomic.Int64
+	downloadTemp  atomic.Int64
+	uploadBlip    atomic.Int64
+	downloadBlip  atomic.Int64
+	uploadTotal   atomic.Int64
+	downloadTotal atomic.Int64
 }
 
 func (m *Manager) Join(c Tracker) {

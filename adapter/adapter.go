@@ -21,7 +21,7 @@ import (
 type Proxy struct {
 	C.ProxyAdapter
 	history       *queue.Queue
-	alive         *atomic.Bool
+	alive         atomic.Bool
 	ignoreURLTest bool
 }
 

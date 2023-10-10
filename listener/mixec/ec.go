@@ -22,7 +22,7 @@ type ChanListener interface {
 type chanListener struct {
 	ch     chan net.Conn
 	addr   net.Addr
-	closed *atomic.Bool
+	closed atomic.Bool
 }
 
 func (l *chanListener) Close() error {

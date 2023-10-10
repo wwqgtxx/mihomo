@@ -42,7 +42,7 @@ type Conn struct {
 	transport *http2.Transport
 	writer    *io.PipeWriter
 	once      sync.Once
-	close     *atomic.Bool
+	close     atomic.Bool
 	err       error
 	remain    int
 	br        *bufio.Reader

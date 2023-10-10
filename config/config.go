@@ -269,8 +269,8 @@ func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 			DNSHijack:           []string{},
 			AutoDetectInterface: true,
 			AutoRoute:           true,
-			Inet4Address:        []LC.ListenPrefix{LC.ListenPrefix(netip.MustParsePrefix("198.18.0.1/30"))},
-			Inet6Address:        []LC.ListenPrefix{LC.ListenPrefix(netip.MustParsePrefix("fdfe:dcba:9876::1/126"))},
+			Inet4Address:        []netip.Prefix{netip.MustParsePrefix("198.18.0.1/30")},
+			Inet6Address:        []netip.Prefix{netip.MustParsePrefix("fdfe:dcba:9876::1/126")},
 		},
 		TuicServer: LC.TuicServer{
 			Enable:                false,

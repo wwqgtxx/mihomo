@@ -3,8 +3,6 @@ package mtproxy
 import (
 	"errors"
 	"net"
-	"net/netip"
-	"strconv"
 	"strings"
 
 	"github.com/Dreamacro/clash/adapter/inbound"
@@ -152,23 +150,16 @@ func (l *Listener) HandleConn(conn net.Conn, tunnel C.Tunnel, additions ...inbou
 		serverProtocol,
 		func(addr string) (net.Conn, error) {
 			conn1, conn2 := net.Pipe()
-			host, port, _ := net.SplitHostPort(addr)
-			remoteHost, remotePort, _ := net.SplitHostPort(conn.RemoteAddr().String())
-			remoteIp, _ := netip.ParseAddr(remoteHost)
-			uintPort, _ := strconv.ParseUint(port, 10, 16)
-			uintRemotePort, _ := strconv.ParseUint(remotePort, 10, 16)
 			metadata := &C.Metadata{
 				NetWork: C.TCP,
-				Host:    host,
-				DstPort: uint16(uintPort),
-				SrcIP:   remoteIp,
-				SrcPort: uint16(uintRemotePort),
+				Type:    C.MTPROXY,
 			}
-			metadata.Type = C.MTPROXY
-			additions = append(additions, inbound.WithInAddr(conn.LocalAddr()))
-			for _, addition := range additions {
-				addition.Apply(metadata)
+			err := metadata.SetRemoteAddress(addr)
+			if err != nil {
+				return nil, err
 			}
+			inbound.ApplyAdditions(metadata, inbound.WithSrcAddr(conn.RemoteAddr()), inbound.WithInAddr(conn.LocalAddr()))
+			inbound.ApplyAdditions(metadata, additions...)
 			go tunnel.HandleTCPConn(conn2, metadata)
 			return conn1, nil
 		})

@@ -13,7 +13,6 @@ import (
 	"github.com/Dreamacro/clash/component/mtproxy/server_protocol"
 	"github.com/Dreamacro/clash/component/mtproxy/tools"
 	C "github.com/Dreamacro/clash/constant"
-	"github.com/Dreamacro/clash/context"
 	"github.com/Dreamacro/clash/log"
 )
 
@@ -166,17 +165,11 @@ func (l *Listener) HandleConn(conn net.Conn, tunnel C.Tunnel, additions ...inbou
 				SrcPort: uint16(uintRemotePort),
 			}
 			metadata.Type = C.MTPROXY
-			if host, port, err := net.SplitHostPort(conn.LocalAddr().String()); err == nil {
-				ip, _ := netip.ParseAddr(host)
-				uintPort, _ := strconv.ParseUint(port, 10, 16)
-				metadata.InIP = ip
-				metadata.InPort = uint16(uintPort)
-			}
+			additions = append(additions, inbound.WithInAddr(conn.LocalAddr()))
 			for _, addition := range additions {
 				addition.Apply(metadata)
 			}
-			connContext := context.NewConnContext(conn2, metadata)
-			go tunnel.HandleTCPConn(connContext)
+			go tunnel.HandleTCPConn(conn2, metadata)
 			return conn1, nil
 		})
 	if err != nil {

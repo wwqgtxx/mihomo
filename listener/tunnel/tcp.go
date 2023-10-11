@@ -35,9 +35,9 @@ func (l *Listener) Close() error {
 
 func (l *Listener) handleTCP(conn net.Conn, tunnel C.Tunnel, additions ...inbound.Addition) {
 	conn.(*net.TCPConn).SetKeepAlive(true)
-	ctx := inbound.NewSocket(l.target, conn, C.TUNNEL, additions...)
-	ctx.Metadata().SpecialProxy = l.proxy
-	tunnel.HandleTCPConn(ctx)
+	conn, metadata := inbound.NewSocket(l.target, conn, C.TUNNEL, additions...)
+	metadata.SpecialProxy = l.proxy
+	tunnel.HandleTCPConn(conn, metadata)
 }
 
 func New(addr, target, proxy string, tunnel C.Tunnel, additions ...inbound.Addition) (*Listener, error) {

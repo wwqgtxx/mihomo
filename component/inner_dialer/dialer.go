@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	C "github.com/Dreamacro/clash/constant"
-	icontext "github.com/Dreamacro/clash/context"
 )
 
 var tunnel C.Tunnel
@@ -45,8 +44,7 @@ func (d RemoteDialer) DialTCP(addr string, proxyName string) (net.Conn, error) {
 		SpecialProxy: proxyName,
 	}
 	metadata.Type = d.mType
-	connContext := icontext.NewConnContext(conn2, metadata)
-	go tunnel.HandleTCPConn(connContext)
+	go tunnel.HandleTCPConn(conn2, metadata)
 
 	return conn1, nil
 }

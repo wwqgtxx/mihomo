@@ -3,6 +3,7 @@ package tunnel
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/netip"
 	"path/filepath"
 	"runtime"
@@ -58,13 +59,15 @@ type tunnel struct{}
 
 var Tunnel C.Tunnel = tunnel{}
 
-func (t tunnel) HandleTCPConn(connCtx C.ConnContext) {
+func (t tunnel) HandleTCPConn(conn net.Conn, metadata *C.Metadata) {
+	connCtx := icontext.NewConnContext(conn, metadata)
 	handleTCPConn(connCtx)
 }
 
-func (t tunnel) HandleUDPPacket(packet C.PacketAdapter) {
+func (t tunnel) HandleUDPPacket(packet C.UDPPacket, metadata *C.Metadata) {
+	packetAdapter := C.NewPacketAdapter(packet, metadata)
 	select {
-	case udpQueue.In() <- packet:
+	case udpQueue.In() <- packetAdapter:
 	default:
 	}
 }
@@ -232,7 +235,7 @@ func preHandleMetadata(metadata *C.Metadata) error {
 	return nil
 }
 
-func resolveMetadata(ctx C.PlainContext, metadata *C.Metadata) (proxy C.Proxy, rule C.Rule, err error) {
+func resolveMetadata(metadata *C.Metadata) (proxy C.Proxy, rule C.Rule, err error) {
 	if metadata.SpecialProxy != "" {
 		var exist bool
 		proxy, exist = proxies[metadata.SpecialProxy]
@@ -318,7 +321,7 @@ func handleUDPConn(packet C.PacketAdapter) {
 		}()
 
 		pCtx := icontext.NewPacketConnContext(metadata)
-		proxy, rule, err := resolveMetadata(pCtx, metadata)
+		proxy, rule, err := resolveMetadata(metadata)
 		if err != nil {
 			log.Warnln("[UDP] Parse metadata failed: %s", err.Error())
 			return
@@ -415,7 +418,7 @@ func handleTCPConn(connCtx C.ConnContext) {
 		}()
 	}
 
-	proxy, rule, err := resolveMetadata(connCtx, metadata)
+	proxy, rule, err := resolveMetadata(metadata)
 	if err != nil {
 		log.Warnln("[Metadata] parse failed: %s", err.Error())
 		return

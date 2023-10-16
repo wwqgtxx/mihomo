@@ -25,7 +25,7 @@ require (
 	github.com/miekg/dns v1.1.56
 	github.com/openacid/low v0.1.21
 	github.com/oschwald/geoip2-golang v1.9.0
-	github.com/puzpuzpuz/xsync/v2 v2.5.0
+	github.com/puzpuzpuz/xsync/v2 v2.5.1
 	github.com/sagernet/netlink v0.0.0-20220905062125-8043b4a9aa97
 	github.com/sagernet/sing v0.2.13
 	github.com/sagernet/sing-mux v0.1.3
@@ -40,9 +40,9 @@ require (
 	go.etcd.io/bbolt v1.3.7
 	go.uber.org/automaxprocs v1.5.3
 	golang.org/x/crypto v0.14.0
-	golang.org/x/exp v0.0.0-20230811145659-89c5cff77bcb
-	golang.org/x/net v0.15.0
-	golang.org/x/sync v0.3.0
+	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
+	golang.org/x/net v0.17.0
+	golang.org/x/sync v0.4.0
 	golang.org/x/sys v0.13.0
 	gopkg.in/yaml.v3 v3.0.1
 	lukechampine.com/blake3 v1.2.1
@@ -91,10 +91,10 @@ require (
 	github.com/vishvananda/netns v0.0.4 // indirect
 	gitlab.com/yawning/bsaes.git v0.0.0-20190805113838-0a714cd429ec // indirect
 	go.uber.org/mock v0.3.0 // indirect
-	golang.org/x/mod v0.12.0 // indirect
+	golang.org/x/mod v0.13.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
-	golang.org/x/tools v0.13.0 // indirect
+	golang.org/x/tools v0.14.0 // indirect
 )
 
 replace github.com/sagernet/sing => github.com/metacubex/sing v0.0.0-20231001053806-1230641572b9

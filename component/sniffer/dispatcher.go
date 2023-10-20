@@ -35,13 +35,44 @@ type SnifferDispatcher struct {
 	parsePureIp     bool
 }
 
+func (sd *SnifferDispatcher) shouldOverride(metadata *C.Metadata) bool {
+	return (metadata.Host == "" && sd.parsePureIp) ||
+		sd.forceDomain.Has(metadata.Host) ||
+		(metadata.DNSMode == C.DNSMapping && sd.forceDnsMapping)
+}
+
+func (sd *SnifferDispatcher) UDPSniff(packet C.PacketAdapter) bool {
+	metadata := packet.Metadata()
+
+	if sd.shouldOverride(packet.Metadata()) {
+		for sniffer, config := range sd.sniffers {
+			if sniffer.SupportNetwork() == C.UDP || sniffer.SupportNetwork() == C.ALLNet {
+				inWhitelist := sniffer.SupportPort(metadata.DstPort)
+				overrideDest := config.OverrideDest
+
+				if inWhitelist {
+					host, err := sniffer.SniffData(packet.Data())
+					if err != nil {
+						continue
+					}
+
+					sd.replaceDomain(metadata, host, overrideDest)
+					return true
+				}
+			}
+		}
+	}
+
+	return false
+}
+
 func (sd *SnifferDispatcher) TCPSniff(conn *N.BufferedConn, metadata *C.Metadata) {
 	switch metadata.Type {
 	case C.INNER, C.DNS, C.MTPROXY, C.PROVIDER: // ignore inner connection
 		return
 	}
 
-	if (metadata.Host == "" && sd.parsePureIp) || sd.forceDomain.Has(metadata.Host) || (metadata.DNSMode == C.DNSMapping && sd.forceDnsMapping) {
+	if sd.shouldOverride(metadata) {
 		inWhitelist := false
 		overrideDest := false
 		for sniffer, config := range sd.sniffers {
@@ -126,7 +157,7 @@ func (sd *SnifferDispatcher) sniffDomain(conn *N.BufferedConn, metadata *C.Metad
 				continue
 			}
 
-			host, err := s.SniffTCP(bytes)
+			host, err := s.SniffData(bytes)
 			if err != nil {
 				//log.Debugln("[Sniffer] [%s] Sniff data failed %s", s.Protocol(), metadata.DstIP)
 				continue
@@ -195,6 +226,8 @@ func NewSniffer(name sniffer.Type, snifferConfig SnifferConfig) (sniffer.Sniffer
 		return NewTLSSniffer(snifferConfig)
 	case sniffer.HTTP:
 		return NewHTTPSniffer(snifferConfig)
+	case sniffer.QUIC:
+		return NewQuicSniffer(snifferConfig)
 	default:
 		return nil, ErrorUnsupportedSniffer
 	}

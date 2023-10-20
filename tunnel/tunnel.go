@@ -275,6 +275,10 @@ func handleUDPConn(packet C.PacketAdapter) {
 		return
 	}
 
+	if sniffer.Dispatcher.Enable() && sniffingEnable {
+		sniffer.Dispatcher.UDPSniff(packet)
+	}
+
 	// local resolve UDP dns
 	if !metadata.Resolved() {
 		ips, err := resolver.LookupIPWithResolver(context.Background(), metadata.Host, resolver.DialerResolver)

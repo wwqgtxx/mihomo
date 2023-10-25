@@ -164,11 +164,14 @@ func msgToDomain(msg *D.Msg) string {
 	return ""
 }
 
+var errIPNotFound = errors.New("couldn't find ip")
+
 func batchExchange(ctx context.Context, clients []dnsClient, m *D.Msg) (msg *D.Msg, cache bool, err error) {
 	cache = true
 	fast, ctx := picker.WithTimeout[*D.Msg](ctx, resolver.DefaultDNSTimeout)
 	defer fast.Close()
 	domain := msgToDomain(m)
+	var noIpMsg *D.Msg
 	for _, client := range clients {
 		if _, isRCodeClient := client.(rcodeClient); isRCodeClient {
 			msg, err = client.ExchangeContext(ctx, m)
@@ -185,13 +188,31 @@ func batchExchange(ctx context.Context, clients []dnsClient, m *D.Msg) (msg *D.M
 				// so we would ignore RCode errors from RCode clients.
 				return nil, errors.New("server failure: " + D.RcodeToString[m.Rcode])
 			}
-			log.Debugln("[DNS] %s --> %s, from %s", domain, msgToIP(m), client.Address())
+			if ips := msgToIP(m); len(m.Question) > 0 {
+				qType := m.Question[0].Qtype
+				log.Debugln("[DNS] %s --> %s %s from %s", domain, ips, D.Type(qType), client.Address())
+				switch qType {
+				case D.TypeAAAA:
+					if len(ips) == 0 {
+						noIpMsg = m
+						return nil, errIPNotFound
+					}
+				case D.TypeA:
+					if len(ips) == 0 {
+						noIpMsg = m
+						return nil, errIPNotFound
+					}
+				}
+			}
 			return m, nil
 		})
 	}
 
 	msg = fast.Wait()
 	if msg == nil {
+		if noIpMsg != nil {
+			return noIpMsg, false, nil
+		}
 		err = errors.New("all DNS requests failed")
 		if fErr := fast.Error(); fErr != nil {
 			err = fmt.Errorf("%w, first error: %w", err, fErr)

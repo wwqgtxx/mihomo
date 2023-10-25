@@ -41,8 +41,8 @@ func SetUseSystemDnsDial(newSystemDnsDial bool) {
 }
 
 type dnsClient interface {
-	Exchange(m *D.Msg) (msg *D.Msg, err error)
 	ExchangeContext(ctx context.Context, m *D.Msg) (msg *D.Msg, err error)
+	Address() string
 }
 
 type result struct {
@@ -142,11 +142,6 @@ func (r *Resolver) shouldIPFallback(ip netip.Addr) bool {
 	return false
 }
 
-// Exchange a batch of dns request, and it use cache
-func (r *Resolver) Exchange(m *D.Msg) (msg *D.Msg, err error) {
-	return r.ExchangeContext(context.Background(), m)
-}
-
 // ExchangeContext a batch of dns request with context.Context, and it use cache
 func (r *Resolver) ExchangeContext(ctx context.Context, m *D.Msg) (msg *D.Msg, err error) {
 	if len(m.Question) == 0 {
@@ -189,6 +184,7 @@ func (r *Resolver) exchangeWithoutCache(ctx context.Context, m *D.Msg) (msg *D.M
 	fn := func() (result any, err error) {
 		ctx, cancel := context.WithTimeout(context.Background(), resolver.DefaultDNSTimeout) // reset timeout in singleflight
 		defer cancel()
+		cache := false
 
 		defer func() {
 			if err != nil {
@@ -198,22 +194,28 @@ func (r *Resolver) exchangeWithoutCache(ctx context.Context, m *D.Msg) (msg *D.M
 			}
 
 			msg := result.(*D.Msg)
-			// OPT RRs MUST NOT be cached, forwarded, or stored in or loaded from master files.
-			msg.Extra = lo.Filter(msg.Extra, func(rr D.RR, index int) bool {
-				return rr.Header().Rrtype != D.TypeOPT
-			})
-			putMsgToCache(r.lruCache, q.String(), q, msg)
+
+			if cache {
+				// OPT RRs MUST NOT be cached, forwarded, or stored in or loaded from master files.
+				msg.Extra = lo.Filter(msg.Extra, func(rr D.RR, index int) bool {
+					return rr.Header().Rrtype != D.TypeOPT
+				})
+				putMsgToCache(r.lruCache, q.String(), q, msg)
+			}
 		}()
 
 		isIPReq := isIPRequest(q)
 		if isIPReq {
+			cache = true
 			return r.ipExchange(ctx, m)
 		}
 
 		if matched := r.matchPolicy(m); len(matched) != 0 {
-			return r.batchExchange(ctx, matched, m)
+			result, cache, err = batchExchange(ctx, matched, m)
+			return
 		}
-		return r.batchExchange(ctx, r.main, m)
+		result, cache, err = batchExchange(ctx, r.main, m)
+		return
 	}
 
 	ch := r.group.DoChan(q.String(), fn)
@@ -252,13 +254,6 @@ func (r *Resolver) exchangeWithoutCache(ctx context.Context, m *D.Msg) (msg *D.M
 	}
 
 	return
-}
-
-func (r *Resolver) batchExchange(ctx context.Context, clients []dnsClient, m *D.Msg) (msg *D.Msg, err error) {
-	ctx, cancel := context.WithTimeout(ctx, resolver.DefaultDNSTimeout)
-	defer cancel()
-
-	return batchExchange(ctx, clients, m)
 }
 
 func (r *Resolver) matchPolicy(m *D.Msg) []dnsClient {
@@ -396,7 +391,7 @@ func (r *Resolver) msgToDomain(msg *D.Msg) string {
 func (r *Resolver) asyncExchange(ctx context.Context, client []dnsClient, msg *D.Msg) <-chan *result {
 	ch := make(chan *result, 1)
 	go func() {
-		res, err := r.batchExchange(ctx, client, msg)
+		res, _, err := batchExchange(ctx, client, msg)
 		ch <- &result{Msg: res, Error: err}
 	}()
 	return ch

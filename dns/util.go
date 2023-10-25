@@ -12,6 +12,7 @@ import (
 
 	"github.com/Dreamacro/clash/common/cache"
 	"github.com/Dreamacro/clash/common/picker"
+	"github.com/Dreamacro/clash/component/resolver"
 	"github.com/Dreamacro/clash/log"
 
 	D "github.com/miekg/dns"
@@ -107,6 +108,9 @@ func transform(servers []NameServer, resolver *Resolver) []dnsClient {
 			}
 			ret = append(ret, clients...)
 			continue
+		case "rcode":
+			ret = append(ret, newRCodeClient(s.Addr))
+			continue
 		}
 
 		host, port, _ := net.SplitHostPort(s.Addr)
@@ -161,30 +165,46 @@ func msgToIP(msg *D.Msg) []netip.Addr {
 	return ips
 }
 
-func batchExchange(ctx context.Context, clients []dnsClient, m *D.Msg) (msg *D.Msg, err error) {
-	fast, ctx := picker.WithContext(ctx)
+func msgToDomain(msg *D.Msg) string {
+	if len(msg.Question) > 0 {
+		return strings.TrimRight(msg.Question[0].Name, ".")
+	}
+
+	return ""
+}
+
+func batchExchange(ctx context.Context, clients []dnsClient, m *D.Msg) (msg *D.Msg, cache bool, err error) {
+	cache = true
+	fast, ctx := picker.WithTimeout[*D.Msg](ctx, resolver.DefaultDNSTimeout)
+	defer fast.Close()
+	domain := msgToDomain(m)
 	for _, client := range clients {
-		r := client
-		fast.Go(func() (any, error) {
-			m, err := r.ExchangeContext(ctx, m)
+		if _, isRCodeClient := client.(rcodeClient); isRCodeClient {
+			msg, err = client.ExchangeContext(ctx, m)
+			return msg, false, err
+		}
+		client := client // shadow define client to ensure the value captured by the closure will not be changed in the next loop
+		fast.Go(func() (*D.Msg, error) {
+			log.Debugln("[DNS] resolve %s from %s", domain, client.Address())
+			m, err := client.ExchangeContext(ctx, m)
 			if err != nil {
 				return nil, err
-			} else if m.Rcode == D.RcodeServerFailure || m.Rcode == D.RcodeRefused {
-				return nil, errors.New("server failure")
+			} else if cache && (m.Rcode == D.RcodeServerFailure || m.Rcode == D.RcodeRefused) {
+				// currently, cache indicates whether this msg was from a RCode client,
+				// so we would ignore RCode errors from RCode clients.
+				return nil, errors.New("server failure: " + D.RcodeToString[m.Rcode])
 			}
+			log.Debugln("[DNS] %s --> %s, from %s", domain, msgToIP(m), client.Address())
 			return m, nil
 		})
 	}
 
-	elm := fast.Wait()
-	if elm == nil {
-		err := errors.New("all DNS requests failed")
+	msg = fast.Wait()
+	if msg == nil {
+		err = errors.New("all DNS requests failed")
 		if fErr := fast.Error(); fErr != nil {
 			err = fmt.Errorf("%w, first error: %w", err, fErr)
 		}
-		return nil, err
 	}
-
-	msg = elm.(*D.Msg)
 	return
 }

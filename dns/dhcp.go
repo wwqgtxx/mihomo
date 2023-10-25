@@ -4,13 +4,12 @@ import (
 	"context"
 	"net"
 	"net/netip"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/Dreamacro/clash/component/dhcp"
 	"github.com/Dreamacro/clash/component/iface"
-	"github.com/Dreamacro/clash/component/resolver"
-
 	D "github.com/miekg/dns"
 )
 
@@ -33,15 +32,19 @@ type dhcpClient struct {
 	err       error
 }
 
-func (dc *dhcpClient) UseRemote() bool {
-	return false
+var _ dnsClient = (*dhcpClient)(nil)
+
+// Address implements dnsClient
+func (d *dhcpClient) Address() string {
+	addrs := make([]string, 0)
+	for _, c := range d.clients {
+		addrs = append(addrs, c.Address())
+	}
+	return strings.Join(addrs, ",")
 }
 
-func (d *dhcpClient) Exchange(m *D.Msg) (msg *D.Msg, err error) {
-	ctx, cancel := context.WithTimeout(context.Background(), resolver.DefaultDNSTimeout)
-	defer cancel()
-
-	return d.ExchangeContext(ctx, m)
+func (dc *dhcpClient) UseRemote() bool {
+	return false
 }
 
 func (d *dhcpClient) ExchangeContext(ctx context.Context, m *D.Msg) (msg *D.Msg, err error) {
@@ -50,7 +53,8 @@ func (d *dhcpClient) ExchangeContext(ctx context.Context, m *D.Msg) (msg *D.Msg,
 		return nil, err
 	}
 
-	return batchExchange(ctx, clients, m)
+	msg, _, err = batchExchange(ctx, clients, m)
+	return
 }
 
 func (d *dhcpClient) resolve(ctx context.Context) ([]dnsClient, error) {

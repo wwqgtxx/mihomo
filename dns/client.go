@@ -26,10 +26,26 @@ type client struct {
 	useRemote    bool
 	proxyAdapter C.ProxyAdapter
 	proxyName    string
+	addr         string
 }
 
-func (c *client) Exchange(m *D.Msg) (*D.Msg, error) {
-	return c.ExchangeContext(context.Background(), m)
+var _ dnsClient = (*client)(nil)
+
+// Address implements dnsClient
+func (c *client) Address() string {
+	if len(c.addr) != 0 {
+		return c.addr
+	}
+	schema := "udp"
+	if strings.HasPrefix(c.Client.Net, "tcp") {
+		schema = "tcp"
+		if strings.HasSuffix(c.Client.Net, "tls") {
+			schema = "tls"
+		}
+	}
+
+	c.addr = fmt.Sprintf("%s://%s", schema, net.JoinHostPort(c.host, c.port))
+	return c.addr
 }
 
 func (c *client) ExchangeContext(ctx context.Context, m *D.Msg) (*D.Msg, error) {

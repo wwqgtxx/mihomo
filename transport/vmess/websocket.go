@@ -345,6 +345,13 @@ func streamWebsocketConn(ctx context.Context, conn net.Conn, c *WebsocketConfig,
 			} else {
 				conn = tls.Client(conn, dialer.TLSConfig)
 			}
+			if tlsConn, ok := conn.(interface {
+				HandshakeContext(ctx context.Context) error
+			}); ok {
+				if err = tlsConn.HandshakeContext(ctx); err != nil {
+					return nil, err
+				}
+			}
 		}
 		request := &http.Request{
 			Method: http.MethodGet,

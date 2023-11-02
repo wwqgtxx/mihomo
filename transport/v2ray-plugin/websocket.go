@@ -11,13 +11,14 @@ import (
 
 // Option is options of websocket obfs
 type Option struct {
-	Host           string
-	Port           string
-	Path           string
-	Headers        map[string]string
-	TLS            bool
-	SkipCertVerify bool
-	Mux            bool
+	Host             string
+	Port             string
+	Path             string
+	Headers          map[string]string
+	TLS              bool
+	SkipCertVerify   bool
+	Mux              bool
+	V2rayHttpUpgrade bool
 }
 
 // NewV2rayObfs return a HTTPObfs
@@ -28,10 +29,11 @@ func NewV2rayObfs(ctx context.Context, conn net.Conn, option *Option) (net.Conn,
 	}
 
 	config := &vmess.WebsocketConfig{
-		Host:    option.Host,
-		Port:    option.Port,
-		Path:    option.Path,
-		Headers: header,
+		Host:             option.Host,
+		Port:             option.Port,
+		Path:             option.Path,
+		V2rayHttpUpgrade: option.V2rayHttpUpgrade,
+		Headers:          header,
 	}
 
 	if option.TLS {

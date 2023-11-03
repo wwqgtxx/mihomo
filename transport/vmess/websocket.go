@@ -322,10 +322,26 @@ func streamWebsocketConn(ctx context.Context, conn net.Conn, c *WebsocketConfig,
 		return nil, fmt.Errorf("parse url %s error: %w", c.Path, err)
 	}
 
-	scheme := "ws"
+	uri := url.URL{
+		Scheme:   "ws",
+		Host:     net.JoinHostPort(c.Host, c.Port),
+		Path:     u.Path,
+		RawQuery: u.RawQuery,
+	}
+
 	if c.TLS {
-		scheme = "wss"
-		conn = tls.Client(conn, c.TLSConfig)
+		uri.Scheme = "wss"
+		config := c.TLSConfig
+		if config == nil { // The config cannot be nil
+			config = &tls.Config{NextProtos: []string{"http/1.1"}}
+		}
+		if config.ServerName == "" && !config.InsecureSkipVerify { // users must set either ServerName or InsecureSkipVerify in the config.
+			config = config.Clone()
+			config.ServerName = uri.Host
+		}
+
+		conn = tls.Client(conn, config)
+
 		if tlsConn, ok := conn.(interface {
 			HandshakeContext(ctx context.Context) error
 		}); ok {
@@ -333,13 +349,6 @@ func streamWebsocketConn(ctx context.Context, conn net.Conn, c *WebsocketConfig,
 				return nil, err
 			}
 		}
-	}
-
-	uri := url.URL{
-		Scheme:   scheme,
-		Host:     net.JoinHostPort(c.Host, c.Port),
-		Path:     u.Path,
-		RawQuery: u.RawQuery,
 	}
 
 	request := &http.Request{

@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/Dreamacro/clash/component/mtproxy/common"
+	"github.com/metacubex/mihomo/component/mtproxy/common"
 )
 
 func Generate(secretTypeOrHostName string) {

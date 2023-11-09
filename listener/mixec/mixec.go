@@ -4,14 +4,14 @@ import (
 	"net"
 	"strings"
 
-	"github.com/Dreamacro/clash/adapter/inbound"
-	N "github.com/Dreamacro/clash/common/net"
-	C "github.com/Dreamacro/clash/constant"
-	"github.com/Dreamacro/clash/listener/mtproxy"
-	"github.com/Dreamacro/clash/listener/socks"
-	"github.com/Dreamacro/clash/log"
-	"github.com/Dreamacro/clash/transport/socks4"
-	"github.com/Dreamacro/clash/transport/socks5"
+	"github.com/metacubex/mihomo/adapter/inbound"
+	N "github.com/metacubex/mihomo/common/net"
+	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/listener/mtproxy"
+	"github.com/metacubex/mihomo/listener/socks"
+	"github.com/metacubex/mihomo/log"
+	"github.com/metacubex/mihomo/transport/socks4"
+	"github.com/metacubex/mihomo/transport/socks5"
 )
 
 type Listener struct {

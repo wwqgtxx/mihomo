@@ -18,9 +18,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Dreamacro/clash/common/buf"
-	N "github.com/Dreamacro/clash/common/net"
-	"github.com/Dreamacro/clash/log"
+	"github.com/metacubex/mihomo/common/buf"
+	N "github.com/metacubex/mihomo/common/net"
+	"github.com/metacubex/mihomo/log"
 
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"

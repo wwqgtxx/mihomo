@@ -3,7 +3,7 @@ package statistic
 import (
 	"time"
 
-	"github.com/Dreamacro/clash/common/atomic"
+	"github.com/metacubex/mihomo/common/atomic"
 	"github.com/puzpuzpuz/xsync/v2"
 )
 

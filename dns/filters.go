@@ -4,8 +4,8 @@ import (
 	"net/netip"
 	"strings"
 
-	"github.com/Dreamacro/clash/component/mmdb"
-	"github.com/Dreamacro/clash/component/trie"
+	"github.com/metacubex/mihomo/component/mmdb"
+	"github.com/metacubex/mihomo/component/trie"
 )
 
 type fallbackIPFilter interface {

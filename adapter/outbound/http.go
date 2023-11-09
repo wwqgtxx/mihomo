@@ -13,10 +13,10 @@ import (
 	"net/url"
 	"strconv"
 
-	N "github.com/Dreamacro/clash/common/net"
-	"github.com/Dreamacro/clash/component/dialer"
-	"github.com/Dreamacro/clash/component/proxydialer"
-	C "github.com/Dreamacro/clash/constant"
+	N "github.com/metacubex/mihomo/common/net"
+	"github.com/metacubex/mihomo/component/dialer"
+	"github.com/metacubex/mihomo/component/proxydialer"
+	C "github.com/metacubex/mihomo/constant"
 )
 
 type Http struct {

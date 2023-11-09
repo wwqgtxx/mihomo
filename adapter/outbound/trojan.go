@@ -8,12 +8,12 @@ import (
 	"net/http"
 	"strconv"
 
-	N "github.com/Dreamacro/clash/common/net"
-	"github.com/Dreamacro/clash/component/dialer"
-	"github.com/Dreamacro/clash/component/proxydialer"
-	C "github.com/Dreamacro/clash/constant"
-	"github.com/Dreamacro/clash/transport/gun"
-	"github.com/Dreamacro/clash/transport/trojan"
+	N "github.com/metacubex/mihomo/common/net"
+	"github.com/metacubex/mihomo/component/dialer"
+	"github.com/metacubex/mihomo/component/proxydialer"
+	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/transport/gun"
+	"github.com/metacubex/mihomo/transport/trojan"
 
 	"golang.org/x/net/http2"
 )

@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Dreamacro/clash/common/structure"
-	C "github.com/Dreamacro/clash/constant"
-	types "github.com/Dreamacro/clash/constant/provider"
+	"github.com/metacubex/mihomo/common/structure"
+	C "github.com/metacubex/mihomo/constant"
+	types "github.com/metacubex/mihomo/constant/provider"
 )
 
 var (

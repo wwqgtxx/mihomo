@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/Dreamacro/clash/component/mtproxy/common"
+	"github.com/metacubex/mihomo/component/mtproxy/common"
 
 	"github.com/zhangyunhao116/fastrand"
 )

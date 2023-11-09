@@ -10,25 +10,25 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Dreamacro/clash/adapter"
-	"github.com/Dreamacro/clash/adapter/outbound"
-	"github.com/Dreamacro/clash/adapter/outboundgroup"
-	"github.com/Dreamacro/clash/adapter/provider"
-	N "github.com/Dreamacro/clash/common/net"
-	"github.com/Dreamacro/clash/common/utils"
-	"github.com/Dreamacro/clash/component/auth"
-	"github.com/Dreamacro/clash/component/fakeip"
-	SNIFF "github.com/Dreamacro/clash/component/sniffer"
-	"github.com/Dreamacro/clash/component/trie"
-	C "github.com/Dreamacro/clash/constant"
-	providerTypes "github.com/Dreamacro/clash/constant/provider"
-	snifferTypes "github.com/Dreamacro/clash/constant/sniffer"
-	"github.com/Dreamacro/clash/dns"
-	L "github.com/Dreamacro/clash/listener"
-	LC "github.com/Dreamacro/clash/listener/config"
-	"github.com/Dreamacro/clash/log"
-	R "github.com/Dreamacro/clash/rule"
-	T "github.com/Dreamacro/clash/tunnel"
+	"github.com/metacubex/mihomo/adapter"
+	"github.com/metacubex/mihomo/adapter/outbound"
+	"github.com/metacubex/mihomo/adapter/outboundgroup"
+	"github.com/metacubex/mihomo/adapter/provider"
+	N "github.com/metacubex/mihomo/common/net"
+	"github.com/metacubex/mihomo/common/utils"
+	"github.com/metacubex/mihomo/component/auth"
+	"github.com/metacubex/mihomo/component/fakeip"
+	SNIFF "github.com/metacubex/mihomo/component/sniffer"
+	"github.com/metacubex/mihomo/component/trie"
+	C "github.com/metacubex/mihomo/constant"
+	providerTypes "github.com/metacubex/mihomo/constant/provider"
+	snifferTypes "github.com/metacubex/mihomo/constant/sniffer"
+	"github.com/metacubex/mihomo/dns"
+	L "github.com/metacubex/mihomo/listener"
+	LC "github.com/metacubex/mihomo/listener/config"
+	"github.com/metacubex/mihomo/log"
+	R "github.com/metacubex/mihomo/rule"
+	T "github.com/metacubex/mihomo/tunnel"
 
 	"gopkg.in/yaml.v3"
 )
@@ -127,7 +127,7 @@ type Experimental struct {
 	QUICGoDisableECN bool `yaml:"quic-go-disable-ecn"`
 }
 
-// Config is clash config manager
+// Config is mihomo config manager
 type Config struct {
 	General        *General
 	DNS            *DNS

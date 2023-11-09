@@ -8,7 +8,7 @@ import (
 	"net"
 	"strconv"
 
-	"github.com/Dreamacro/clash/component/auth"
+	"github.com/metacubex/mihomo/component/auth"
 )
 
 const Version = 0x04

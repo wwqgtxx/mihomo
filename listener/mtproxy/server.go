@@ -5,13 +5,13 @@ import (
 	"net"
 	"strings"
 
-	"github.com/Dreamacro/clash/adapter/inbound"
-	N "github.com/Dreamacro/clash/common/net"
-	"github.com/Dreamacro/clash/component/mtproxy/common"
-	"github.com/Dreamacro/clash/component/mtproxy/server_protocol"
-	"github.com/Dreamacro/clash/component/mtproxy/tools"
-	C "github.com/Dreamacro/clash/constant"
-	"github.com/Dreamacro/clash/log"
+	"github.com/metacubex/mihomo/adapter/inbound"
+	N "github.com/metacubex/mihomo/common/net"
+	"github.com/metacubex/mihomo/component/mtproxy/common"
+	"github.com/metacubex/mihomo/component/mtproxy/server_protocol"
+	"github.com/metacubex/mihomo/component/mtproxy/tools"
+	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/log"
 )
 
 const (

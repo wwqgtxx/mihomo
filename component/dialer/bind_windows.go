@@ -8,7 +8,7 @@ import (
 	"syscall"
 	"unsafe"
 
-	"github.com/Dreamacro/clash/component/iface"
+	"github.com/metacubex/mihomo/component/iface"
 )
 
 const (

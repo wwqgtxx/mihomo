@@ -8,11 +8,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Dreamacro/clash/common/cache"
-	"github.com/Dreamacro/clash/component/fakeip"
-	"github.com/Dreamacro/clash/component/resolver"
-	"github.com/Dreamacro/clash/component/trie"
-	C "github.com/Dreamacro/clash/constant"
+	"github.com/metacubex/mihomo/common/cache"
+	"github.com/metacubex/mihomo/component/fakeip"
+	"github.com/metacubex/mihomo/component/resolver"
+	"github.com/metacubex/mihomo/component/trie"
+	C "github.com/metacubex/mihomo/constant"
 
 	D "github.com/miekg/dns"
 	"github.com/samber/lo"

@@ -1,9 +1,9 @@
-module clash-test
+module mihomo-test
 
 go 1.20
 
 require (
-	github.com/Dreamacro/clash v0.0.0 // local
+	github.com/metacubex/mihomo v0.0.0 // local
 	github.com/docker/docker v23.0.1+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/miekg/dns v1.1.52
@@ -94,4 +94,4 @@ require (
 	lukechampine.com/blake3 v1.1.7 // indirect
 )
 
-replace github.com/Dreamacro/clash => ../
+replace github.com/metacubex/mihomo => ../

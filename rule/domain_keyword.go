@@ -3,7 +3,7 @@ package rules
 import (
 	"strings"
 
-	C "github.com/Dreamacro/clash/constant"
+	C "github.com/metacubex/mihomo/constant"
 )
 
 type DomainKeyword struct {

@@ -4,8 +4,8 @@ import (
 	_ "embed"
 	"sync"
 
-	C "github.com/Dreamacro/clash/constant"
-	"github.com/Dreamacro/clash/log"
+	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/log"
 
 	"github.com/oschwald/geoip2-golang"
 )

@@ -4,8 +4,8 @@ import (
 	"context"
 	"net/http"
 
-	providerTypes "github.com/Dreamacro/clash/constant/provider"
-	"github.com/Dreamacro/clash/tunnel"
+	providerTypes "github.com/metacubex/mihomo/constant/provider"
+	"github.com/metacubex/mihomo/tunnel"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"

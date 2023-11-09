@@ -5,8 +5,8 @@ import (
 	"regexp"
 	"strings"
 
-	S "github.com/Dreamacro/clash/component/stack"
-	C "github.com/Dreamacro/clash/constant"
+	S "github.com/metacubex/mihomo/component/stack"
+	C "github.com/metacubex/mihomo/constant"
 )
 
 type Logic struct {

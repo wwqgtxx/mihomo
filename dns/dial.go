@@ -4,8 +4,8 @@ import (
 	"context"
 	"net"
 
-	"github.com/Dreamacro/clash/component/inner_dialer"
-	C "github.com/Dreamacro/clash/constant"
+	"github.com/metacubex/mihomo/component/inner_dialer"
+	C "github.com/metacubex/mihomo/constant"
 )
 
 var remoteDialer = inner_dialer.NewDialer(C.DNS)

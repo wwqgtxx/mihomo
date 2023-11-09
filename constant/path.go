@@ -6,12 +6,12 @@ import (
 	"path/filepath"
 )
 
-const Name = "clash"
+const Name = "mihomo"
 
 // Path is used to get the configuration path
 //
-// on Unix systems, `$HOME/.config/clash`.
-// on Windows, `%USERPROFILE%/.config/clash`.
+// on Unix systems, `$HOME/.config/mihomo`.
+// on Windows, `%USERPROFILE%/.config/mihomo`.
 var Path = func() *path {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {

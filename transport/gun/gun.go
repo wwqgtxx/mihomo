@@ -18,8 +18,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Dreamacro/clash/common/atomic"
-	"github.com/Dreamacro/clash/common/pool"
+	"github.com/metacubex/mihomo/common/atomic"
+	"github.com/metacubex/mihomo/common/pool"
 
 	"golang.org/x/net/http2"
 )

@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Dreamacro/clash/adapter"
-	C "github.com/Dreamacro/clash/constant"
-	types "github.com/Dreamacro/clash/constant/provider"
-	"github.com/Dreamacro/clash/tunnel/statistic"
+	"github.com/metacubex/mihomo/adapter"
+	C "github.com/metacubex/mihomo/constant"
+	types "github.com/metacubex/mihomo/constant/provider"
+	"github.com/metacubex/mihomo/tunnel/statistic"
 
 	"github.com/dlclark/regexp2"
 	"gopkg.in/yaml.v3"

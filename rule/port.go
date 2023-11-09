@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"strings"
 
-	C "github.com/Dreamacro/clash/constant"
+	C "github.com/metacubex/mihomo/constant"
 )
 
 type Port struct {

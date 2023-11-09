@@ -22,10 +22,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/Dreamacro/clash/adapter/outbound"
-	C "github.com/Dreamacro/clash/constant"
-	"github.com/Dreamacro/clash/hub/executor"
-	"github.com/Dreamacro/clash/transport/socks5"
+	"github.com/metacubex/mihomo/adapter/outbound"
+	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/hub/executor"
+	"github.com/metacubex/mihomo/transport/socks5"
 )
 
 const (
@@ -645,7 +645,7 @@ func benchmarkProxy(b *testing.B, proxy C.ProxyAdapter) {
 	})
 }
 
-func TestClash_Basic(t *testing.T) {
+func TestMihomo_Basic(t *testing.T) {
 	basic := `
 mixed-port: 10000
 log-level: silent

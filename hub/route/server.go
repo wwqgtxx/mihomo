@@ -12,10 +12,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Dreamacro/clash/adapter/inbound"
-	C "github.com/Dreamacro/clash/constant"
-	"github.com/Dreamacro/clash/log"
-	"github.com/Dreamacro/clash/tunnel/statistic"
+	"github.com/metacubex/mihomo/adapter/inbound"
+	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/log"
+	"github.com/metacubex/mihomo/tunnel/statistic"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
@@ -98,7 +98,7 @@ func Init(secret string) {
 					w.Header().Set("Content-Type", v)
 				}
 
-				// change clash-dashboard's default url from Host
+				// change mihomo-dashboard's default url from Host
 				isRootPath := r.URL.Path == "/ui/"
 				if isRootPath {
 					fw := &fakeResponseWriter{w, &bytes.Buffer{}, -1}
@@ -201,7 +201,7 @@ func authentication(next http.Handler) http.Handler {
 }
 
 func hello(w http.ResponseWriter, r *http.Request) {
-	render.JSON(w, r, render.M{"hello": "clash"})
+	render.JSON(w, r, render.M{"hello": "mihomo"})
 }
 
 func traffic(w http.ResponseWriter, r *http.Request) {

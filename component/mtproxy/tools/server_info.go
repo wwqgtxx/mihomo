@@ -5,9 +5,9 @@ import (
 	"encoding/hex"
 	"errors"
 
-	"github.com/Dreamacro/clash/component/mtproxy/common"
-	"github.com/Dreamacro/clash/component/mtproxy/server_protocol"
-	"github.com/Dreamacro/clash/component/mtproxy/telegram"
+	"github.com/metacubex/mihomo/component/mtproxy/common"
+	"github.com/metacubex/mihomo/component/mtproxy/server_protocol"
+	"github.com/metacubex/mihomo/component/mtproxy/telegram"
 )
 
 type ServerInfo struct {

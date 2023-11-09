@@ -1,7 +1,7 @@
 package channel
 
 import (
-	"github.com/Dreamacro/clash/common/ring_queue"
+	"github.com/metacubex/mihomo/common/ring_queue"
 )
 
 // InfiniteChannel implements the Channel interface with an infinite buffer between the input and the output.

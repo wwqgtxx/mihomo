@@ -9,11 +9,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/Dreamacro/clash/component/dialer"
-	"github.com/Dreamacro/clash/component/inner_dialer"
-	C "github.com/Dreamacro/clash/constant"
-	types "github.com/Dreamacro/clash/constant/provider"
-	"github.com/Dreamacro/clash/log"
+	"github.com/metacubex/mihomo/component/dialer"
+	"github.com/metacubex/mihomo/component/inner_dialer"
+	C "github.com/metacubex/mihomo/constant"
+	types "github.com/metacubex/mihomo/constant/provider"
+	"github.com/metacubex/mihomo/log"
 )
 
 var remoteDialer = inner_dialer.NewDialer(C.PROVIDER)
@@ -77,7 +77,7 @@ func (h *HTTPVehicle) Read() (buf []byte, err error) {
 			req.SetBasicAuth(user.Username(), password)
 		}
 
-		req.Header.Set("User-Agent", "clash")
+		req.Header.Set("User-Agent", "mihomo")
 
 		req = req.WithContext(ctx)
 

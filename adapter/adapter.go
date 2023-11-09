@@ -10,12 +10,12 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Dreamacro/clash/common/atomic"
-	"github.com/Dreamacro/clash/common/callback"
-	N "github.com/Dreamacro/clash/common/net"
-	"github.com/Dreamacro/clash/common/queue"
-	"github.com/Dreamacro/clash/component/dialer"
-	C "github.com/Dreamacro/clash/constant"
+	"github.com/metacubex/mihomo/common/atomic"
+	"github.com/metacubex/mihomo/common/callback"
+	N "github.com/metacubex/mihomo/common/net"
+	"github.com/metacubex/mihomo/common/queue"
+	"github.com/metacubex/mihomo/component/dialer"
+	C "github.com/metacubex/mihomo/constant"
 )
 
 type Proxy struct {

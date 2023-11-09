@@ -3,7 +3,7 @@ package observable
 import (
 	"sync"
 
-	"github.com/Dreamacro/clash/common/channel"
+	"github.com/metacubex/mihomo/common/channel"
 )
 
 type Subscription <-chan any

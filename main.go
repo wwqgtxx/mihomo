@@ -3,18 +3,18 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/Dreamacro/clash/component/mtproxy/tools"
+	"github.com/metacubex/mihomo/component/mtproxy/tools"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"runtime"
 	"syscall"
 
-	"github.com/Dreamacro/clash/config"
-	C "github.com/Dreamacro/clash/constant"
-	"github.com/Dreamacro/clash/hub"
-	"github.com/Dreamacro/clash/hub/executor"
-	"github.com/Dreamacro/clash/log"
+	"github.com/metacubex/mihomo/config"
+	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/hub"
+	"github.com/metacubex/mihomo/hub/executor"
+	"github.com/metacubex/mihomo/log"
 
 	"go.uber.org/automaxprocs/maxprocs"
 )
@@ -35,7 +35,7 @@ func init() {
 	flag.StringVar(&externalUI, "ext-ui", os.Getenv("CLASH_OVERRIDE_EXTERNAL_UI_DIR"), "override external ui directory")
 	flag.StringVar(&externalController, "ext-ctl", os.Getenv("CLASH_OVERRIDE_EXTERNAL_CONTROLLER"), "override external controller address")
 	flag.StringVar(&secret, "secret", os.Getenv("CLASH_OVERRIDE_SECRET"), "override secret for RESTful API")
-	flag.BoolVar(&version, "v", false, "show current version of clash")
+	flag.BoolVar(&version, "v", false, "show current version of mihomo")
 	flag.BoolVar(&testConfig, "t", false, "test configuration and exit")
 	flag.Parse()
 }
@@ -48,7 +48,7 @@ func main() {
 
 	maxprocs.Set(maxprocs.Logger(func(string, ...any) {}))
 	if version {
-		fmt.Printf("Clash %s %s %s with %s %s\n", C.Version, runtime.GOOS, runtime.GOARCH, runtime.Version(), C.BuildTime)
+		fmt.Printf("Mihomo %s %s %s with %s %s\n", C.Version, runtime.GOOS, runtime.GOARCH, runtime.Version(), C.BuildTime)
 		return
 	}
 
@@ -118,8 +118,8 @@ func main() {
 	}
 
 	// clean up
-	log.Warnln("Clash clean up")
+	log.Warnln("Mihomo clean up")
 	hub.CleanUp()
 
-	log.Warnln("Clash shutting down")
+	log.Warnln("Mihomo shutting down")
 }

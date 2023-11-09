@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Dreamacro/clash/component/mtproxy/common"
-	"github.com/Dreamacro/clash/component/mtproxy/tlstypes"
+	"github.com/metacubex/mihomo/component/mtproxy/common"
+	"github.com/metacubex/mihomo/component/mtproxy/tlstypes"
 )
 
 const (

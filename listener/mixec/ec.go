@@ -7,12 +7,12 @@ import (
 	"net/netip"
 	"sync"
 
-	"github.com/Dreamacro/clash/adapter/inbound"
-	"github.com/Dreamacro/clash/common/atomic"
-	C "github.com/Dreamacro/clash/constant"
-	"github.com/Dreamacro/clash/listener/sing_shadowsocks"
-	"github.com/Dreamacro/clash/listener/sing_vmess"
-	"github.com/Dreamacro/clash/transport/vmess"
+	"github.com/metacubex/mihomo/adapter/inbound"
+	"github.com/metacubex/mihomo/common/atomic"
+	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/listener/sing_shadowsocks"
+	"github.com/metacubex/mihomo/listener/sing_vmess"
+	"github.com/metacubex/mihomo/transport/vmess"
 )
 
 type ChanListener interface {

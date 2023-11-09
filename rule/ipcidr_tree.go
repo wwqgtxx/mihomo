@@ -1,7 +1,7 @@
 package rules
 
 import (
-	C "github.com/Dreamacro/clash/constant"
+	C "github.com/metacubex/mihomo/constant"
 
 	"github.com/kentik/patricia"
 	tree "github.com/kentik/patricia/generics_tree"

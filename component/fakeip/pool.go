@@ -6,8 +6,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Dreamacro/clash/component/profile/cachefile"
-	"github.com/Dreamacro/clash/component/trie"
+	"github.com/metacubex/mihomo/component/profile/cachefile"
+	"github.com/metacubex/mihomo/component/trie"
 )
 
 type store interface {

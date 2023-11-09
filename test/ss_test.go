@@ -8,10 +8,10 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/stretchr/testify/require"
 
-	"github.com/Dreamacro/clash/adapter/outbound"
+	"github.com/metacubex/mihomo/adapter/outbound"
 )
 
-func TestClash_Shadowsocks(t *testing.T) {
+func TestMihomo_Shadowsocks(t *testing.T) {
 	cfg := &container.Config{
 		Image:        ImageShadowsocksRust,
 		Entrypoint:   []string{"ssserver"},
@@ -43,7 +43,7 @@ func TestClash_Shadowsocks(t *testing.T) {
 	testSuit(t, proxy)
 }
 
-func TestClash_ShadowsocksObfsHTTP(t *testing.T) {
+func TestMihomo_ShadowsocksObfsHTTP(t *testing.T) {
 	cfg := &container.Config{
 		Image: ImageShadowsocks,
 		Env: []string{
@@ -81,7 +81,7 @@ func TestClash_ShadowsocksObfsHTTP(t *testing.T) {
 	testSuit(t, proxy)
 }
 
-func TestClash_ShadowsocksObfsTLS(t *testing.T) {
+func TestMihomo_ShadowsocksObfsTLS(t *testing.T) {
 	cfg := &container.Config{
 		Image: ImageShadowsocks,
 		Env: []string{
@@ -119,7 +119,7 @@ func TestClash_ShadowsocksObfsTLS(t *testing.T) {
 	testSuit(t, proxy)
 }
 
-func TestClash_ShadowsocksV2RayPlugin(t *testing.T) {
+func TestMihomo_ShadowsocksV2RayPlugin(t *testing.T) {
 	cfg := &container.Config{
 		Image: ImageShadowsocks,
 		Env: []string{

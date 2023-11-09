@@ -2,7 +2,7 @@ package rules
 
 import (
 	"fmt"
-	C "github.com/Dreamacro/clash/constant"
+	C "github.com/metacubex/mihomo/constant"
 	"strings"
 )
 

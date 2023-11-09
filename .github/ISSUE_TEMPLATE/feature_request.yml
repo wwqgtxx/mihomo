@@ -17,14 +17,14 @@ I have searched on the [issue tracker](……/) for a related feature request.
 "
           required: true
         - label: "
-我已经仔细看过 [Documentation](https://github.com/Dreamacro/clash/wiki/) 并无法自行解决问题
-I have read the [documentation](https://github.com/Dreamacro/clash/wiki/) and was unable to solve the issue.
+我已经仔细看过 [Documentation](https://github.com/metacubex/mihomo/wiki/) 并无法自行解决问题
+I have read the [documentation](https://github.com/metacubex/mihomo/wiki/) and was unable to solve the issue.
 "
           required: true
   - type: textarea
     attributes:
       label: Description
-      description: 请详细、清晰地表达你要提出的论述，例如这个问题如何影响到你？你想实现什么功能？目前 Clash Core 的行为是什麽？
+      description: 请详细、清晰地表达你要提出的论述，例如这个问题如何影响到你？你想实现什么功能？目前 Mihomo Core 的行为是什麽？
     validations:
       required: true
   - type: textarea

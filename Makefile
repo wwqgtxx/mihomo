@@ -1,9 +1,9 @@
-NAME=clashr
+NAME=mihomo
 BINDIR=bin
 VERSION=$(shell git describe --tags || echo "unknown-version")
 BUILDTIME=$(shell date -u)
-GOBUILD=CGO_ENABLED=0 go build -trimpath -tags with_gvisor -ldflags '-X "github.com/Dreamacro/clash/constant.Version=$(VERSION)" \
-		-X "github.com/Dreamacro/clash/constant.BuildTime=$(BUILDTIME)" \
+GOBUILD=CGO_ENABLED=0 go build -trimpath -tags with_gvisor -ldflags '-X "github.com/metacubex/mihomo/constant.Version=$(VERSION)" \
+		-X "github.com/metacubex/mihomo/constant.BuildTime=$(BUILDTIME)" \
 		-w -s -buildid='
 
 PLATFORM_LIST = \

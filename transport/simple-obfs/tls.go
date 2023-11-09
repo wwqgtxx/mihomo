@@ -8,7 +8,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/Dreamacro/clash/common/pool"
+	"github.com/metacubex/mihomo/common/pool"
 )
 
 const (

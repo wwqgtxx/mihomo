@@ -5,7 +5,7 @@ import (
 	"net"
 	"strconv"
 
-	C "github.com/Dreamacro/clash/constant"
+	C "github.com/metacubex/mihomo/constant"
 )
 
 var tunnel C.Tunnel

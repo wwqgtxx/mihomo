@@ -3,13 +3,13 @@ package outboundgroup
 import (
 	"errors"
 	"fmt"
-	"github.com/Dreamacro/clash/adapter"
+	"github.com/metacubex/mihomo/adapter"
 
-	"github.com/Dreamacro/clash/adapter/outbound"
-	"github.com/Dreamacro/clash/adapter/provider"
-	"github.com/Dreamacro/clash/common/structure"
-	C "github.com/Dreamacro/clash/constant"
-	types "github.com/Dreamacro/clash/constant/provider"
+	"github.com/metacubex/mihomo/adapter/outbound"
+	"github.com/metacubex/mihomo/adapter/provider"
+	"github.com/metacubex/mihomo/common/structure"
+	C "github.com/metacubex/mihomo/constant"
+	types "github.com/metacubex/mihomo/constant/provider"
 )
 
 var (

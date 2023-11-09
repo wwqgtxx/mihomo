@@ -10,11 +10,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Dreamacro/clash/adapter/provider"
-	"github.com/Dreamacro/clash/common/pool"
-	"github.com/Dreamacro/clash/common/structure"
-	C "github.com/Dreamacro/clash/constant"
-	P "github.com/Dreamacro/clash/constant/provider"
+	"github.com/metacubex/mihomo/adapter/provider"
+	"github.com/metacubex/mihomo/common/pool"
+	"github.com/metacubex/mihomo/common/structure"
+	C "github.com/metacubex/mihomo/constant"
+	P "github.com/metacubex/mihomo/constant/provider"
 )
 
 // RuleProvider interface

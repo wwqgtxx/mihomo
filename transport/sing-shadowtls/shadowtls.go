@@ -5,7 +5,7 @@ import (
 	"crypto/tls"
 	"net"
 
-	"github.com/Dreamacro/clash/log"
+	"github.com/metacubex/mihomo/log"
 
 	"github.com/sagernet/sing-shadowtls"
 )

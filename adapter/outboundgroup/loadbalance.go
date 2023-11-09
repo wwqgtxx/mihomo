@@ -8,12 +8,12 @@ import (
 	"net"
 	"sync"
 
-	"github.com/Dreamacro/clash/adapter/outbound"
-	"github.com/Dreamacro/clash/common/singledo"
-	"github.com/Dreamacro/clash/common/utils"
-	"github.com/Dreamacro/clash/component/dialer"
-	C "github.com/Dreamacro/clash/constant"
-	"github.com/Dreamacro/clash/constant/provider"
+	"github.com/metacubex/mihomo/adapter/outbound"
+	"github.com/metacubex/mihomo/common/singledo"
+	"github.com/metacubex/mihomo/common/utils"
+	"github.com/metacubex/mihomo/component/dialer"
+	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/constant/provider"
 
 	"github.com/zhangyunhao116/fastrand"
 	"golang.org/x/net/publicsuffix"

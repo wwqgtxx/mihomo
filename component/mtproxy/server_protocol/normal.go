@@ -11,7 +11,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/Dreamacro/clash/component/mtproxy/common"
+	"github.com/metacubex/mihomo/component/mtproxy/common"
 )
 
 type normalServerProtocol struct {

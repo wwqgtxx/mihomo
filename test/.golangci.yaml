@@ -11,6 +11,6 @@ linters-settings:
     sections:
       - standard
       - default
-      - prefix(github.com/Dreamacro/clash)
+      - prefix(github.com/metacubex/mihomo)
   staticcheck:
     go: '1.20'

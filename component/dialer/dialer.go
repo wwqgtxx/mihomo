@@ -8,7 +8,7 @@ import (
 	"net/netip"
 	"sync"
 
-	"github.com/Dreamacro/clash/component/resolver"
+	"github.com/metacubex/mihomo/component/resolver"
 )
 
 var (

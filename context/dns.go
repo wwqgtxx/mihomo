@@ -5,7 +5,7 @@ import (
 	"github.com/gofrs/uuid/v5"
 	"github.com/miekg/dns"
 
-	"github.com/Dreamacro/clash/common/utils"
+	"github.com/metacubex/mihomo/common/utils"
 )
 
 const (

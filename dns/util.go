@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Dreamacro/clash/common/cache"
-	"github.com/Dreamacro/clash/common/picker"
-	"github.com/Dreamacro/clash/component/resolver"
-	"github.com/Dreamacro/clash/log"
+	"github.com/metacubex/mihomo/common/cache"
+	"github.com/metacubex/mihomo/common/picker"
+	"github.com/metacubex/mihomo/component/resolver"
+	"github.com/metacubex/mihomo/log"
 
 	D "github.com/miekg/dns"
 	"github.com/samber/lo"

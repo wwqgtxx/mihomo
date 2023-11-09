@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/metacubex/mihomo/common/generics/list"
-	"github.com/metacubex/mihomo/common/generics/zero"
+	list "github.com/bahlo/generic-list-go"
+	"github.com/samber/lo"
 )
 
 // Option is part of Functional Options Pattern
@@ -88,7 +88,7 @@ func (c *LruCache[K, V]) Get(key K) (V, bool) {
 
 	el := c.get(key)
 	if el == nil {
-		return zero.GetZero[V](), false
+		return lo.Empty[V](), false
 	}
 	value := el.value
 
@@ -120,7 +120,7 @@ func (c *LruCache[K, V]) GetWithExpire(key K) (V, time.Time, bool) {
 
 	el := c.get(key)
 	if el == nil {
-		return zero.GetZero[V](), time.Time{}, false
+		return lo.Empty[V](), time.Time{}, false
 	}
 
 	return el.value, time.Unix(el.expires, 0), true

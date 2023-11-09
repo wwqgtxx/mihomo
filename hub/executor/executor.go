@@ -76,16 +76,16 @@ func ApplyConfig(cfg *config.Config, force bool) {
 
 	updateUsers(cfg.Users)
 	updateProxies(cfg.Proxies, cfg.Providers)
-	updateRules(cfg.Rules, cfg.SubRules, cfg.RulesProviders)
+	updateRules(cfg.Rules, cfg.SubRules, cfg.RuleProviders)
 	updateSniffer(cfg.Sniffer)
 	updateHosts(cfg.Hosts)
 	updateProfile(cfg)
 	updateGeneral(cfg.General, force)
 	updateListeners(cfg.Listeners)
-	updateDNS(cfg.DNS)
+	updateDNS(cfg.DNS, cfg.RuleProviders)
 	updateTun(cfg.General)
 	updateExperimental(cfg)
-	loadProvider(cfg.RulesProviders, cfg.Providers)
+	loadProvider(cfg.RuleProviders, cfg.Providers)
 	updateTunnels(cfg.Tunnels)
 }
 
@@ -175,7 +175,7 @@ func updateExperimental(c *config.Config) {
 	}
 }
 
-func updateDNS(c *config.DNS) {
+func updateDNS(c *config.DNS, ruleProvider map[string]providerTypes.RuleProvider) {
 	if !c.Enable {
 		resolver.DialerResolver = nil
 		resolver.DefaultResolver = nil
@@ -199,6 +199,7 @@ func updateDNS(c *config.DNS) {
 		},
 		Default:       c.DefaultNameserver,
 		Policy:        c.NameServerPolicy,
+		RuleProviders: ruleProvider,
 		SearchDomains: c.SearchDomains,
 	}
 

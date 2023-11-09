@@ -76,7 +76,7 @@ type ProxyProvider interface {
 type RuleProvider interface {
 	Provider
 	Rules() []constant.Rule
-	//Behavior() RuleBehavior
+	Behavior() RuleBehavior
 	//Match(*constant.Metadata) bool
 	//ShouldResolveIP() bool
 	//AsRule(adaptor string) constant.Rule

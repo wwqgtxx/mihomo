@@ -13,9 +13,11 @@ import (
 	"github.com/metacubex/mihomo/component/resolver"
 	"github.com/metacubex/mihomo/component/trie"
 	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/constant/provider"
 
 	D "github.com/miekg/dns"
 	"github.com/samber/lo"
+	orderedmap "github.com/wk8/go-ordered-map/v2"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -59,7 +61,7 @@ type Resolver struct {
 	fallbackIPFilters     []fallbackIPFilter
 	group                 singleflight.Group
 	lruCache              *cache.LruCache[string, *D.Msg]
-	policy                *trie.DomainTrie[[]dnsClient]
+	policy                []dnsPolicy
 	searchDomains         []string
 }
 
@@ -266,12 +268,12 @@ func (r *Resolver) matchPolicy(m *D.Msg) []dnsClient {
 		return nil
 	}
 
-	record := r.policy.Search(domain)
-	if record == nil {
-		return nil
+	for _, policy := range r.policy {
+		if dnsClients := policy.Match(domain); len(dnsClients) > 0 {
+			return dnsClients
+		}
 	}
-
-	return record.Data()
+	return nil
 }
 
 func (r *Resolver) shouldOnlyQueryFallback(m *D.Msg) bool {
@@ -414,6 +416,22 @@ type NameServer struct {
 	UseRemote    bool
 }
 
+func (ns NameServer) Equal(ns2 NameServer) bool {
+	defer func() {
+		// C.ProxyAdapter compare maybe panic, just ignore
+		recover()
+	}()
+	if ns.Net == ns2.Net &&
+		ns.Addr == ns2.Addr &&
+		ns.Interface == ns2.Interface &&
+		ns.ProxyAdapter == ns2.ProxyAdapter &&
+		ns.ProxyName == ns2.ProxyName &&
+		ns.UseRemote == ns2.UseRemote {
+		return true
+	}
+	return false
+}
+
 type FallbackFilter struct {
 	GeoIP     bool
 	GeoIPCode string
@@ -429,7 +447,8 @@ type Config struct {
 	FallbackFilter FallbackFilter
 	Pool           *fakeip.Pool
 	Hosts          *trie.DomainTrie[netip.Addr]
-	Policy         map[string]NameServer
+	Policy         *orderedmap.OrderedMap[string, []NameServer]
+	RuleProviders  map[string]provider.RuleProvider
 	SearchDomains  []string
 }
 
@@ -439,24 +458,82 @@ func NewResolver(config Config) (*Resolver, *Resolver) {
 		lruCache: cache.New[string, *D.Msg](cache.WithSize[string, *D.Msg](4096), cache.WithStale[string, *D.Msg](true)),
 	}
 
+	var nameServerCache []struct {
+		NameServer
+		dnsClient
+	}
+	cacheTransform := func(nameserver []NameServer) (result []dnsClient) {
+	LOOP:
+		for _, ns := range nameserver {
+			for _, nsc := range nameServerCache {
+				if nsc.NameServer.Equal(ns) {
+					result = append(result, nsc.dnsClient)
+					continue LOOP
+				}
+			}
+			// not in cache
+			dc := transform([]NameServer{ns}, defaultResolver)
+			if len(dc) > 0 {
+				dc := dc[0]
+				nameServerCache = append(nameServerCache, struct {
+					NameServer
+					dnsClient
+				}{NameServer: ns, dnsClient: dc})
+				result = append(result, dc)
+			}
+		}
+		return
+	}
+
 	r := &Resolver{
 		ipv6:          config.IPv6,
-		main:          transform(config.Main, defaultResolver),
+		main:          cacheTransform(config.Main),
 		lruCache:      cache.New[string, *D.Msg](cache.WithSize[string, *D.Msg](4096), cache.WithStale[string, *D.Msg](true)),
 		hosts:         config.Hosts,
 		searchDomains: config.SearchDomains,
 	}
 
 	if len(config.Fallback) != 0 {
-		r.fallback = transform(config.Fallback, defaultResolver)
+		r.fallback = cacheTransform(config.Fallback)
 	}
 
-	if len(config.Policy) != 0 {
-		r.policy = trie.New[[]dnsClient]()
-		for domain, nameserver := range config.Policy {
-			r.policy.Insert(domain, transform([]NameServer{nameserver}, defaultResolver))
+	if config.Policy.Len() != 0 {
+		r.policy = make([]dnsPolicy, 0)
+
+		var triePolicy *trie.DomainTrie[[]dnsClient]
+		insertTriePolicy := func() {
+			if triePolicy != nil {
+				triePolicy.Optimize()
+				r.policy = append(r.policy, domainTriePolicy{triePolicy})
+				triePolicy = nil
+			}
 		}
-		r.policy.Optimize()
+
+		for pair := config.Policy.Oldest(); pair != nil; pair = pair.Next() {
+			domain, nameserver := pair.Key, pair.Value
+			domain = strings.ToLower(domain)
+
+			if temp := strings.Split(domain, ":"); len(temp) == 2 {
+				prefix := temp[0]
+				key := temp[1]
+				switch strings.ToLower(prefix) {
+				case "rule-set":
+					if p, ok := config.RuleProviders[key]; ok {
+						insertTriePolicy()
+						r.policy = append(r.policy, domainSetPolicy{
+							domainSetProvider: p,
+							dnsClients:        cacheTransform(nameserver),
+						})
+						continue
+					}
+				}
+			}
+			if triePolicy == nil {
+				triePolicy = trie.New[[]dnsClient]()
+			}
+			_ = triePolicy.Insert(domain, cacheTransform(nameserver))
+		}
+		insertTriePolicy()
 	}
 
 	fallbackIPFilters := []fallbackIPFilter{}

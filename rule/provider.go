@@ -17,12 +17,6 @@ import (
 	P "github.com/metacubex/mihomo/constant/provider"
 )
 
-// RuleProvider interface
-type RuleProvider interface {
-	P.Provider
-	Rules() []C.Rule
-}
-
 type RuleSchema struct {
 	Payload []string `yaml:"payload"`
 	Rules   []string `yaml:"rules"`
@@ -63,6 +57,10 @@ func (rp *ruleSetProvider) Update() error {
 		rp.Fetcher.OnUpdate()(elm)
 	}
 	return err
+}
+
+func (rp *ruleSetProvider) Behavior() P.RuleBehavior {
+	return rp.behavior
 }
 
 func (rp *ruleSetProvider) Initial() error {
@@ -294,7 +292,7 @@ type ruleProviderSchema struct {
 	Interval int    `provider:"interval,omitempty"`
 }
 
-func ParseRuleProvider(name string, mapping map[string]any) (RuleProvider, error) {
+func ParseRuleProvider(name string, mapping map[string]any) (P.RuleProvider, error) {
 	decoder := structure.NewDecoder(structure.Option{TagName: "provider", WeaklyTypedInput: true})
 
 	schema := &ruleProviderSchema{}

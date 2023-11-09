@@ -7,6 +7,7 @@ import (
 	"net/netip"
 	"net/url"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -30,6 +31,7 @@ import (
 	R "github.com/metacubex/mihomo/rule"
 	T "github.com/metacubex/mihomo/tunnel"
 
+	orderedmap "github.com/wk8/go-ordered-map/v2"
 	"gopkg.in/yaml.v3"
 )
 
@@ -93,7 +95,7 @@ type DNS struct {
 	DefaultNameserver []dns.NameServer `yaml:"default-nameserver"`
 	FakeIPRange       *fakeip.Pool
 	Hosts             *trie.DomainTrie[netip.Addr]
-	NameServerPolicy  map[string]dns.NameServer
+	NameServerPolicy  *orderedmap.OrderedMap[string, []dns.NameServer]
 	SearchDomains     []string
 }
 
@@ -129,36 +131,36 @@ type Experimental struct {
 
 // Config is mihomo config manager
 type Config struct {
-	General        *General
-	DNS            *DNS
-	Experimental   *Experimental
-	Hosts          *trie.DomainTrie[netip.Addr]
-	Profile        *Profile
-	Rules          []C.Rule
-	SubRules       map[string][]C.Rule
-	RulesProviders map[string]providerTypes.RuleProvider
-	Users          []auth.AuthUser
-	Proxies        map[string]C.Proxy
-	Providers      map[string]providerTypes.ProxyProvider
-	Listeners      map[string]C.InboundListener
-	Tunnels        []LC.Tunnel
-	Sniffer        *Sniffer
+	General       *General
+	DNS           *DNS
+	Experimental  *Experimental
+	Hosts         *trie.DomainTrie[netip.Addr]
+	Profile       *Profile
+	Rules         []C.Rule
+	SubRules      map[string][]C.Rule
+	RuleProviders map[string]providerTypes.RuleProvider
+	Users         []auth.AuthUser
+	Proxies       map[string]C.Proxy
+	Providers     map[string]providerTypes.ProxyProvider
+	Listeners     map[string]C.InboundListener
+	Tunnels       []LC.Tunnel
+	Sniffer       *Sniffer
 }
 
 type RawDNS struct {
-	Enable            bool              `yaml:"enable"`
-	IPv6              bool              `yaml:"ipv6"`
-	UseHosts          bool              `yaml:"use-hosts"`
-	NameServer        []string          `yaml:"nameserver"`
-	Fallback          []string          `yaml:"fallback"`
-	FallbackFilter    RawFallbackFilter `yaml:"fallback-filter"`
-	Listen            string            `yaml:"listen"`
-	EnhancedMode      C.DNSMode         `yaml:"enhanced-mode"`
-	FakeIPRange       string            `yaml:"fake-ip-range"`
-	FakeIPFilter      []string          `yaml:"fake-ip-filter"`
-	DefaultNameserver []string          `yaml:"default-nameserver"`
-	NameServerPolicy  map[string]string `yaml:"nameserver-policy"`
-	SearchDomains     []string          `yaml:"search-domains"`
+	Enable            bool                                `yaml:"enable"`
+	IPv6              bool                                `yaml:"ipv6"`
+	UseHosts          bool                                `yaml:"use-hosts"`
+	NameServer        []string                            `yaml:"nameserver"`
+	Fallback          []string                            `yaml:"fallback"`
+	FallbackFilter    RawFallbackFilter                   `yaml:"fallback-filter"`
+	Listen            string                              `yaml:"listen"`
+	EnhancedMode      C.DNSMode                           `yaml:"enhanced-mode"`
+	FakeIPRange       string                              `yaml:"fake-ip-range"`
+	FakeIPFilter      []string                            `yaml:"fake-ip-filter"`
+	DefaultNameserver []string                            `yaml:"default-nameserver"`
+	NameServerPolicy  *orderedmap.OrderedMap[string, any] `yaml:"nameserver-policy"`
+	SearchDomains     []string                            `yaml:"search-domains"`
 }
 
 type RawFallbackFilter struct {
@@ -370,7 +372,7 @@ func ParseRawConfig(rawCfg *RawConfig) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	config.RulesProviders = ruleProviders
+	config.RuleProviders = ruleProviders
 
 	subRules, err := parseSubRules(rawCfg, proxies)
 	if err != nil {
@@ -390,7 +392,7 @@ func ParseRawConfig(rawCfg *RawConfig) (*Config, error) {
 	}
 	config.Hosts = hosts
 
-	dnsCfg, err := parseDNS(rawCfg, hosts)
+	dnsCfg, err := parseDNS(rawCfg, hosts, ruleProviders)
 	if err != nil {
 		return nil, err
 	}
@@ -886,18 +888,68 @@ func init() {
 	}
 }
 
-func parseNameServerPolicy(nsPolicy map[string]string, useRemoteDnsDefault bool) (map[string]dns.NameServer, error) {
-	policy := map[string]dns.NameServer{}
+func parseNameServerPolicy(nsPolicy *orderedmap.OrderedMap[string, any], ruleProviders map[string]providerTypes.RuleProvider, useRemoteDnsDefault bool) (*orderedmap.OrderedMap[string, []dns.NameServer], error) {
+	policy := orderedmap.New[string, []dns.NameServer]()
+	updatedPolicy := orderedmap.New[string, any]()
+	re := regexp.MustCompile(`[a-zA-Z0-9\-]+\.[a-zA-Z]{2,}(\.[a-zA-Z]{2,})?`)
 
-	for domain, server := range nsPolicy {
-		nameservers, err := parseNameServer([]string{server}, useRemoteDnsDefault)
+	for pair := nsPolicy.Oldest(); pair != nil; pair = pair.Next() {
+		k, v := pair.Key, pair.Value
+		if strings.Contains(k, ",") {
+			if strings.Contains(k, "geosite:") {
+				subkeys := strings.Split(k, ":")
+				subkeys = subkeys[1:]
+				subkeys = strings.Split(subkeys[0], ",")
+				for _, subkey := range subkeys {
+					newKey := "geosite:" + subkey
+					updatedPolicy.Store(newKey, v)
+				}
+			} else if strings.Contains(k, "rule-set:") {
+				subkeys := strings.Split(k, ":")
+				subkeys = subkeys[1:]
+				subkeys = strings.Split(subkeys[0], ",")
+				for _, subkey := range subkeys {
+					newKey := "rule-set:" + subkey
+					updatedPolicy.Store(newKey, v)
+				}
+			} else if re.MatchString(k) {
+				subkeys := strings.Split(k, ",")
+				for _, subkey := range subkeys {
+					updatedPolicy.Store(subkey, v)
+				}
+			}
+		} else {
+			updatedPolicy.Store(k, v)
+		}
+	}
+
+	for pair := updatedPolicy.Oldest(); pair != nil; pair = pair.Next() {
+		domain, server := pair.Key, pair.Value
+		servers, err := utils.ToStringSlice(server)
+		if err != nil {
+			return nil, err
+		}
+		nameservers, err := parseNameServer(servers, useRemoteDnsDefault)
 		if err != nil {
 			return nil, err
 		}
 		if _, valid := trie.ValidAndSplitDomain(domain); !valid {
 			return nil, fmt.Errorf("DNS ResoverRule invalid domain: %s", domain)
 		}
-		policy[domain] = nameservers[0]
+		if strings.HasPrefix(domain, "rule-set:") {
+			domainSetName := domain[9:]
+			if provider, ok := ruleProviders[domainSetName]; !ok {
+				return nil, fmt.Errorf("not found rule-set: %s", domainSetName)
+			} else {
+				switch provider.Behavior() {
+				case providerTypes.IPCIDR:
+					return nil, fmt.Errorf("rule provider type error, except domain,actual %s", provider.Behavior())
+				case providerTypes.Classical:
+					log.Warnln("%s provider is %s, only matching it contain domain rule", provider.Name(), provider.Behavior())
+				}
+			}
+		}
+		policy.Store(domain, nameservers)
 	}
 
 	return policy, nil
@@ -917,7 +969,7 @@ func parseFallbackIPCIDR(ips []string) ([]netip.Prefix, error) {
 	return ipNets, nil
 }
 
-func parseDNS(rawCfg *RawConfig, hosts *trie.DomainTrie[netip.Addr]) (*DNS, error) {
+func parseDNS(rawCfg *RawConfig, hosts *trie.DomainTrie[netip.Addr], ruleProviders map[string]providerTypes.RuleProvider) (*DNS, error) {
 	cfg := rawCfg.DNS
 	if cfg.Enable && len(cfg.NameServer) == 0 {
 		return nil, fmt.Errorf("if DNS configuration is turned on, NameServer cannot be empty")
@@ -941,7 +993,7 @@ func parseDNS(rawCfg *RawConfig, hosts *trie.DomainTrie[netip.Addr]) (*DNS, erro
 		return nil, err
 	}
 
-	if dnsCfg.NameServerPolicy, err = parseNameServerPolicy(cfg.NameServerPolicy, rawCfg.UseRemoteDnsDefault); err != nil {
+	if dnsCfg.NameServerPolicy, err = parseNameServerPolicy(cfg.NameServerPolicy, ruleProviders, rawCfg.UseRemoteDnsDefault); err != nil {
 		return nil, err
 	}
 

@@ -26,7 +26,7 @@ require (
 	github.com/miekg/dns v1.1.56
 	github.com/openacid/low v0.1.21
 	github.com/oschwald/geoip2-golang v1.9.0
-	github.com/puzpuzpuz/xsync/v2 v2.5.1
+	github.com/puzpuzpuz/xsync/v3 v3.0.2
 	github.com/sagernet/netlink v0.0.0-20220905062125-8043b4a9aa97
 	github.com/sagernet/sing v0.2.18
 	github.com/sagernet/sing-mux v0.1.5-0.20231109075101-6b086ed6bb07

@@ -29,7 +29,7 @@ const DefaultDnsRelayTimeout = time.Second * 5
 type DnsHandlerType func(ctx context.Context, msg *D.Msg) (*D.Msg, error)
 
 type ListenerHandler struct {
-	sing.ListenerHandler
+	*sing.ListenerHandler
 	DnsAdds []netip.AddrPort
 
 	getDnsHandlerMutex sync.Mutex

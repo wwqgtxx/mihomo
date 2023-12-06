@@ -2,12 +2,14 @@ package outbound
 
 import (
 	"context"
+	"errors"
 	"runtime"
 
 	CN "github.com/metacubex/mihomo/common/net"
 	"github.com/metacubex/mihomo/component/dialer"
 	"github.com/metacubex/mihomo/component/proxydialer"
 	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/log"
 
 	mux "github.com/sagernet/sing-mux"
 	E "github.com/sagernet/sing/common/exceptions"
@@ -23,14 +25,21 @@ type SingMux struct {
 }
 
 type SingMuxOption struct {
-	Enabled        bool   `proxy:"enabled,omitempty"`
-	Protocol       string `proxy:"protocol,omitempty"`
-	MaxConnections int    `proxy:"max-connections,omitempty"`
-	MinStreams     int    `proxy:"min-streams,omitempty"`
-	MaxStreams     int    `proxy:"max-streams,omitempty"`
-	Padding        bool   `proxy:"padding,omitempty"`
-	Statistic      bool   `proxy:"statistic,omitempty"`
-	OnlyTcp        bool   `proxy:"only-tcp,omitempty"`
+	Enabled        bool         `proxy:"enabled,omitempty"`
+	Protocol       string       `proxy:"protocol,omitempty"`
+	MaxConnections int          `proxy:"max-connections,omitempty"`
+	MinStreams     int          `proxy:"min-streams,omitempty"`
+	MaxStreams     int          `proxy:"max-streams,omitempty"`
+	Padding        bool         `proxy:"padding,omitempty"`
+	Statistic      bool         `proxy:"statistic,omitempty"`
+	OnlyTcp        bool         `proxy:"only-tcp,omitempty"`
+	BrutalOpts     BrutalOption `proxy:"brutal-opts,omitempty"`
+}
+
+type BrutalOption struct {
+	Enabled bool   `proxy:"enabled,omitempty"`
+	Up      string `proxy:"up,omitempty"`
+	Down    string `proxy:"down,omitempty"`
 }
 
 type ProxyBase interface {
@@ -82,14 +91,23 @@ func closeSingMux(s *SingMux) {
 }
 
 func NewSingMux(option SingMuxOption, proxy C.ProxyAdapter, base ProxyBase) (C.ProxyAdapter, error) {
+	if !mux.BrutalAvailable && option.BrutalOpts.Enabled {
+		return nil, errors.New("TCP Brutal is only supported on Linux-based systems")
+	}
 	singDialer := proxydialer.NewSingDialer(proxy, dialer.NewDialer(), option.Statistic)
 	client, err := mux.NewClient(mux.Options{
 		Dialer:         singDialer,
+		Logger:         log.SingLogger,
 		Protocol:       option.Protocol,
 		MaxConnections: option.MaxConnections,
 		MinStreams:     option.MinStreams,
 		MaxStreams:     option.MaxStreams,
 		Padding:        option.Padding,
+		Brutal: mux.BrutalOptions{
+			Enabled:    option.BrutalOpts.Enabled,
+			SendBPS:    StringToBps(option.BrutalOpts.Up),
+			ReceiveBPS: StringToBps(option.BrutalOpts.Down),
+		},
 	})
 	if err != nil {
 		return nil, err

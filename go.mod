@@ -10,9 +10,9 @@ require (
 	github.com/go-chi/chi/v5 v5.0.10
 	github.com/go-chi/cors v1.2.1
 	github.com/go-chi/render v1.0.3
-	github.com/gobwas/ws v1.3.0
+	github.com/gobwas/ws v1.3.1
 	github.com/gofrs/uuid/v5 v5.0.0
-	github.com/insomniacslk/dhcp v0.0.0-20230731140434-0f9eb93a696c
+	github.com/insomniacslk/dhcp v0.0.0-20231206064809-8c70d406f6d2
 	github.com/jpillora/backoff v1.0.0
 	github.com/kentik/patricia v1.2.0
 	github.com/mdlayher/netlink v1.7.2
@@ -23,17 +23,17 @@ require (
 	github.com/metacubex/sing-tun v0.1.15-0.20231207115657-1aa1d8cadd9a
 	github.com/metacubex/sing-vmess v0.1.9-0.20231207122118-72303677451f
 	github.com/metacubex/sing-wireguard v0.0.0-20231207123053-1367f0b8f173
-	github.com/miekg/dns v1.1.56
+	github.com/miekg/dns v1.1.57
 	github.com/openacid/low v0.1.21
 	github.com/oschwald/geoip2-golang v1.9.0
 	github.com/puzpuzpuz/xsync/v3 v3.0.2
 	github.com/sagernet/netlink v0.0.0-20220905062125-8043b4a9aa97
-	github.com/sagernet/sing v0.2.19-0.20231207034108-445cd4f41e3f
-	github.com/sagernet/sing-mux v0.1.6-0.20231207143704-9f6c20fb5266
+	github.com/sagernet/sing v0.2.19-0.20231208110306-a3ce328ce759
+	github.com/sagernet/sing-mux v0.1.6-0.20231208180947-9053c29513a2
 	github.com/sagernet/sing-shadowtls v0.1.4
-	github.com/sagernet/tfo-go v0.0.0-20230816093905-5a5c285d44a6
+	github.com/sagernet/tfo-go v0.0.0-20231209031829-7b5343ac1dc6
 	github.com/sagernet/wireguard-go v0.0.0-20230807125731-5d4a7ef2dc5f
-	github.com/samber/lo v1.38.1
+	github.com/samber/lo v1.39.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.8.4
 	github.com/vishvananda/netlink v1.2.1-beta.2.0.20230922032456-a4fcbb7aebfb
@@ -42,9 +42,9 @@ require (
 	go.etcd.io/bbolt v1.3.7
 	go.uber.org/automaxprocs v1.5.3
 	golang.org/x/crypto v0.16.0
-	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
+	golang.org/x/exp v0.0.0-20231206192017-f3f8817b8deb
 	golang.org/x/net v0.19.0
-	golang.org/x/sync v0.4.0
+	golang.org/x/sync v0.5.0
 	golang.org/x/sys v0.15.0
 	gopkg.in/yaml.v3 v3.0.1
 	lukechampine.com/blake3 v1.2.1
@@ -86,7 +86,7 @@ require (
 	github.com/quic-go/qpack v0.4.0 // indirect
 	github.com/quic-go/qtls-go1-20 v0.4.1 // indirect
 	github.com/sagernet/go-tun2socks v1.16.12-0.20220818015926-16cb67876a61 // indirect
-	github.com/sagernet/smux v0.0.0-20230312102458-337ec2a5af37 // indirect
+	github.com/sagernet/smux v0.0.0-20231208180855-7041f6ea79e7 // indirect
 	github.com/scjalliance/comshim v0.0.0-20230315213746-5e51f40bd3b9 // indirect
 	github.com/sina-ghaderi/poly1305 v0.0.0-20220724002748-c5926b03988b // indirect
 	github.com/sina-ghaderi/rabaead v0.0.0-20220730151906-ab6e06b96e8c // indirect
@@ -96,10 +96,10 @@ require (
 	gitlab.com/yawning/bsaes.git v0.0.0-20190805113838-0a714cd429ec // indirect
 	go.uber.org/mock v0.3.0 // indirect
 	go4.org/netipx v0.0.0-20231129151722-fdeea329fbba // indirect
-	golang.org/x/mod v0.13.0 // indirect
+	golang.org/x/mod v0.14.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.4.0 // indirect
-	golang.org/x/tools v0.14.0 // indirect
+	golang.org/x/tools v0.16.0 // indirect
 )
 
 replace github.com/sagernet/sing => github.com/metacubex/sing v0.0.0-20231208104608-1d45b24eb8fa

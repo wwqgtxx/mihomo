@@ -18,6 +18,11 @@ var (
 func init() {
 	log.SetOutput(os.Stdout)
 	log.SetLevel(log.DebugLevel)
+	log.SetFormatter(&log.TextFormatter{
+		FullTimestamp:             true,
+		TimestampFormat:           "2006-01-02T15:04:05.999999999Z07:00",
+		EnvironmentOverrideColors: true,
+	})
 }
 
 type Event struct {
@@ -78,7 +83,6 @@ func print(data Event) {
 	if data.LogLevel < level {
 		return
 	}
-
 	switch data.LogLevel {
 	case INFO:
 		log.Infoln(data.Payload)

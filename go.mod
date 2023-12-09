@@ -17,19 +17,19 @@ require (
 	github.com/kentik/patricia v1.2.0
 	github.com/mdlayher/netlink v1.7.2
 	github.com/metacubex/quic-go v0.40.1-0.20231130135418-0c1b47cf9394
-	github.com/metacubex/sing-quic v0.0.0-20231130141855-0022295e524b
-	github.com/metacubex/sing-shadowsocks v0.2.5
-	github.com/metacubex/sing-shadowsocks2 v0.1.4
-	github.com/metacubex/sing-tun v0.1.15-0.20231103033938-170591e8d5bd
-	github.com/metacubex/sing-vmess v0.1.9-0.20230921005247-a0488d7dac74
-	github.com/metacubex/sing-wireguard v0.0.0-20231001110902-321836559170
+	github.com/metacubex/sing-quic v0.0.0-20231207122758-cc17b154daa8
+	github.com/metacubex/sing-shadowsocks v0.2.6
+	github.com/metacubex/sing-shadowsocks2 v0.1.5-0.20231207115048-3abf19378f0d
+	github.com/metacubex/sing-tun v0.1.15-0.20231207115657-1aa1d8cadd9a
+	github.com/metacubex/sing-vmess v0.1.9-0.20231207122118-72303677451f
+	github.com/metacubex/sing-wireguard v0.0.0-20231207123053-1367f0b8f173
 	github.com/miekg/dns v1.1.56
 	github.com/openacid/low v0.1.21
 	github.com/oschwald/geoip2-golang v1.9.0
 	github.com/puzpuzpuz/xsync/v3 v3.0.2
 	github.com/sagernet/netlink v0.0.0-20220905062125-8043b4a9aa97
-	github.com/sagernet/sing v0.2.18
-	github.com/sagernet/sing-mux v0.1.5-0.20231109075101-6b086ed6bb07
+	github.com/sagernet/sing v0.2.19-0.20231207034108-445cd4f41e3f
+	github.com/sagernet/sing-mux v0.1.6-0.20231207143704-9f6c20fb5266
 	github.com/sagernet/sing-shadowtls v0.1.4
 	github.com/sagernet/tfo-go v0.0.0-20230816093905-5a5c285d44a6
 	github.com/sagernet/wireguard-go v0.0.0-20230807125731-5d4a7ef2dc5f
@@ -43,7 +43,7 @@ require (
 	go.uber.org/automaxprocs v1.5.3
 	golang.org/x/crypto v0.16.0
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
-	golang.org/x/net v0.18.0
+	golang.org/x/net v0.19.0
 	golang.org/x/sync v0.4.0
 	golang.org/x/sys v0.15.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -51,7 +51,7 @@ require (
 )
 
 require (
-	github.com/RyuaNerin/go-krypto v1.0.2 // indirect
+	github.com/RyuaNerin/go-krypto v1.2.4 // indirect
 	github.com/Yawning/aez v0.0.0-20211027044916-e49e68abd344 // indirect
 	github.com/ajg/form v1.5.1 // indirect
 	github.com/andybalholm/brotli v1.0.5 // indirect
@@ -95,11 +95,11 @@ require (
 	github.com/vishvananda/netns v0.0.4 // indirect
 	gitlab.com/yawning/bsaes.git v0.0.0-20190805113838-0a714cd429ec // indirect
 	go.uber.org/mock v0.3.0 // indirect
-	go4.org/netipx v0.0.0-20230824141953-6213f710f925 // indirect
+	go4.org/netipx v0.0.0-20231129151722-fdeea329fbba // indirect
 	golang.org/x/mod v0.13.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
-	golang.org/x/time v0.3.0 // indirect
+	golang.org/x/time v0.4.0 // indirect
 	golang.org/x/tools v0.14.0 // indirect
 )
 
-replace github.com/sagernet/sing => github.com/metacubex/sing v0.0.0-20231118023733-957d84f17d2c
+replace github.com/sagernet/sing => github.com/metacubex/sing v0.0.0-20231208104608-1d45b24eb8fa

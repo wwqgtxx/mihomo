@@ -30,6 +30,11 @@ jobs:
         run: echo "VERSION=$(git describe --tags)" >> $GITHUB_ENV
         shell: bash
 
+      - name: Set ENV
+        run: |
+          echo "GOTOOLCHAIN=local" >> $GITHUB_ENV
+        shell: bash
+
       - name: Get dependencies, run test
         if: ${{ matrix.job.id=='1' }}
         run: |

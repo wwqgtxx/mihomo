@@ -2,6 +2,7 @@ cd %~dp0
 rmdir /S /Q bin
 mkdir bin
 set CGO_ENABLED=0
+set GOTOOLCHAIN=local
 set GOARCH=amd64
 set GOOS=linux
 go build -tags with_gvisor -o bin/mihomo-linux-amd64

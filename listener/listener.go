@@ -825,6 +825,8 @@ func hasTunConfigChange(tunConf *LC.Tun) bool {
 		LastTunConf.AutoRoute != tunConf.AutoRoute ||
 		LastTunConf.AutoDetectInterface != tunConf.AutoDetectInterface ||
 		LastTunConf.MTU != tunConf.MTU ||
+		LastTunConf.GSO != tunConf.GSO ||
+		LastTunConf.GSOMaxSize != tunConf.GSOMaxSize ||
 		LastTunConf.StrictRoute != tunConf.StrictRoute ||
 		LastTunConf.EndpointIndependentNat != tunConf.EndpointIndependentNat ||
 		LastTunConf.UDPTimeout != tunConf.UDPTimeout ||
@@ -854,6 +856,14 @@ func hasTunConfigChange(tunConf *LC.Tun) bool {
 
 	sort.Slice(tunConf.Inet6RouteAddress, func(i, j int) bool {
 		return tunConf.Inet6RouteAddress[i].String() < tunConf.Inet6RouteAddress[j].String()
+	})
+
+	sort.Slice(tunConf.IncludeInterface, func(i, j int) bool {
+		return tunConf.IncludeInterface[i] < tunConf.IncludeInterface[j]
+	})
+
+	sort.Slice(tunConf.ExcludeInterface, func(i, j int) bool {
+		return tunConf.ExcludeInterface[i] < tunConf.ExcludeInterface[j]
 	})
 
 	sort.Slice(tunConf.IncludeUID, func(i, j int) bool {
@@ -889,6 +899,8 @@ func hasTunConfigChange(tunConf *LC.Tun) bool {
 		!slices.Equal(tunConf.Inet6Address, LastTunConf.Inet6Address) ||
 		!slices.Equal(tunConf.Inet4RouteAddress, LastTunConf.Inet4RouteAddress) ||
 		!slices.Equal(tunConf.Inet6RouteAddress, LastTunConf.Inet6RouteAddress) ||
+		!slices.Equal(tunConf.IncludeInterface, LastTunConf.IncludeInterface) ||
+		!slices.Equal(tunConf.ExcludeInterface, LastTunConf.ExcludeInterface) ||
 		!slices.Equal(tunConf.IncludeUID, LastTunConf.IncludeUID) ||
 		!slices.Equal(tunConf.IncludeUIDRange, LastTunConf.IncludeUIDRange) ||
 		!slices.Equal(tunConf.ExcludeUID, LastTunConf.ExcludeUID) ||

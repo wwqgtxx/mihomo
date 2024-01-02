@@ -164,8 +164,6 @@ func msgToDomain(msg *D.Msg) string {
 	return ""
 }
 
-var errIPNotFound = errors.New("couldn't find ip")
-
 func batchExchange(ctx context.Context, clients []dnsClient, m *D.Msg) (msg *D.Msg, cache bool, err error) {
 	cache = true
 	fast, ctx := picker.WithTimeout[*D.Msg](ctx, resolver.DefaultDNSTimeout)
@@ -195,12 +193,12 @@ func batchExchange(ctx context.Context, clients []dnsClient, m *D.Msg) (msg *D.M
 				case D.TypeAAAA:
 					if len(ips) == 0 {
 						noIpMsg = m
-						return nil, errIPNotFound
+						return nil, resolver.ErrIPNotFound
 					}
 				case D.TypeA:
 					if len(ips) == 0 {
 						noIpMsg = m
-						return nil, errIPNotFound
+						return nil, resolver.ErrIPNotFound
 					}
 				}
 			}

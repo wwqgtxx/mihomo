@@ -5,6 +5,7 @@ import (
 	"net"
 	"strconv"
 
+	N "github.com/metacubex/mihomo/common/net"
 	C "github.com/metacubex/mihomo/constant"
 )
 
@@ -36,7 +37,7 @@ func (d RemoteDialer) DialTCP(addr string, proxyName string) (net.Conn, error) {
 		return nil, err
 	}
 
-	conn1, conn2 := net.Pipe()
+	conn1, conn2 := N.Pipe()
 	metadata := &C.Metadata{
 		NetWork:      C.TCP,
 		Host:         host,

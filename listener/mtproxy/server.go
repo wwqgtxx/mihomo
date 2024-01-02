@@ -149,7 +149,7 @@ func (l *Listener) HandleConn(conn net.Conn, tunnel C.Tunnel, additions ...inbou
 	telegramConn, err := l.serverInfo.TelegramDialer.Dial(
 		serverProtocol,
 		func(addr string) (net.Conn, error) {
-			conn1, conn2 := net.Pipe()
+			conn1, conn2 := N.Pipe()
 			metadata := &C.Metadata{
 				NetWork: C.TCP,
 				Type:    C.MTPROXY,

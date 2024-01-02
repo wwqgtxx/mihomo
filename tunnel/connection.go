@@ -74,8 +74,8 @@ func handleUDPToLocal(writeBack C.WriteBack, pc N.EnhancePacketConn, key string,
 	}
 }
 
-func handleSocket(ctx C.ConnContext, outbound net.Conn) {
-	N.Relay(ctx.Conn(), outbound)
+func handleSocket(inbound, outbound net.Conn) {
+	N.Relay(inbound, outbound)
 }
 
 func closeAllLocalCoon(lAddr string) {

@@ -25,7 +25,7 @@ func TestIpv4AddFail(t *testing.T) {
 	assert.IsType(t, errors.New(""), err)
 
 	err = tree.Insert("2.2.2.2")
-	assert.IsType(t, nil, err)
+	assert.IsType(t, errors.New(""), err)
 }
 
 func match(tree *IpCidrTree, ip string) bool {
@@ -78,7 +78,7 @@ func TestIpv6AddFail(t *testing.T) {
 	assert.IsType(t, errors.New(""), err)
 
 	err = tree.Insert("2001:0fa3:25de::cade")
-	assert.IsType(t, nil, err)
+	assert.IsType(t, errors.New(""), err)
 }
 
 func TestIpv6Match(t *testing.T) {

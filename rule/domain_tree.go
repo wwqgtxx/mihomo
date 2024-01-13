@@ -33,9 +33,10 @@ func (d *DomainTree) Insert(domain string) error {
 	return nil
 }
 
-func (d *DomainTree) FinishInsert() {
+func (d *DomainTree) FinishInsert() error {
 	d.ds = d.dt.NewDomainSet()
 	d.dt = nil
+	return nil
 }
 
 func NewDomainTree() *DomainTree {

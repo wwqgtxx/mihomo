@@ -85,7 +85,7 @@ type RuleTree interface {
 	C.Rule
 	RuleCount() int
 	Insert(string) error
-	FinishInsert()
+	FinishInsert() error
 }
 
 var ErrNoPayload = errors.New("file must have a `payload` field")
@@ -229,7 +229,10 @@ func rulesParse(buf []byte, behavior P.RuleBehavior, format P.RuleFormat) (any, 
 	}
 
 	if rt != nil {
-		rt.FinishInsert()
+		err := rt.FinishInsert()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if len(rules) == 0 {

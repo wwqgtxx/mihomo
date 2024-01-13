@@ -1,14 +1,13 @@
 package rules
 
 import (
+	"github.com/metacubex/mihomo/component/cidr"
 	C "github.com/metacubex/mihomo/constant"
-	"go4.org/netipx"
-	"net/netip"
 )
 
 type IpCidrTree struct {
 	IPCIDR    // for C.Rule interface
-	ipSet     *netipx.IPSet
+	cidrSet   *cidr.IpCidrSet
 	ruleCount int
 }
 
@@ -28,24 +27,14 @@ func (i *IpCidrTree) Match(metadata *C.Metadata) (bool, string) {
 	if !ip.IsValid() {
 		return false, ""
 	}
-	if i.ipSet == nil {
-		return false, ""
-	}
-	if i.ipSet.Contains(ip) {
+	if i.cidrSet.IsContain(ip) {
 		return true, i.adapter
 	}
 	return false, ""
 }
 
 func (i *IpCidrTree) Insert(ipCidr string) error {
-	prefix, err := netip.ParsePrefix(ipCidr)
-	if err != nil {
-		return err
-	}
-	var b netipx.IPSetBuilder
-	b.AddSet(i.ipSet)
-	b.AddPrefix(prefix)
-	i.ipSet, err = b.IPSet()
+	err := i.cidrSet.AddIpCidrForString(ipCidr)
 	if err != nil {
 		return err
 	}
@@ -53,11 +42,14 @@ func (i *IpCidrTree) Insert(ipCidr string) error {
 	return nil
 }
 
-func (i *IpCidrTree) FinishInsert() {}
+func (i *IpCidrTree) FinishInsert() error {
+	return i.cidrSet.Merge()
+}
 
 func NewIPCIDRTree() *IpCidrTree {
 	return &IpCidrTree{
 		IPCIDR:    IPCIDR{},
+		cidrSet:   cidr.NewIpCidrSet(),
 		ruleCount: 0,
 	}
 }

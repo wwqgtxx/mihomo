@@ -1091,7 +1091,7 @@ func parseSniffer(snifferRaw RawSniffer) (*Sniffer, error) {
 
 	for sniffType, sniffConfig := range snifferRaw.Sniff {
 		find := false
-		ports, err := utils.NewIntRangesFromList[uint16](sniffConfig.Ports)
+		ports, err := utils.NewUnsignedRangesFromList[uint16](sniffConfig.Ports)
 		if err != nil {
 			return nil, err
 		}

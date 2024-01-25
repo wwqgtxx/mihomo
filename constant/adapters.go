@@ -39,8 +39,8 @@ const (
 )
 
 const (
-	DefaultTCPTimeout = 5 * time.Second
-	DefaultUDPTimeout = DefaultTCPTimeout
+	DefaultTCPTimeout = dialer.DefaultTCPTimeout
+	DefaultUDPTimeout = dialer.DefaultUDPTimeout
 	DefaultTLSTimeout = DefaultTCPTimeout
 )
 

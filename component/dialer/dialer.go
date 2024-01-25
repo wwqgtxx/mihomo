@@ -7,8 +7,14 @@ import (
 	"net"
 	"net/netip"
 	"sync"
+	"time"
 
 	"github.com/metacubex/mihomo/component/resolver"
+)
+
+const (
+	DefaultTCPTimeout = 5 * time.Second
+	DefaultUDPTimeout = DefaultTCPTimeout
 )
 
 var (

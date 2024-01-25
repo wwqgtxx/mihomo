@@ -46,6 +46,7 @@ type Hysteria2Option struct {
 	SkipCertVerify bool     `proxy:"skip-cert-verify,omitempty"`
 	ALPN           []string `proxy:"alpn,omitempty"`
 	CWND           int      `proxy:"cwnd,omitempty"`
+	UdpMTU         int      `proxy:"udp-mtu,omitempty"`
 }
 
 func (h *Hysteria2) DialContext(ctx context.Context, metadata *C.Metadata, opts ...dialer.Option) (_ C.Conn, err error) {
@@ -107,6 +108,12 @@ func NewHysteria2(option Hysteria2Option) (*Hysteria2, error) {
 		tlsConfig.NextProtos = option.ALPN
 	}
 
+	if option.UdpMTU == 0 {
+		// "1200" from quic-go's MaxDatagramSize
+		// "-3" from quic-go's DatagramFrame.MaxDataLen
+		option.UdpMTU = 1200 - 3
+	}
+
 	singDialer := proxydialer.NewByNameSingDialer(option.DialerProxy, dialer.NewDialer())
 
 	clientOptions := hysteria2.ClientOptions{
@@ -120,6 +127,7 @@ func NewHysteria2(option Hysteria2Option) (*Hysteria2, error) {
 		TLSConfig:          tlsConfig,
 		UDPDisabled:        false,
 		CWND:               option.CWND,
+		UdpMTU:             option.UdpMTU,
 	}
 
 	client, err := hysteria2.NewClient(clientOptions)

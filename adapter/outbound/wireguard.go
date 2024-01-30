@@ -17,6 +17,7 @@ import (
 	"github.com/metacubex/mihomo/component/dialer"
 	"github.com/metacubex/mihomo/component/proxydialer"
 	"github.com/metacubex/mihomo/component/resolver"
+	"github.com/metacubex/mihomo/component/slowdown"
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/dns"
 	"github.com/metacubex/mihomo/log"
@@ -135,7 +136,7 @@ func NewWireGuard(option WireGuardOption) (*WireGuard, error) {
 			iface: option.Interface,
 			rmark: option.RoutingMark,
 		},
-		dialer: proxydialer.NewByNameSingDialer(option.DialerProxy, dialer.NewDialer()),
+		dialer: proxydialer.NewSlowDownSingDialer(proxydialer.NewByNameSingDialer(option.DialerProxy, dialer.NewDialer()), slowdown.New()),
 	}
 	runtime.SetFinalizer(outbound, closeWireGuard)
 

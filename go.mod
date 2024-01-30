@@ -13,7 +13,6 @@ require (
 	github.com/gobwas/ws v1.3.2
 	github.com/gofrs/uuid/v5 v5.0.0
 	github.com/insomniacslk/dhcp v0.0.0-20231206064809-8c70d406f6d2
-	github.com/jpillora/backoff v1.0.0
 	github.com/mdlayher/netlink v1.7.2
 	github.com/metacubex/quic-go v0.41.1-0.20240120014142-a02f4a533d4a
 	github.com/metacubex/sing-quic v0.0.0-20240130040922-cbe613c88f20

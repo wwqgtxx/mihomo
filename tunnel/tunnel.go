@@ -19,6 +19,7 @@ import (
 	"github.com/metacubex/mihomo/component/nat"
 	P "github.com/metacubex/mihomo/component/process"
 	"github.com/metacubex/mihomo/component/resolver"
+	"github.com/metacubex/mihomo/component/slowdown"
 	"github.com/metacubex/mihomo/component/sniffer"
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/constant/provider"
@@ -26,8 +27,6 @@ import (
 	icontext "github.com/metacubex/mihomo/context"
 	"github.com/metacubex/mihomo/log"
 	"github.com/metacubex/mihomo/tunnel/statistic"
-
-	"github.com/jpillora/backoff"
 )
 
 var (
@@ -660,12 +659,7 @@ func shouldStopRetry(err error) bool {
 }
 
 func retry[T any](ctx context.Context, ft func(context.Context) (T, error), fe func(err error)) (t T, err error) {
-	b := &backoff.Backoff{
-		Min:    10 * time.Millisecond,
-		Max:    1 * time.Second,
-		Factor: 2,
-		Jitter: true,
-	}
+	s := slowdown.New()
 	for i := 0; i < 10; i++ {
 		t, err = ft(ctx)
 		if err != nil {
@@ -675,10 +669,9 @@ func retry[T any](ctx context.Context, ft func(context.Context) (T, error), fe f
 			if shouldStopRetry(err) {
 				return
 			}
-			select {
-			case <-time.After(b.Duration()):
+			if s.Wait(ctx) == nil {
 				continue
-			case <-ctx.Done():
+			} else {
 				return
 			}
 		} else {

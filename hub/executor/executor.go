@@ -180,6 +180,7 @@ func updateDNS(c *config.DNS, ruleProvider map[string]providerTypes.RuleProvider
 		resolver.DialerResolver = nil
 		resolver.DefaultResolver = nil
 		resolver.DefaultHostMapper = nil
+		resolver.DefaultLocalServer = nil
 		dns.ReCreateServer("", nil, nil)
 		return
 	}
@@ -214,6 +215,7 @@ func updateDNS(c *config.DNS, ruleProvider map[string]providerTypes.RuleProvider
 	resolver.DialerResolver = dr
 	resolver.DefaultResolver = r
 	resolver.DefaultHostMapper = m
+	resolver.DefaultLocalServer = dns.NewLocalServer(r, m)
 
 	if dns.UseSystemDnsDial() {
 		resolver.DialerResolver = nil

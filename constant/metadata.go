@@ -169,6 +169,10 @@ func (m *Metadata) SourceAddress() string {
 	return net.JoinHostPort(m.SrcIP.String(), strconv.FormatUint(uint64(m.SrcPort), 10))
 }
 
+func (m *Metadata) SourceAddrPort() netip.AddrPort {
+	return netip.AddrPortFrom(m.SrcIP.Unmap(), m.SrcPort)
+}
+
 func (m *Metadata) SourceDetail() string {
 	switch {
 	case m.Process != "":

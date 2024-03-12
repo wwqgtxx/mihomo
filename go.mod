@@ -14,8 +14,8 @@ require (
 	github.com/gofrs/uuid/v5 v5.0.0
 	github.com/insomniacslk/dhcp v0.0.0-20231206064809-8c70d406f6d2
 	github.com/mdlayher/netlink v1.7.2
-	github.com/metacubex/quic-go v0.41.1-0.20240120014142-a02f4a533d4a
-	github.com/metacubex/sing-quic v0.0.0-20240130040922-cbe613c88f20
+	github.com/metacubex/quic-go v0.41.1-0.20240307164142-46c6f7cdf2d1
+	github.com/metacubex/sing-quic v0.0.0-20240310154810-47bca850fc01
 	github.com/metacubex/sing-shadowsocks v0.2.6
 	github.com/metacubex/sing-shadowsocks2 v0.2.0
 	github.com/metacubex/sing-tun v0.2.1-0.20240214100323-23e40bfb9067

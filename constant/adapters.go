@@ -31,6 +31,7 @@ const (
 	Hysteria2
 	WireGuard
 	Tuic
+	Ssh
 
 	Relay
 	Selector
@@ -185,6 +186,8 @@ func (at AdapterType) String() string {
 		return "WireGuard"
 	case Tuic:
 		return "Tuic"
+	case Ssh:
+		return "Ssh"
 
 	case Relay:
 		return "Relay"
@@ -196,7 +199,6 @@ func (at AdapterType) String() string {
 		return "URLTest"
 	case LoadBalance:
 		return "LoadBalance"
-
 	default:
 		return "Unknown"
 	}

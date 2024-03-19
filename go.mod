@@ -14,7 +14,7 @@ require (
 	github.com/gofrs/uuid/v5 v5.0.0
 	github.com/insomniacslk/dhcp v0.0.0-20240227161007-c728f5dd21c8
 	github.com/mdlayher/netlink v1.7.2
-	github.com/metacubex/quic-go v0.41.1-0.20240307164142-46c6f7cdf2d1
+	github.com/metacubex/quic-go v0.42.1-0.20240319071510-a251e5c66a5c
 	github.com/metacubex/sing-quic v0.0.0-20240310154810-47bca850fc01
 	github.com/metacubex/sing-shadowsocks v0.2.6
 	github.com/metacubex/sing-shadowsocks2 v0.2.0
@@ -92,7 +92,7 @@ require (
 	github.com/u-root/uio v0.0.0-20230220225925-ffce2a382923 // indirect
 	github.com/vishvananda/netns v0.0.4 // indirect
 	gitlab.com/yawning/bsaes.git v0.0.0-20190805113838-0a714cd429ec // indirect
-	go.uber.org/mock v0.3.0 // indirect
+	go.uber.org/mock v0.4.0 // indirect
 	golang.org/x/mod v0.15.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.5.0 // indirect

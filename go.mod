@@ -18,9 +18,9 @@ require (
 	github.com/metacubex/sing-quic v0.0.0-20240310154810-47bca850fc01
 	github.com/metacubex/sing-shadowsocks v0.2.6
 	github.com/metacubex/sing-shadowsocks2 v0.2.0
-	github.com/metacubex/sing-tun v0.2.1-0.20240214100323-23e40bfb9067
+	github.com/metacubex/sing-tun v0.2.1-0.20240320004934-5d2b35447bfd
 	github.com/metacubex/sing-vmess v0.1.9-0.20231207122118-72303677451f
-	github.com/metacubex/sing-wireguard v0.0.0-20231209125515-0594297f7232
+	github.com/metacubex/sing-wireguard v0.0.0-20240320005523-c46db1e2d1be
 	github.com/metacubex/tfo-go v0.0.0-20240228025757-be1269474a66
 	github.com/miekg/dns v1.1.58
 	github.com/openacid/low v0.1.21
@@ -76,7 +76,7 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mdlayher/socket v0.4.1 // indirect
-	github.com/metacubex/gvisor v0.0.0-20240214095142-666a73bcf165 // indirect
+	github.com/metacubex/gvisor v0.0.0-20240320004321-933faba989ec // indirect
 	github.com/oasisprotocol/deoxysii v0.0.0-20220228165953-2091330c22b7 // indirect
 	github.com/onsi/ginkgo/v2 v2.9.5 // indirect
 	github.com/oschwald/maxminddb-golang v1.11.0 // indirect
@@ -85,7 +85,6 @@ require (
 	github.com/quic-go/qpack v0.4.0 // indirect
 	github.com/quic-go/qtls-go1-20 v0.4.1 // indirect
 	github.com/sagernet/smux v0.0.0-20231208180855-7041f6ea79e7 // indirect
-	github.com/scjalliance/comshim v0.0.0-20230315213746-5e51f40bd3b9 // indirect
 	github.com/sina-ghaderi/poly1305 v0.0.0-20220724002748-c5926b03988b // indirect
 	github.com/sina-ghaderi/rabaead v0.0.0-20220730151906-ab6e06b96e8c // indirect
 	github.com/sina-ghaderi/rabbitio v0.0.0-20220730151941-9ce26f4f872e // indirect

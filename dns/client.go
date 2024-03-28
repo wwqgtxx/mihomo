@@ -82,6 +82,7 @@ func (c *client) ExchangeContext(ctx context.Context, m *D.Msg) (*D.Msg, error) 
 	if c.useRemote || c.proxyName != "" || c.proxyAdapter != nil {
 		if network == "" || network == "udp" { // force use tcp when do remote dns
 			network = "tcp"
+			c.Client.Net = "tcp"
 		}
 		if c.proxyAdapter != nil {
 			uintPort, _ := strconv.ParseUint(c.port, 10, 16)
@@ -128,7 +129,16 @@ func (c *client) ExchangeContext(ctx context.Context, m *D.Msg) (*D.Msg, error) 
 		if msg != nil && msg.Truncated && c.Client.Net == "" {
 			tcpClient := *c.Client // copy a client
 			tcpClient.Net = "tcp"
+			network = "tcp"
 			log.Debugln("[DNS] Truncated reply from %s:%s for %s over UDP, retrying over TCP", c.host, c.port, m.Question[0].String())
+			dConn.Conn, err = dialer.DialContext(ctx, network, net.JoinHostPort(ip.String(), c.port), options...) // remote dns will not have UDP response, so dial directly
+			if err != nil {
+				ch <- result{msg, err}
+				return
+			}
+			defer func() {
+				_ = conn.Close()
+			}()
 			msg, _, err = tcpClient.ExchangeWithConn(m, dConn)
 		}
 

@@ -25,7 +25,7 @@ func registerOnHitEOF(rc io.ReadCloser, fn func())
 func requestBodyRemains(rc io.ReadCloser) bool
 
 func HandleConn(c net.Conn, tunnel C.Tunnel, cache *cache.LruCache[string, bool], additions ...inbound.Addition) {
-	client := newClient(c.RemoteAddr(), tunnel, additions...)
+	client := newClient(c, tunnel, additions...)
 	defer client.CloseIdleConnections()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

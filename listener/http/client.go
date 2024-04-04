@@ -13,7 +13,7 @@ import (
 	"github.com/metacubex/mihomo/transport/socks5"
 )
 
-func newClient(source net.Addr, tunnel C.Tunnel, additions ...inbound.Addition) *http.Client {
+func newClient(srcConn net.Conn, tunnel C.Tunnel, additions ...inbound.Addition) *http.Client {
 	return &http.Client{
 		Transport: &http.Transport{
 			// from http.DefaultTransport
@@ -33,7 +33,7 @@ func newClient(source net.Addr, tunnel C.Tunnel, additions ...inbound.Addition) 
 
 				left, right := N.Pipe()
 
-				go tunnel.HandleTCPConn(inbound.NewHTTP(dstAddr, source, right, additions...))
+				go tunnel.HandleTCPConn(inbound.NewHTTP(dstAddr, srcConn, right, additions...))
 
 				return left, nil
 			},

@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/metacubex/mihomo/adapter/inbound"
@@ -54,9 +55,7 @@ func SetUIPath(path string) {
 	uiPath = C.Path.Resolve(path)
 }
 
-func Init(secret string) {
-	serverSecret = secret
-
+func router(withAuth bool) *chi.Mux {
 	r := chi.NewRouter()
 
 	cors := cors.New(cors.Options{
@@ -70,7 +69,9 @@ func Init(secret string) {
 	r.NotFound(closeTcpHandle)
 	r.MethodNotAllowed(closeTcpHandle)
 	r.Group(func(r chi.Router) {
-		r.Use(authentication)
+		if withAuth {
+			r.Use(authentication)
+		}
 
 		//r.Get("/", hello)
 		r.Get("/logs", getLogs)
@@ -128,8 +129,12 @@ func Init(secret string) {
 			})
 		})
 	}
+	return r
+}
 
-	C.SetECHandler(r)
+func Init(secret string) {
+	serverSecret = secret
+	C.SetECHandler(router(true))
 }
 
 type fakeResponseWriter struct {
@@ -163,6 +168,29 @@ func Start(addr string) {
 	log.Infoln("RESTful API listening at: %s", serverAddr)
 	if err = http.Serve(l, C.GetECHandler()); err != nil {
 		log.Errorln("External controller serve error: %s", err)
+	}
+}
+
+func StartUnix(addr string, isDebug bool) {
+	// https://devblogs.microsoft.com/commandline/af_unix-comes-to-windows/
+	//
+	// Note: As mentioned above in the ‘security’ section, when a socket binds a socket to a valid pathname address,
+	// a socket file is created within the filesystem. On Linux, the application is expected to unlink
+	// (see the notes section in the man page for AF_UNIX) before any other socket can be bound to the same address.
+	// The same applies to Windows unix sockets, except that, DeleteFile (or any other file delete API)
+	// should be used to delete the socket file prior to calling bind with the same path.
+	_ = syscall.Unlink(addr)
+
+	l, err := inbound.Listen("unix", addr)
+	if err != nil {
+		log.Errorln("External controller unix listen error: %s", err)
+		return
+	}
+	serverAddr = l.Addr().String()
+	log.Infoln("RESTful API unix listening at: %s", serverAddr)
+
+	if err = http.Serve(l, router(false)); err != nil {
+		log.Errorln("External controller unix serve error: %s", err)
 	}
 }
 

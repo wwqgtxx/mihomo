@@ -78,9 +78,10 @@ type Inbound struct {
 
 // Controller
 type Controller struct {
-	ExternalController string `json:"-"`
-	ExternalUI         string `json:"-"`
-	Secret             string `json:"-"`
+	ExternalController     string `json:"-"`
+	ExternalControllerUnix string `json:"-"`
+	ExternalUI             string `json:"-"`
+	Secret                 string `json:"-"`
 }
 
 // DNS config
@@ -190,6 +191,7 @@ type RawConfig struct {
 	LogLevel               log.LogLevel   `yaml:"log-level"`
 	IPv6                   bool           `yaml:"ipv6"`
 	ExternalController     string         `yaml:"external-controller"`
+	ExternalControllerUnix string         `yaml:"external-controller-unix"`
 	ExternalUI             string         `yaml:"external-ui"`
 	Secret                 string         `yaml:"secret"`
 	Interface              string         `yaml:"interface-name"`
@@ -456,9 +458,10 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 			InboundMPTCP:      cfg.InboundMPTCP,
 		},
 		Controller: Controller{
-			ExternalController: cfg.ExternalController,
-			ExternalUI:         cfg.ExternalUI,
-			Secret:             cfg.Secret,
+			ExternalController:     cfg.ExternalController,
+			ExternalUI:             cfg.ExternalUI,
+			ExternalControllerUnix: cfg.ExternalControllerUnix,
+			Secret:                 cfg.Secret,
 		},
 		Mode:                   cfg.Mode,
 		LogLevel:               cfg.LogLevel,

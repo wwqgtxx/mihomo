@@ -4,6 +4,7 @@ import (
 	"github.com/metacubex/mihomo/config"
 	"github.com/metacubex/mihomo/hub/executor"
 	"github.com/metacubex/mihomo/hub/route"
+	"github.com/metacubex/mihomo/log"
 )
 
 type Option func(*config.Config)
@@ -44,6 +45,10 @@ func Parse(options ...Option) error {
 	route.Init(cfg.General.Secret)
 	if cfg.General.ExternalController != "" {
 		go route.Start(cfg.General.ExternalController)
+	}
+
+	if cfg.General.ExternalControllerUnix != "" {
+		go route.StartUnix(cfg.General.ExternalControllerUnix, cfg.General.LogLevel == log.DEBUG)
 	}
 
 	executor.ApplyConfig(cfg, true)

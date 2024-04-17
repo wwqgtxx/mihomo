@@ -37,7 +37,7 @@ func DialContext(ctx context.Context, network, address string, options ...Option
 	}
 }
 
-func ListenPacket(ctx context.Context, network, address string, options ...Option) (net.PacketConn, error) {
+func ListenPacket(ctx context.Context, network, address string, rAddrPort netip.AddrPort, options ...Option) (net.PacketConn, error) {
 	cfg := applyOptions(options...)
 
 	lc := &net.ListenConfig{}
@@ -46,7 +46,7 @@ func ListenPacket(ctx context.Context, network, address string, options ...Optio
 		if cfg.fallbackBind {
 			bind = fallbackBindIfaceToListenConfig
 		}
-		addr, err := bind(cfg.interfaceName, lc, network, address)
+		addr, err := bind(cfg.interfaceName, lc, network, address, rAddrPort)
 		if err != nil {
 			return nil, err
 		}
@@ -416,7 +416,7 @@ func (d Dialer) ListenPacket(ctx context.Context, network, address string, rAddr
 		// avoid "The requested address is not valid in its context."
 		opt = WithInterface("")
 	}
-	return ListenPacket(ctx, ParseNetwork(network, rAddrPort.Addr()), address, opt)
+	return ListenPacket(ctx, ParseNetwork(network, rAddrPort.Addr()), address, rAddrPort, opt)
 }
 
 func NewDialer(options ...Option) Dialer {

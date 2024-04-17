@@ -20,13 +20,14 @@ import (
 )
 
 var (
-	version            bool
-	testConfig         bool
-	homeDir            string
-	configFile         string
-	externalUI         string
-	externalController string
-	secret             string
+	version                bool
+	testConfig             bool
+	homeDir                string
+	configFile             string
+	externalUI             string
+	externalController     string
+	externalControllerUnix string
+	secret                 string
 )
 
 func init() {
@@ -34,6 +35,7 @@ func init() {
 	flag.StringVar(&configFile, "f", os.Getenv("CLASH_CONFIG_FILE"), "specify configuration file")
 	flag.StringVar(&externalUI, "ext-ui", os.Getenv("CLASH_OVERRIDE_EXTERNAL_UI_DIR"), "override external ui directory")
 	flag.StringVar(&externalController, "ext-ctl", os.Getenv("CLASH_OVERRIDE_EXTERNAL_CONTROLLER"), "override external controller address")
+	flag.StringVar(&externalControllerUnix, "ext-ctl-unix", os.Getenv("CLASH_OVERRIDE_EXTERNAL_CONTROLLER_UNIX"), "override external controller unix address")
 	flag.StringVar(&secret, "secret", os.Getenv("CLASH_OVERRIDE_SECRET"), "override secret for RESTful API")
 	flag.BoolVar(&version, "v", false, "show current version of mihomo")
 	flag.BoolVar(&testConfig, "t", false, "test configuration and exit")
@@ -91,6 +93,9 @@ func main() {
 	}
 	if externalController != "" {
 		options = append(options, hub.WithExternalController(externalController))
+	}
+	if externalControllerUnix != "" {
+		options = append(options, hub.WithExternalControllerUnix(externalControllerUnix))
 	}
 	if secret != "" {
 		options = append(options, hub.WithSecret(secret))

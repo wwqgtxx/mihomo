@@ -11,18 +11,18 @@ require (
 	github.com/go-chi/cors v1.2.1
 	github.com/go-chi/render v1.0.3
 	github.com/gobwas/ws v1.3.2
-	github.com/gofrs/uuid/v5 v5.0.0
-	github.com/insomniacslk/dhcp v0.0.0-20240227161007-c728f5dd21c8
+	github.com/gofrs/uuid/v5 v5.1.0
+	github.com/insomniacslk/dhcp v0.0.0-20240419123447-f1cffa2c0c49
 	github.com/mdlayher/netlink v1.7.2
-	github.com/metacubex/quic-go v0.42.1-0.20240319071510-a251e5c66a5c
-	github.com/metacubex/sing-quic v0.0.0-20240409064816-c16ac6b1f4b4
+	github.com/metacubex/quic-go v0.42.1-0.20240418003344-f006b5735d98
+	github.com/metacubex/sing-quic v0.0.0-20240418004036-814c531c378d
 	github.com/metacubex/sing-shadowsocks v0.2.6
 	github.com/metacubex/sing-shadowsocks2 v0.2.0
 	github.com/metacubex/sing-tun v0.2.6
 	github.com/metacubex/sing-vmess v0.1.9-0.20231207122118-72303677451f
 	github.com/metacubex/sing-wireguard v0.0.0-20240321042214-224f96122a63
 	github.com/metacubex/tfo-go v0.0.0-20240228025757-be1269474a66
-	github.com/miekg/dns v1.1.58
+	github.com/miekg/dns v1.1.59
 	github.com/openacid/low v0.1.21
 	github.com/oschwald/geoip2-golang v1.9.0
 	github.com/puzpuzpuz/xsync/v3 v3.1.0
@@ -36,17 +36,17 @@ require (
 	github.com/stretchr/testify v1.9.0
 	github.com/vishvananda/netlink v1.2.1-beta.2.0.20230922032456-a4fcbb7aebfb
 	github.com/wk8/go-ordered-map/v2 v2.1.8
-	github.com/zhangyunhao116/fastrand v0.3.0
+	github.com/zhangyunhao116/fastrand v0.4.0
 	go.etcd.io/bbolt v1.3.7
 	go.uber.org/automaxprocs v1.5.3
 	go4.org/netipx v0.0.0-20231129151722-fdeea329fbba
 	golang.org/x/crypto v0.22.0
-	golang.org/x/exp v0.0.0-20240222234643-814bf88cf225
+	golang.org/x/exp v0.0.0-20240416160154-fe59bbe5cc7f
 	golang.org/x/net v0.24.0
-	golang.org/x/sync v0.6.0
+	golang.org/x/sync v0.7.0
 	golang.org/x/sys v0.19.0
 	gopkg.in/yaml.v3 v3.0.1
-	lukechampine.com/blake3 v1.2.1
+	lukechampine.com/blake3 v1.2.2
 )
 
 require (
@@ -92,10 +92,10 @@ require (
 	github.com/vishvananda/netns v0.0.4 // indirect
 	gitlab.com/yawning/bsaes.git v0.0.0-20190805113838-0a714cd429ec // indirect
 	go.uber.org/mock v0.4.0 // indirect
-	golang.org/x/mod v0.15.0 // indirect
+	golang.org/x/mod v0.17.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
-	golang.org/x/tools v0.18.0 // indirect
+	golang.org/x/tools v0.20.0 // indirect
 )
 
 replace github.com/sagernet/sing => github.com/metacubex/sing v0.0.0-20240408015159-aa61c96df764

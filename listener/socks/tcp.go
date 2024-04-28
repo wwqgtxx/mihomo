@@ -90,11 +90,12 @@ func HandleSocks4(conn net.Conn, tunnel C.Tunnel, additions ...inbound.Addition)
 	if inbound.SkipAuthRemoteAddr(conn.RemoteAddr()) {
 		authenticator = nil
 	}
-	addr, _, err := socks4.ServerHandshake(conn, authenticator)
+	addr, _, user, err := socks4.ServerHandshake(conn, authenticator)
 	if err != nil {
 		conn.Close()
 		return
 	}
+	additions = append(additions, inbound.WithInUser(user))
 	tunnel.HandleTCPConn(inbound.NewSocket(socks5.ParseAddr(addr), conn, C.SOCKS4, additions...))
 }
 
@@ -103,7 +104,7 @@ func HandleSocks5(conn net.Conn, tunnel C.Tunnel, additions ...inbound.Addition)
 	if inbound.SkipAuthRemoteAddr(conn.RemoteAddr()) {
 		authenticator = nil
 	}
-	target, command, err := socks5.ServerHandshake(conn, authenticator)
+	target, command, user, err := socks5.ServerHandshake(conn, authenticator)
 	if err != nil {
 		conn.Close()
 		return
@@ -113,5 +114,6 @@ func HandleSocks5(conn net.Conn, tunnel C.Tunnel, additions ...inbound.Addition)
 		io.Copy(io.Discard, conn)
 		return
 	}
+	additions = append(additions, inbound.WithInUser(user))
 	tunnel.HandleTCPConn(inbound.NewSocket(target, conn, C.SOCKS5, additions...))
 }

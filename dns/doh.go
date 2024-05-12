@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/metacubex/mihomo/component/ca"
 	"github.com/metacubex/mihomo/component/dialer"
 	"github.com/metacubex/mihomo/component/resolver"
 	C "github.com/metacubex/mihomo/constant"
@@ -132,10 +133,10 @@ func newDoHClient(url, iface string, r *Resolver, useRemote bool, proxyAdapter C
 
 				return dialer.DialContext(ctx, "tcp", net.JoinHostPort(ip.String(), port), options...)
 			},
-			TLSClientConfig: &tls.Config{
+			TLSClientConfig: ca.GetGlobalTLSConfig(&tls.Config{
 				// alpn identifier, see https://tools.ietf.org/html/draft-hoffman-dprive-dns-tls-alpn-00#page-6
 				NextProtos: []string{"dns"},
-			},
+			}),
 		},
 	}
 }

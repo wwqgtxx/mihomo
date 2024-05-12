@@ -11,6 +11,7 @@ import (
 	"strconv"
 
 	N "github.com/metacubex/mihomo/common/net"
+	"github.com/metacubex/mihomo/component/ca"
 	"github.com/metacubex/mihomo/component/dialer"
 	"github.com/metacubex/mihomo/component/proxydialer"
 	C "github.com/metacubex/mihomo/constant"
@@ -37,6 +38,7 @@ type Socks5Option struct {
 	TLS            bool   `proxy:"tls,omitempty"`
 	UDP            bool   `proxy:"udp,omitempty"`
 	SkipCertVerify bool   `proxy:"skip-cert-verify,omitempty"`
+	Fingerprint    string `proxy:"fingerprint,omitempty"`
 }
 
 // StreamConnContext implements C.ProxyAdapter
@@ -172,12 +174,18 @@ func (ss *Socks5) ListenPacketContext(ctx context.Context, metadata *C.Metadata,
 	return newPacketConn(&socksPacketConn{PacketConn: pc, rAddr: bindUDPAddr, tcpConn: c}, ss), nil
 }
 
-func NewSocks5(option Socks5Option) *Socks5 {
+func NewSocks5(option Socks5Option) (*Socks5, error) {
 	var tlsConfig *tls.Config
 	if option.TLS {
 		tlsConfig = &tls.Config{
 			InsecureSkipVerify: option.SkipCertVerify,
 			ServerName:         option.Server,
+		}
+
+		var err error
+		tlsConfig, err = ca.GetSpecifiedFingerprintTLSConfig(tlsConfig, option.Fingerprint)
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -198,7 +206,7 @@ func NewSocks5(option Socks5Option) *Socks5 {
 		tls:            option.TLS,
 		skipCertVerify: option.SkipCertVerify,
 		tlsConfig:      tlsConfig,
-	}
+	}, nil
 }
 
 type socksPacketConn struct {

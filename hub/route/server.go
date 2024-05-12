@@ -2,6 +2,7 @@ package route
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,6 +16,7 @@ import (
 	"time"
 
 	"github.com/metacubex/mihomo/adapter/inbound"
+	CN "github.com/metacubex/mihomo/common/net"
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/log"
 	"github.com/metacubex/mihomo/tunnel/statistic"
@@ -153,12 +155,42 @@ func (w *fakeResponseWriter) WriteHeader(statusCode int) {
 	w.statusCode = statusCode
 }
 
-func Start(addr string) {
+func Start(addr string, tlsAddr string, secret string,
+	certificate, privateKey string, isDebug bool) {
 	if serverAddr != "" {
 		return
 	}
 
 	serverAddr = addr
+	serverSecret = secret
+
+	if len(tlsAddr) > 0 {
+		go func() {
+			c, err := CN.ParseCert(certificate, privateKey, C.Path)
+			if err != nil {
+				log.Errorln("External controller tls listen error: %s", err)
+				return
+			}
+
+			l, err := inbound.Listen("tcp", tlsAddr)
+			if err != nil {
+				log.Errorln("External controller tls listen error: %s", err)
+				return
+			}
+
+			serverAddr = l.Addr().String()
+			log.Infoln("RESTful API tls listening at: %s", serverAddr)
+			tlsServe := &http.Server{
+				Handler: router(true),
+				TLSConfig: &tls.Config{
+					Certificates: []tls.Certificate{c},
+				},
+			}
+			if err = tlsServe.ServeTLS(l, "", ""); err != nil {
+				log.Errorln("External controller tls serve error: %s", err)
+			}
+		}()
+	}
 
 	l, err := inbound.Listen("tcp", addr)
 	if err != nil {
@@ -167,9 +199,11 @@ func Start(addr string) {
 	}
 	serverAddr = l.Addr().String()
 	log.Infoln("RESTful API listening at: %s", serverAddr)
-	if err = http.Serve(l, C.GetECHandler()); err != nil {
+
+	if err = http.Serve(l, router(true)); err != nil {
 		log.Errorln("External controller serve error: %s", err)
 	}
+
 }
 
 func StartUnix(addr string, isDebug bool) {

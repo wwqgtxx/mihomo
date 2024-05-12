@@ -79,6 +79,7 @@ type Inbound struct {
 // Controller
 type Controller struct {
 	ExternalController     string `json:"-"`
+	ExternalControllerTLS  string `json:"-"`
 	ExternalControllerUnix string `json:"-"`
 	ExternalUI             string `json:"-"`
 	Secret                 string `json:"-"`
@@ -106,6 +107,12 @@ type FallbackFilter struct {
 	GeoIPCode string         `yaml:"geoip-code"`
 	IPCIDR    []netip.Prefix `yaml:"ipcidr"`
 	Domain    []string       `yaml:"domain"`
+}
+
+type TLS struct {
+	Certificate     string   `yaml:"certificate"`
+	PrivateKey      string   `yaml:"private-key"`
+	CustomTrustCert []string `yaml:"custom-certifactes"`
 }
 
 // Profile config
@@ -146,6 +153,7 @@ type Config struct {
 	Listeners     map[string]C.InboundListener
 	Tunnels       []LC.Tunnel
 	Sniffer       *Sniffer
+	TLS           *TLS
 }
 
 type RawDNS struct {
@@ -192,6 +200,7 @@ type RawConfig struct {
 	IPv6                   bool           `yaml:"ipv6"`
 	ExternalController     string         `yaml:"external-controller"`
 	ExternalControllerUnix string         `yaml:"external-controller-unix"`
+	ExternalControllerTLS  string         `yaml:"external-controller-tls"`
 	ExternalUI             string         `yaml:"external-ui"`
 	Secret                 string         `yaml:"secret"`
 	Interface              string         `yaml:"interface-name"`
@@ -219,6 +228,7 @@ type RawConfig struct {
 	ProxyGroup    []map[string]any          `yaml:"proxy-groups"`
 	Rule          []string                  `yaml:"rules"`
 	SubRules      map[string][]string       `yaml:"sub-rules"`
+	RawTLS        TLS                       `yaml:"tls"`
 	Listeners     []map[string]any          `yaml:"listeners"`
 }
 
@@ -350,6 +360,7 @@ func ParseRawConfig(rawCfg *RawConfig) (*Config, error) {
 
 	config.Experimental = &rawCfg.Experimental
 	config.Profile = &rawCfg.Profile
+	config.TLS = &rawCfg.RawTLS
 
 	general, err := parseGeneral(rawCfg)
 	if err != nil {
@@ -460,8 +471,9 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 		Controller: Controller{
 			ExternalController:     cfg.ExternalController,
 			ExternalUI:             cfg.ExternalUI,
-			ExternalControllerUnix: cfg.ExternalControllerUnix,
 			Secret:                 cfg.Secret,
+			ExternalControllerUnix: cfg.ExternalControllerUnix,
+			ExternalControllerTLS:  cfg.ExternalControllerTLS,
 		},
 		Mode:                   cfg.Mode,
 		LogLevel:               cfg.LogLevel,

@@ -13,6 +13,7 @@ import (
 	"sync"
 
 	"github.com/metacubex/mihomo/common/pool"
+	"github.com/metacubex/mihomo/component/ca"
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/transport/socks5"
 	"github.com/metacubex/mihomo/transport/vmess"
@@ -41,6 +42,7 @@ type Option struct {
 	Password       string
 	ALPN           []string
 	ServerName     string
+	Fingerprint    string
 	SkipCertVerify bool
 }
 
@@ -71,6 +73,12 @@ func (t *Trojan) StreamConn(ctx context.Context, conn net.Conn) (net.Conn, error
 		ServerName:         t.option.ServerName,
 	}
 
+	var err error
+	tlsConfig, err = ca.GetSpecifiedFingerprintTLSConfig(tlsConfig, t.option.Fingerprint)
+	if err != nil {
+		return nil, err
+	}
+
 	tlsConn := tls.Client(conn, tlsConfig)
 
 	// fix tls handshake not timeout
@@ -94,6 +102,12 @@ func (t *Trojan) StreamWebsocketConn(ctx context.Context, conn net.Conn, wsOptio
 		MinVersion:         tls.VersionTLS12,
 		InsecureSkipVerify: t.option.SkipCertVerify,
 		ServerName:         t.option.ServerName,
+	}
+
+	var err error
+	tlsConfig, err = ca.GetSpecifiedFingerprintTLSConfig(tlsConfig, t.option.Fingerprint)
+	if err != nil {
+		return nil, err
 	}
 
 	return vmess.StreamWebsocketConn(ctx, conn, &vmess.WebsocketConfig{

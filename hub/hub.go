@@ -50,7 +50,8 @@ func Parse(options ...Option) error {
 
 	route.Init(cfg.General.Secret)
 	if cfg.General.ExternalController != "" {
-		go route.Start(cfg.General.ExternalController)
+		go route.Start(cfg.General.ExternalController, cfg.General.ExternalControllerTLS,
+			cfg.General.Secret, cfg.TLS.Certificate, cfg.TLS.PrivateKey, cfg.General.LogLevel == log.DEBUG)
 	}
 
 	if cfg.General.ExternalControllerUnix != "" {

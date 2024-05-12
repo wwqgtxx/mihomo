@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 
+	"github.com/metacubex/mihomo/component/ca"
 	"github.com/metacubex/mihomo/transport/vmess"
 )
 
@@ -17,6 +18,7 @@ type Option struct {
 	Headers                  map[string]string
 	TLS                      bool
 	SkipCertVerify           bool
+	Fingerprint              string
 	Mux                      bool
 	V2rayHttpUpgrade         bool
 	V2rayHttpUpgradeFastOpen bool
@@ -40,10 +42,15 @@ func NewV2rayObfs(ctx context.Context, conn net.Conn, option *Option) (net.Conn,
 
 	if option.TLS {
 		config.TLS = true
-		config.TLSConfig = &tls.Config{
+		tlsConfig := &tls.Config{
 			ServerName:         option.Host,
 			InsecureSkipVerify: option.SkipCertVerify,
 			NextProtos:         []string{"http/1.1"},
+		}
+		var err error
+		config.TLSConfig, err = ca.GetSpecifiedFingerprintTLSConfig(tlsConfig, option.Fingerprint)
+		if err != nil {
+			return nil, err
 		}
 		if host := config.Headers.Get("Host"); host != "" {
 			config.TLSConfig.ServerName = host

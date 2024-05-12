@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"crypto/tls"
 	"io"
 	"net"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/metacubex/mihomo/component/ca"
 	"github.com/metacubex/mihomo/component/dialer"
 	"github.com/metacubex/mihomo/component/inner_dialer"
 	C "github.com/metacubex/mihomo/constant"
@@ -88,6 +90,7 @@ func (h *HTTPVehicle) Read() (buf []byte, err error) {
 			TLSHandshakeTimeout:   10 * time.Second,
 			ExpectContinueTimeout: 1 * time.Second,
 			DialContext:           dc,
+			TLSClientConfig:       ca.GetGlobalTLSConfig(&tls.Config{}),
 		}
 
 		client := http.Client{Transport: transport}

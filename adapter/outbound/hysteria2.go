@@ -12,6 +12,7 @@ import (
 
 	CN "github.com/metacubex/mihomo/common/net"
 	"github.com/metacubex/mihomo/common/utils"
+	"github.com/metacubex/mihomo/component/ca"
 	"github.com/metacubex/mihomo/component/dialer"
 	"github.com/metacubex/mihomo/component/proxydialer"
 	C "github.com/metacubex/mihomo/constant"
@@ -53,7 +54,10 @@ type Hysteria2Option struct {
 	ObfsPassword   string   `proxy:"obfs-password,omitempty"`
 	SNI            string   `proxy:"sni,omitempty"`
 	SkipCertVerify bool     `proxy:"skip-cert-verify,omitempty"`
+	Fingerprint    string   `proxy:"fingerprint,omitempty"`
 	ALPN           []string `proxy:"alpn,omitempty"`
+	CustomCA       string   `proxy:"ca,omitempty"`
+	CustomCAString string   `proxy:"ca-str,omitempty"`
 	CWND           int      `proxy:"cwnd,omitempty"`
 	UdpMTU         int      `proxy:"udp-mtu,omitempty"`
 }
@@ -114,6 +118,10 @@ func NewHysteria2(option Hysteria2Option) (*Hysteria2, error) {
 	}
 
 	var err error
+	tlsConfig, err = ca.GetTLSConfig(tlsConfig, option.Fingerprint, option.CustomCA, option.CustomCAString)
+	if err != nil {
+		return nil, err
+	}
 
 	if len(option.ALPN) > 0 {
 		tlsConfig.NextProtos = option.ALPN

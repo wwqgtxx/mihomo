@@ -48,6 +48,12 @@ jobs:
         run: |
           go test ./...
 
+      - name: Update CA
+        run: |
+          sudo apt-get install ca-certificates
+          sudo update-ca-certificates
+          cp -f /etc/ssl/certs/ca-certificates.crt component/ca/ca-certificates.crt
+
       - name: Update Country.mmdb
         run: |
           cd component/mmdb

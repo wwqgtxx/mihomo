@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/metacubex/mihomo/component/ca"
 	"github.com/metacubex/mihomo/component/dialer"
 	"github.com/metacubex/mihomo/component/resolver"
 	C "github.com/metacubex/mihomo/constant"
@@ -113,7 +114,7 @@ func (c *client) ExchangeContext(ctx context.Context, m *D.Msg) (*D.Msg, error) 
 	ch := make(chan result, 1)
 	go func() {
 		if strings.HasSuffix(c.Client.Net, "tls") {
-			conn = tls.Client(conn, c.Client.TLSConfig)
+			conn = tls.Client(conn, ca.GetGlobalTLSConfig(c.Client.TLSConfig))
 		}
 
 		dConn := &D.Conn{

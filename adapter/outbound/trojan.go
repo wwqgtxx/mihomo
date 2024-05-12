@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	N "github.com/metacubex/mihomo/common/net"
+	"github.com/metacubex/mihomo/component/ca"
 	"github.com/metacubex/mihomo/component/dialer"
 	"github.com/metacubex/mihomo/component/proxydialer"
 	C "github.com/metacubex/mihomo/constant"
@@ -37,6 +38,7 @@ type TrojanOption struct {
 	Password       string      `proxy:"password"`
 	ALPN           []string    `proxy:"alpn,omitempty"`
 	SNI            string      `proxy:"sni,omitempty"`
+	Fingerprint    string      `proxy:"fingerprint,omitempty"`
 	SkipCertVerify bool        `proxy:"skip-cert-verify,omitempty"`
 	UDP            bool        `proxy:"udp,omitempty"`
 	Network        string      `proxy:"network,omitempty"`
@@ -218,6 +220,7 @@ func NewTrojan(option TrojanOption) (*Trojan, error) {
 		ALPN:           option.ALPN,
 		ServerName:     option.Server,
 		SkipCertVerify: option.SkipCertVerify,
+		Fingerprint:    option.Fingerprint,
 	}
 
 	if option.SNI != "" {
@@ -262,6 +265,12 @@ func NewTrojan(option TrojanOption) (*Trojan, error) {
 			MinVersion:         tls.VersionTLS12,
 			InsecureSkipVerify: tOption.SkipCertVerify,
 			ServerName:         tOption.ServerName,
+		}
+
+		var err error
+		tlsConfig, err = ca.GetSpecifiedFingerprintTLSConfig(tlsConfig, option.Fingerprint)
+		if err != nil {
+			return nil, err
 		}
 
 		t.transport = gun.NewHTTP2Client(dialFn, tlsConfig)

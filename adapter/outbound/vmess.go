@@ -13,6 +13,7 @@ import (
 
 	N "github.com/metacubex/mihomo/common/net"
 	"github.com/metacubex/mihomo/common/utils"
+	"github.com/metacubex/mihomo/component/ca"
 	"github.com/metacubex/mihomo/component/dialer"
 	"github.com/metacubex/mihomo/component/proxydialer"
 	"github.com/metacubex/mihomo/component/resolver"
@@ -53,6 +54,7 @@ type VmessOption struct {
 	Network        string       `proxy:"network,omitempty"`
 	TLS            bool         `proxy:"tls,omitempty"`
 	SkipCertVerify bool         `proxy:"skip-cert-verify,omitempty"`
+	Fingerprint    string       `proxy:"fingerprint,omitempty"`
 	ServerName     string       `proxy:"servername,omitempty"`
 	HTTPOpts       HTTPOptions  `proxy:"http-opts,omitempty"`
 	HTTP2Opts      HTTP2Options `proxy:"h2-opts,omitempty"`
@@ -127,10 +129,14 @@ func (v *Vmess) StreamConnContext(ctx context.Context, c net.Conn, metadata *C.M
 
 		if v.option.TLS {
 			wsOpts.TLS = true
-			wsOpts.TLSConfig = &tls.Config{
+			tlsConfig := &tls.Config{
 				ServerName:         host,
 				InsecureSkipVerify: v.option.SkipCertVerify,
 				NextProtos:         []string{"http/1.1"},
+			}
+			wsOpts.TLSConfig, err = ca.GetSpecifiedFingerprintTLSConfig(tlsConfig, v.option.Fingerprint)
+			if err != nil {
+				return nil, err
 			}
 			if v.option.ServerName != "" {
 				wsOpts.TLSConfig.ServerName = v.option.ServerName
@@ -172,6 +178,7 @@ func (v *Vmess) StreamConnContext(ctx context.Context, c net.Conn, metadata *C.M
 		tlsOpts := vmess.TLSConfig{
 			Host:           host,
 			SkipCertVerify: v.option.SkipCertVerify,
+			FingerPrint:    v.option.Fingerprint,
 			NextProtos:     []string{"h2"},
 		}
 
@@ -199,6 +206,7 @@ func (v *Vmess) StreamConnContext(ctx context.Context, c net.Conn, metadata *C.M
 			tlsOpts := &vmess.TLSConfig{
 				Host:           host,
 				SkipCertVerify: v.option.SkipCertVerify,
+				FingerPrint:    v.option.Fingerprint,
 			}
 
 			if v.option.ServerName != "" {
@@ -480,10 +488,10 @@ func NewVmess(option VmessOption) (*Vmess, error) {
 			ServiceName: v.option.GrpcOpts.GrpcServiceName,
 			Host:        v.option.ServerName,
 		}
-		tlsConfig := &tls.Config{
+		tlsConfig := ca.GetGlobalTLSConfig(&tls.Config{
 			InsecureSkipVerify: v.option.SkipCertVerify,
 			ServerName:         v.option.ServerName,
-		}
+		})
 
 		if v.option.ServerName == "" {
 			host, _, _ := net.SplitHostPort(v.addr)

@@ -26,13 +26,19 @@ jobs:
           check-latest: true
           go-version: "1.22"
 
-        # modify from https://github.com/restic/restic/issues/4636#issuecomment-1896455557
-        # this patch file only works on golang1.22.x
-        # that means after golang1.23 release it must be changed
+      # modify from https://github.com/restic/restic/issues/4636#issuecomment-1896455557
+      # this patch file only works on golang1.22.x
+      # that means after golang1.23 release it must be changed
+      # revert:
+      # 693def151adff1af707d82d28f55dba81ceb08e1: "crypto/rand,runtime: switch RtlGenRandom for ProcessPrng"
+      # 7c1157f9544922e96945196b47b95664b1e39108: "net: remove sysSocket fallback for Windows 7"
+      # 48042aa09c2f878c4faa576948b07fe625c4707a: "syscall: remove Windows 7 console handle workaround"
       - name: Revert Golang1.22 commit for Windows7/8
         run: |
           cd $(go env GOROOT)
-          patch --verbose -R -p 1 < $GITHUB_WORKSPACE/.github/693def151adff1af707d82d28f55dba81ceb08e1.diff
+          patch --verbose -R -p 1 < $GITHUB_WORKSPACE/.github/patch_go122/693def151adff1af707d82d28f55dba81ceb08e1.diff
+          patch --verbose -R -p 1 < $GITHUB_WORKSPACE/.github/patch_go122/7c1157f9544922e96945196b47b95664b1e39108.diff
+          patch --verbose -R -p 1 < $GITHUB_WORKSPACE/.github/patch_go122/48042aa09c2f878c4faa576948b07fe625c4707a.diff
 
       - name: Set variables
         run: echo "VERSION=$(git describe --tags)" >> $GITHUB_ENV

@@ -43,7 +43,7 @@ func getProvidersProxies(providers []provider.ProxyProvider, touch bool, filter 
 		for _, filterReg := range filterRegs {
 			for _, p := range proxies {
 				name := p.Name()
-				if mat, _ := filterReg.FindStringMatch(name); mat != nil {
+				if mat, _ := filterReg.MatchString(name); mat {
 					if _, ok := proxiesSet[name]; !ok {
 						proxiesSet[name] = struct{}{}
 						matchedProxies = append(matchedProxies, p)

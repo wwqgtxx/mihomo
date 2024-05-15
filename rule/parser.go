@@ -42,9 +42,13 @@ func ParseRule(tp, payload, target string, params []string, subRules map[string]
 	case "IN-PORT":
 		parsed, parseErr = NewPort(payload, target, C.InPort)
 	case "PROCESS-NAME":
-		parsed, parseErr = NewProcess(payload, target, true)
+		parsed, parseErr = NewProcess(payload, target, true, false)
 	case "PROCESS-PATH":
-		parsed, parseErr = NewProcess(payload, target, false)
+		parsed, parseErr = NewProcess(payload, target, false, false)
+	case "PROCESS-NAME-REGEX":
+		parsed, parseErr = NewProcess(payload, target, true, true)
+	case "PROCESS-PATH-REGEX":
+		parsed, parseErr = NewProcess(payload, target, false, true)
 	case "NETWORK":
 		parsed, parseErr = NewNetwork(payload, target)
 	case "IN-TYPE":

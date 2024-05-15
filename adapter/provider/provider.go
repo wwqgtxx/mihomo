@@ -161,12 +161,12 @@ func NewProxySetProvider(name string, interval time.Duration, filter string, exc
 					continue
 				}
 				if len(excludeFilter) > 0 {
-					if mat, _ := excludeFilterReg.FindStringMatch(name); mat != nil {
+					if mat, _ := excludeFilterReg.MatchString(name); mat {
 						continue
 					}
 				}
 				if len(filter) > 0 {
-					if mat, _ := filterReg.FindStringMatch(name); mat == nil {
+					if mat, _ := filterReg.MatchString(name); !mat {
 						continue
 					}
 				}

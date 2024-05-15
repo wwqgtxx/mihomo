@@ -14,8 +14,10 @@ const (
 	InUser
 	InName
 	InType
-	Process
+	ProcessName
 	ProcessPath
+	ProcessNameRegex
+	ProcessPathRegex
 	Network
 	Type_
 	IPSet
@@ -61,10 +63,14 @@ func (rt RuleType) String() string {
 		return "Network"
 	case Type_:
 		return "Type"
-	case Process:
-		return "Process"
+	case ProcessName:
+		return "ProcessName"
 	case ProcessPath:
 		return "ProcessPath"
+	case ProcessNameRegex:
+		return "ProcessNameRegex"
+	case ProcessPathRegex:
+		return "ProcessPathRegex"
 	case IPSet:
 		return "IPSet"
 	case MATCH:

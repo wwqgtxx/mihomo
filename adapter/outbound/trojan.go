@@ -3,6 +3,7 @@ package outbound
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 	"github.com/metacubex/mihomo/component/proxydialer"
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/transport/gun"
+	"github.com/metacubex/mihomo/transport/shadowsocks/core"
 	"github.com/metacubex/mihomo/transport/trojan"
 
 	"golang.org/x/net/http2"
@@ -28,22 +30,32 @@ type Trojan struct {
 	gunTLSConfig *tls.Config
 	gunConfig    *gun.Config
 	transport    *http2.Transport
+
+	ssCipher core.Cipher
 }
 
 type TrojanOption struct {
 	BasicOption
-	Name           string      `proxy:"name"`
-	Server         string      `proxy:"server"`
-	Port           int         `proxy:"port"`
-	Password       string      `proxy:"password"`
-	ALPN           []string    `proxy:"alpn,omitempty"`
-	SNI            string      `proxy:"sni,omitempty"`
-	Fingerprint    string      `proxy:"fingerprint,omitempty"`
-	SkipCertVerify bool        `proxy:"skip-cert-verify,omitempty"`
-	UDP            bool        `proxy:"udp,omitempty"`
-	Network        string      `proxy:"network,omitempty"`
-	GrpcOpts       GrpcOptions `proxy:"grpc-opts,omitempty"`
-	WSOpts         WSOptions   `proxy:"ws-opts,omitempty"`
+	Name           string         `proxy:"name"`
+	Server         string         `proxy:"server"`
+	Port           int            `proxy:"port"`
+	Password       string         `proxy:"password"`
+	ALPN           []string       `proxy:"alpn,omitempty"`
+	SNI            string         `proxy:"sni,omitempty"`
+	Fingerprint    string         `proxy:"fingerprint,omitempty"`
+	SkipCertVerify bool           `proxy:"skip-cert-verify,omitempty"`
+	UDP            bool           `proxy:"udp,omitempty"`
+	Network        string         `proxy:"network,omitempty"`
+	GrpcOpts       GrpcOptions    `proxy:"grpc-opts,omitempty"`
+	WSOpts         WSOptions      `proxy:"ws-opts,omitempty"`
+	SSOpts         TrojanSSOption `proxy:"ss-opts,omitempty"`
+}
+
+// TrojanSSOption from https://github.com/p4gefau1t/trojan-go/blob/v0.10.6/tunnel/shadowsocks/config.go#L5
+type TrojanSSOption struct {
+	Enabled  bool   `proxy:"enabled,omitempty"`
+	Method   string `proxy:"method,omitempty"`
+	Password string `proxy:"password,omitempty"`
 }
 
 func (t *Trojan) plainStream(ctx context.Context, c net.Conn) (net.Conn, error) {
@@ -89,6 +101,10 @@ func (t *Trojan) StreamConnContext(ctx context.Context, c net.Conn, metadata *C.
 		return nil, fmt.Errorf("%s connect error: %w", t.addr, err)
 	}
 
+	if t.ssCipher != nil {
+		c = t.ssCipher.StreamConn(c)
+	}
+
 	if metadata.NetWork == C.UDP {
 		err = t.instance.WriteHeader(c, trojan.CommandUDP, serializesSocksAddr(metadata))
 		return c, err
@@ -104,6 +120,10 @@ func (t *Trojan) DialContext(ctx context.Context, metadata *C.Metadata, opts ...
 		c, err := gun.StreamGunWithTransport(t.transport, t.gunConfig)
 		if err != nil {
 			return nil, err
+		}
+
+		if t.ssCipher != nil {
+			c = t.ssCipher.StreamConn(c)
 		}
 
 		if err = t.instance.WriteHeader(c, trojan.CommandTCP, serializesSocksAddr(metadata)); err != nil {
@@ -155,6 +175,11 @@ func (t *Trojan) ListenPacketContext(ctx context.Context, metadata *C.Metadata, 
 		defer func(c net.Conn) {
 			safeConnClose(c, err)
 		}(c)
+
+		if t.ssCipher != nil {
+			c = t.ssCipher.StreamConn(c)
+		}
+
 		err = t.instance.WriteHeader(c, trojan.CommandUDP, serializesSocksAddr(metadata))
 		if err != nil {
 			return nil, err
@@ -185,6 +210,10 @@ func (t *Trojan) ListenPacketWithDialer(ctx context.Context, dialer C.Dialer, me
 	c, err = t.plainStream(ctx, c)
 	if err != nil {
 		return nil, fmt.Errorf("%s connect error: %w", t.addr, err)
+	}
+
+	if t.ssCipher != nil {
+		c = t.ssCipher.StreamConn(c)
 	}
 
 	err = t.instance.WriteHeader(c, trojan.CommandUDP, serializesSocksAddr(metadata))
@@ -240,6 +269,20 @@ func NewTrojan(option TrojanOption) (*Trojan, error) {
 		},
 		instance: trojan.New(tOption),
 		option:   &option,
+	}
+
+	if option.SSOpts.Enabled {
+		if option.SSOpts.Password == "" {
+			return nil, errors.New("empty password")
+		}
+		if option.SSOpts.Method == "" {
+			option.SSOpts.Method = "AES-128-GCM"
+		}
+		ciph, err := core.PickCipher(option.SSOpts.Method, nil, option.SSOpts.Password)
+		if err != nil {
+			return nil, err
+		}
+		t.ssCipher = ciph
 	}
 
 	if option.Network == "grpc" {

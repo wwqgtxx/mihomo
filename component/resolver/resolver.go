@@ -11,8 +11,8 @@ import (
 
 	"github.com/metacubex/mihomo/component/trie"
 
+	"github.com/metacubex/randv2"
 	"github.com/miekg/dns"
-	"github.com/zhangyunhao116/fastrand"
 )
 
 var (
@@ -89,7 +89,7 @@ func ResolveIPv4WithResolver(ctx context.Context, host string, r Resolver) (neti
 	} else if len(ips) == 0 {
 		return netip.Addr{}, fmt.Errorf("%w: %s", ErrIPNotFound, host)
 	}
-	return ips[fastrand.Intn(len(ips))], nil
+	return ips[randv2.IntN(len(ips))], nil
 }
 
 // ResolveIPv4 with a host, return ipv4
@@ -143,7 +143,7 @@ func ResolveIPv6WithResolver(ctx context.Context, host string, r Resolver) (neti
 	} else if len(ips) == 0 {
 		return netip.Addr{}, fmt.Errorf("%w: %s", ErrIPNotFound, host)
 	}
-	return ips[fastrand.Intn(len(ips))], nil
+	return ips[randv2.IntN(len(ips))], nil
 }
 
 func ResolveIPv6(ctx context.Context, host string) (netip.Addr, error) {
@@ -194,9 +194,9 @@ func ResolveIPWithResolver(ctx context.Context, host string, r Resolver) (netip.
 	}
 	ipv4s, ipv6s := SortationAddr(ips)
 	if len(ipv4s) > 0 {
-		return ipv4s[fastrand.Intn(len(ipv4s))], nil
+		return ipv4s[randv2.IntN(len(ipv4s))], nil
 	}
-	return ipv6s[fastrand.Intn(len(ipv6s))], nil
+	return ipv6s[randv2.IntN(len(ipv6s))], nil
 }
 
 // ResolveIP with a host, return ip and priority return TypeA

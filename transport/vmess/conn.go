@@ -17,7 +17,7 @@ import (
 
 	"golang.org/x/crypto/chacha20poly1305"
 
-	"github.com/zhangyunhao116/fastrand"
+	"github.com/metacubex/randv2"
 )
 
 // Conn wrapper a net.Conn with vmess protocol
@@ -75,7 +75,7 @@ func (vc *Conn) sendRequest() error {
 	buf.WriteByte(vc.respV)
 	buf.WriteByte(vc.option)
 
-	p := fastrand.Intn(16)
+	p := randv2.IntN(16)
 	// P Sec Reserve Cmd
 	buf.WriteByte(byte(p<<4) | byte(vc.security))
 	buf.WriteByte(0)

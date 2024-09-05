@@ -6,7 +6,9 @@ import (
 
 	"github.com/metacubex/mihomo/adapter/inbound"
 	N "github.com/metacubex/mihomo/common/net"
+	"github.com/metacubex/mihomo/component/auth"
 	C "github.com/metacubex/mihomo/constant"
+	authStore "github.com/metacubex/mihomo/listener/auth"
 	"github.com/metacubex/mihomo/listener/mtproxy"
 	"github.com/metacubex/mihomo/listener/socks"
 	"github.com/metacubex/mihomo/log"
@@ -22,7 +24,13 @@ type Listener struct {
 }
 
 func New(config string, tunnel C.Tunnel, additions ...inbound.Addition) (*Listener, error) {
+	return NewWithAuthenticator(config, tunnel, authStore.Authenticator, additions...)
+}
+
+func NewWithAuthenticator(config string, tunnel C.Tunnel, getAuth func() auth.Authenticator, additions ...inbound.Addition) (*Listener, error) {
+	isDefault := false
 	if len(additions) == 0 {
+		isDefault = true
 		additions = []inbound.Addition{
 			inbound.WithInName("DEFAULT-MIXEC"),
 			inbound.WithSpecialRules(""),
@@ -58,8 +66,17 @@ func New(config string, tunnel C.Tunnel, additions ...inbound.Addition) (*Listen
 					}
 					continue
 				}
-				N.TCPKeepAlive(c)
-				go handleECConn(c, cl, tunnel, additions...)
+				getAuth := getAuth
+				if isDefault { // only apply on default listener
+					if !inbound.IsRemoteAddrDisAllowed(c.RemoteAddr()) {
+						_ = c.Close()
+						continue
+					}
+					if inbound.SkipAuthRemoteAddr(c.RemoteAddr()) {
+						getAuth = authStore.Nil
+					}
+				}
+				go handleECConn(c, cl, tunnel, getAuth, additions...)
 			}
 		}()
 	}
@@ -81,7 +98,9 @@ func (l *Listener) Config() string {
 	return l.config
 }
 
-func handleECConn(conn net.Conn, cl ChanListener, tunnel C.Tunnel, additions ...inbound.Addition) {
+func handleECConn(conn net.Conn, cl ChanListener, tunnel C.Tunnel, getAuth func() auth.Authenticator, additions ...inbound.Addition) {
+	N.TCPKeepAlive(conn)
+
 	bufConn := N.NewBufferedConn(conn)
 	head, err := bufConn.Peek(1)
 	if err != nil {
@@ -90,10 +109,10 @@ func handleECConn(conn net.Conn, cl ChanListener, tunnel C.Tunnel, additions ...
 
 	switch head[0] {
 	case socks4.Version: // 0x04
-		socks.HandleSocks4(bufConn, tunnel, additions...)
+		socks.HandleSocks4(bufConn, tunnel, getAuth, additions...)
 		return
 	case socks5.Version: // 0x05
-		socks.HandleSocks5(bufConn, tunnel, additions...)
+		socks.HandleSocks5(bufConn, tunnel, getAuth, additions...)
 		return
 	case mtproxy.FakeTLSFirstByte: // 0x16
 		if mtproxy.HandleFakeTLS(bufConn, tunnel, additions...) {

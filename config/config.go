@@ -70,6 +70,8 @@ type Inbound struct {
 	MTProxyConfig     string         `json:"mtproxy-config"`
 	Authentication    []string       `json:"authentication"`
 	SkipAuthPrefixes  []netip.Prefix `json:"skip-auth-prefixes"`
+	LanAllowedIPs     []netip.Prefix `json:"lan-allowed-ips"`
+	LanDisAllowedIPs  []netip.Prefix `json:"lan-disallowed-ips"`
 	AllowLan          bool           `json:"allow-lan"`
 	BindAddress       string         `json:"bind-address"`
 	InboundTfo        bool           `json:"inbound-tfo"`
@@ -196,6 +198,8 @@ type RawConfig struct {
 	InboundMPTCP           bool           `yaml:"inbound-mptcp"`
 	Authentication         []string       `yaml:"authentication"`
 	SkipAuthPrefixes       []netip.Prefix `yaml:"skip-auth-prefixes"`
+	LanAllowedIPs          []netip.Prefix `yaml:"lan-allowed-ips"`
+	LanDisAllowedIPs       []netip.Prefix `yaml:"lan-disallowed-ips"`
 	AllowLan               bool           `yaml:"allow-lan"`
 	BindAddress            string         `yaml:"bind-address"`
 	Mode                   T.TunnelMode   `yaml:"mode"`
@@ -267,6 +271,7 @@ func DefaultRawConfig() *RawConfig {
 		InboundTfo:             true,
 		AllowLan:               false,
 		BindAddress:            "*",
+		LanAllowedIPs:          []netip.Prefix{netip.MustParsePrefix("0.0.0.0/0"), netip.MustParsePrefix("::/0")},
 		Mode:                   T.Rule,
 		Authentication:         []string{},
 		LogLevel:               log.INFO,
@@ -479,6 +484,8 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 			MTProxyConfig:     cfg.MTProxyConfig,
 			AllowLan:          cfg.AllowLan,
 			SkipAuthPrefixes:  cfg.SkipAuthPrefixes,
+			LanAllowedIPs:     cfg.LanAllowedIPs,
+			LanDisAllowedIPs:  cfg.LanDisAllowedIPs,
 			BindAddress:       cfg.BindAddress,
 			InboundTfo:        cfg.InboundTfo,
 			InboundMPTCP:      cfg.InboundMPTCP,

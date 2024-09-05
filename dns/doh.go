@@ -83,16 +83,20 @@ func (dc *dohClient) doRequest(req *http.Request) (msg *D.Msg, err error) {
 	return msg, err
 }
 
-func newDoHClient(url string, r *Resolver, proxyAdapter C.ProxyAdapter, proxyName string) *dohClient {
+func newDoHClient(url string, r *Resolver, proxyAdapter C.ProxyAdapter, proxyName string, params map[string]string) *dohClient {
+	tlsConfig := &tls.Config{
+		// alpn identifier, see https://tools.ietf.org/html/draft-hoffman-dprive-dns-tls-alpn-00#page-6
+		NextProtos: []string{"dns"},
+	}
+	if params["skip-cert-verify"] == "true" {
+		tlsConfig.InsecureSkipVerify = true
+	}
 	return &dohClient{
 		url: url,
 		transport: &http.Transport{
 			ForceAttemptHTTP2: true,
 			DialContext:       newDNSDialer(r, proxyAdapter, proxyName).DialContext,
-			TLSClientConfig: ca.GetGlobalTLSConfig(&tls.Config{
-				// alpn identifier, see https://tools.ietf.org/html/draft-hoffman-dprive-dns-tls-alpn-00#page-6
-				NextProtos: []string{"dns"},
-			}),
+			TLSClientConfig:   ca.GetGlobalTLSConfig(tlsConfig),
 		},
 	}
 }

@@ -216,7 +216,9 @@ type RawConfig struct {
 	PreResolveProcessName  bool           `yaml:"pre-resolve-process-name"`
 	TCPConcurrent          bool           `yaml:"tcp-concurrent"`
 	GlobalUA               string         `yaml:"global-ua" json:"global-ua"`
+	KeepAliveIdle          int            `yaml:"keep-alive-idle"`
 	KeepAliveInterval      int            `yaml:"keep-alive-interval"`
+	DisableKeepAlive       bool           `yaml:"disable-keep-alive"`
 
 	Sniffer       RawSniffer                `yaml:"sniffer"`
 	RuleProvider  map[string]map[string]any `yaml:"rule-providers"`
@@ -449,11 +451,13 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 		}
 	}
 
-	if cfg.KeepAliveInterval == 0 {
-		cfg.KeepAliveInterval = 30
+	if cfg.KeepAliveIdle != 0 {
+		N.KeepAliveIdle = time.Duration(cfg.KeepAliveIdle) * time.Second
 	}
-	N.KeepAliveInterval = time.Duration(cfg.KeepAliveInterval) * time.Second
-	log.Infoln("Keep Alive Interval set %+v", N.KeepAliveInterval)
+	if cfg.KeepAliveInterval != 0 {
+		N.KeepAliveInterval = time.Duration(cfg.KeepAliveInterval) * time.Second
+	}
+	N.DisableKeepAlive = cfg.DisableKeepAlive
 
 	return &General{
 		Inbound: Inbound{

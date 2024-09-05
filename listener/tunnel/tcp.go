@@ -2,6 +2,7 @@ package tunnel
 
 import (
 	"fmt"
+	N "github.com/metacubex/mihomo/common/net"
 	"net"
 
 	"github.com/metacubex/mihomo/adapter/inbound"
@@ -34,7 +35,7 @@ func (l *Listener) Close() error {
 }
 
 func (l *Listener) handleTCP(conn net.Conn, tunnel C.Tunnel, additions ...inbound.Addition) {
-	conn.(*net.TCPConn).SetKeepAlive(true)
+	N.TCPKeepAlive(conn)
 	tunnel.HandleTCPConn(inbound.NewSocket(l.target, conn, C.TUNNEL, additions...))
 }
 

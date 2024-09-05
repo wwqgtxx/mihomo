@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"syscall"
@@ -22,6 +23,7 @@ import (
 	"github.com/metacubex/mihomo/tunnel/statistic"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/go-chi/render"
 	"github.com/gobwas/ws"
@@ -58,7 +60,7 @@ func SetUIPath(path string) {
 	uiPath = C.Path.Resolve(path)
 }
 
-func router(withAuth bool) *chi.Mux {
+func router(isDebug bool, withAuth bool, dohServer string) *chi.Mux {
 	r := chi.NewRouter()
 
 	cors := cors.New(cors.Options{
@@ -71,6 +73,17 @@ func router(withAuth bool) *chi.Mux {
 	r.Use(cors.Handler)
 	r.NotFound(closeTcpHandle)
 	r.MethodNotAllowed(closeTcpHandle)
+	if isDebug {
+		r.Mount("/debug", func() http.Handler {
+			r := chi.NewRouter()
+			r.Put("/gc", func(w http.ResponseWriter, r *http.Request) {
+				debug.FreeOSMemory()
+			})
+			handler := middleware.Profiler
+			r.Mount("/", handler())
+			return r
+		}())
+	}
 	r.Group(func(r chi.Router) {
 		if withAuth {
 			r.Use(authentication)
@@ -132,12 +145,16 @@ func router(withAuth bool) *chi.Mux {
 			})
 		})
 	}
+	if len(dohServer) > 0 && dohServer[0] == '/' {
+		r.Mount(dohServer, dohRouter())
+	}
+
 	return r
 }
 
 func Init(secret string) {
 	serverSecret = secret
-	C.SetECHandler(router(true))
+	C.SetECHandler(router(false, true, ""))
 }
 
 type fakeResponseWriter struct {
@@ -156,7 +173,7 @@ func (w *fakeResponseWriter) WriteHeader(statusCode int) {
 }
 
 func Start(addr string, tlsAddr string, secret string,
-	certificate, privateKey string, isDebug bool) {
+	certificate, privateKey string, dohServer string, isDebug bool) {
 	if serverAddr != "" {
 		return
 	}
@@ -181,7 +198,7 @@ func Start(addr string, tlsAddr string, secret string,
 			serverAddr = l.Addr().String()
 			log.Infoln("RESTful API tls listening at: %s", serverAddr)
 			tlsServe := &http.Server{
-				Handler: router(true),
+				Handler: router(isDebug, true, dohServer),
 				TLSConfig: &tls.Config{
 					Certificates: []tls.Certificate{c},
 				},
@@ -200,13 +217,13 @@ func Start(addr string, tlsAddr string, secret string,
 	serverAddr = l.Addr().String()
 	log.Infoln("RESTful API listening at: %s", serverAddr)
 
-	if err = http.Serve(l, router(true)); err != nil {
+	if err = http.Serve(l, router(isDebug, true, dohServer)); err != nil {
 		log.Errorln("External controller serve error: %s", err)
 	}
 
 }
 
-func StartUnix(addr string, isDebug bool) {
+func StartUnix(addr string, dohServer string, isDebug bool) {
 	addr = C.Path.Resolve(addr)
 
 	dir := filepath.Dir(addr)
@@ -234,7 +251,7 @@ func StartUnix(addr string, isDebug bool) {
 	serverAddr = l.Addr().String()
 	log.Infoln("RESTful API unix listening at: %s", serverAddr)
 
-	if err = http.Serve(l, router(false)); err != nil {
+	if err = http.Serve(l, router(isDebug, false, dohServer)); err != nil {
 		log.Errorln("External controller unix serve error: %s", err)
 	}
 }

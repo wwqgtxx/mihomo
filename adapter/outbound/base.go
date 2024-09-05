@@ -13,14 +13,15 @@ import (
 )
 
 type Base struct {
-	name  string
-	addr  string
-	iface string
-	tp    C.AdapterType
-	udp   bool
-	tfo   bool
-	mpTcp bool
-	rmark int
+	name   string
+	addr   string
+	iface  string
+	tp     C.AdapterType
+	udp    bool
+	tfo    bool
+	mpTcp  bool
+	rmark  int
+	prefer C.DNSPrefer
 }
 
 // Name implements C.ProxyAdapter
@@ -105,6 +106,18 @@ func (b *Base) DialOptions(opts ...dialer.Option) []dialer.Option {
 		opts = append(opts, dialer.WithRoutingMark(b.rmark))
 	}
 
+	switch b.prefer {
+	case C.IPv4Only:
+		opts = append(opts, dialer.WithOnlySingleStack(true))
+	case C.IPv6Only:
+		opts = append(opts, dialer.WithOnlySingleStack(false))
+	case C.IPv4Prefer:
+		opts = append(opts, dialer.WithPreferIPv4())
+	case C.IPv6Prefer:
+		opts = append(opts, dialer.WithPreferIPv6())
+	default:
+	}
+
 	if b.tfo {
 		opts = append(opts, dialer.WithTFO(true))
 	}
@@ -121,6 +134,7 @@ type BasicOption struct {
 	MPTCP       bool   `proxy:"mptcp,omitempty" group:"mptcp,omitempty"`
 	Interface   string `proxy:"interface-name,omitempty" group:"interface-name,omitempty"`
 	RoutingMark int    `proxy:"routing-mark,omitempty" group:"routing-mark,omitempty"`
+	IPVersion   string `proxy:"ip-version,omitempty" group:"ip-version,omitempty"`
 	DialerProxy string `proxy:"dialer-proxy,omitempty"` // don't apply this option into groups, but can set a group name in a proxy
 }
 

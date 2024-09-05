@@ -258,14 +258,15 @@ func NewTrojan(option TrojanOption) (*Trojan, error) {
 
 	t := &Trojan{
 		Base: &Base{
-			name:  option.Name,
-			addr:  addr,
-			tp:    C.Trojan,
-			udp:   option.UDP,
-			tfo:   option.TFO,
-			mpTcp: option.MPTCP,
-			iface: option.Interface,
-			rmark: option.RoutingMark,
+			name:   option.Name,
+			addr:   addr,
+			tp:     C.Trojan,
+			udp:    option.UDP,
+			tfo:    option.TFO,
+			mpTcp:  option.MPTCP,
+			iface:  option.Interface,
+			rmark:  option.RoutingMark,
+			prefer: C.NewDNSPrefer(option.IPVersion),
 		},
 		instance: trojan.New(tOption),
 		option:   &option,

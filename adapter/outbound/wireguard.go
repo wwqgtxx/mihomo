@@ -270,7 +270,7 @@ func NewWireGuard(option WireGuardOption) (*WireGuard, error) {
 		for i := range nss {
 			nss[i].ProxyAdapter = refP
 		}
-		outbound.resolver, _ = dns.NewResolver(dns.Config{
+		outbound.resolver = dns.NewResolver(dns.Config{
 			Main: nss,
 			IPv6: has6,
 		})
@@ -283,7 +283,7 @@ func (w *WireGuard) resolve(ctx context.Context, address M.Socksaddr) (netip.Add
 	if address.Addr.IsValid() {
 		return address.AddrPort(), nil
 	}
-	udpAddr, err := resolveUDPAddr(ctx, "udp", address.String())
+	udpAddr, err := resolveUDPAddrWithPrefer(ctx, "udp", address.String(), w.prefer)
 	if err != nil {
 		return netip.AddrPort{}, err
 	}

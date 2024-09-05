@@ -191,7 +191,7 @@ func (ss *ShadowSocks) ListenPacketWithDialer(ctx context.Context, dialer C.Dial
 			return nil, err
 		}
 	}
-	addr, err := resolveUDPAddr(ctx, "udp", ss.addr)
+	addr, err := resolveUDPAddrWithPrefer(ctx, "udp", ss.addr, ss.prefer)
 	if err != nil {
 		return nil, err
 	}
@@ -330,14 +330,15 @@ func NewShadowSocks(option ShadowSocksOption) (*ShadowSocks, error) {
 
 	return &ShadowSocks{
 		Base: &Base{
-			name:  option.Name,
-			addr:  addr,
-			tp:    C.Shadowsocks,
-			udp:   option.UDP,
-			tfo:   option.TFO,
-			mpTcp: option.MPTCP,
-			iface: option.Interface,
-			rmark: option.RoutingMark,
+			name:   option.Name,
+			addr:   addr,
+			tp:     C.Shadowsocks,
+			udp:    option.UDP,
+			tfo:    option.TFO,
+			mpTcp:  option.MPTCP,
+			iface:  option.Interface,
+			rmark:  option.RoutingMark,
+			prefer: C.NewDNSPrefer(option.IPVersion),
 		},
 		//cipher: ciph,
 		method: method,

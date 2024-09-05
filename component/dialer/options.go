@@ -24,6 +24,8 @@ type option struct {
 	fallbackBind  bool
 	addrReuse     bool
 	routingMark   int
+	network       int
+	prefer        int
 	tfo           bool
 	mpTcp         bool
 	resolver      resolver.Resolver
@@ -59,6 +61,28 @@ func WithRoutingMark(mark int) Option {
 func WithResolver(r resolver.Resolver) Option {
 	return func(opt *option) {
 		opt.resolver = r
+	}
+}
+
+func WithPreferIPv4() Option {
+	return func(opt *option) {
+		opt.prefer = 4
+	}
+}
+
+func WithPreferIPv6() Option {
+	return func(opt *option) {
+		opt.prefer = 6
+	}
+}
+
+func WithOnlySingleStack(isIPv4 bool) Option {
+	return func(opt *option) {
+		if isIPv4 {
+			opt.network = 4
+		} else {
+			opt.network = 6
+		}
 	}
 }
 

@@ -130,7 +130,7 @@ func (t *Tuic) dialWithDialer(ctx context.Context, dialer C.Dialer) (transport *
 			return nil, nil, err
 		}
 	}
-	udpAddr, err := resolveUDPAddr(ctx, "udp", t.addr)
+	udpAddr, err := resolveUDPAddrWithPrefer(ctx, "udp", t.addr, t.prefer)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -251,13 +251,14 @@ func NewTuic(option TuicOption) (*Tuic, error) {
 
 	t := &Tuic{
 		Base: &Base{
-			name:  option.Name,
-			addr:  addr,
-			tp:    C.Tuic,
-			udp:   true,
-			tfo:   option.TFO,
-			iface: option.Interface,
-			rmark: option.RoutingMark,
+			name:   option.Name,
+			addr:   addr,
+			tp:     C.Tuic,
+			udp:    true,
+			tfo:    option.TFO,
+			iface:  option.Interface,
+			rmark:  option.RoutingMark,
+			prefer: C.NewDNSPrefer(option.IPVersion),
 		},
 		option: &option,
 	}

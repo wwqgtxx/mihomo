@@ -13,7 +13,6 @@ import (
 	"github.com/metacubex/mihomo/config"
 	"github.com/metacubex/mihomo/constant"
 	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/dns"
 	"github.com/metacubex/mihomo/hub/executor"
 	P "github.com/metacubex/mihomo/listener"
 	LC "github.com/metacubex/mihomo/listener/config"
@@ -54,7 +53,6 @@ type configSchema struct {
 	Sniffing               *bool              `json:"sniffing"`
 	TcpConcurrent          *bool              `json:"tcp-concurrent"`
 	UseRemoteDnsDefault    *bool              `json:"use-remote-dns-default"`
-	UseSystemDnsDial       *bool              `json:"use-system-dns-dial"`
 	HealthCheckURL         *string            `json:"health-check-url"`
 	HealthCheckLazyDefault *bool              `json:"health-check-lazy-default"`
 	TouchAfterLazyPassNum  *int               `json:"touch-after-lazy-pass-num"`
@@ -305,14 +303,6 @@ func patchConfigs(w http.ResponseWriter, r *http.Request) {
 
 	if general.LogLevel != nil {
 		log.SetLevel(*general.LogLevel)
-	}
-
-	if general.UseRemoteDnsDefault != nil {
-		dns.SetUseRemoteDnsDefault(*general.UseRemoteDnsDefault)
-	}
-
-	if general.UseSystemDnsDial != nil {
-		dns.SetUseSystemDnsDial(*general.UseSystemDnsDial)
 	}
 
 	if general.HealthCheckURL != nil {

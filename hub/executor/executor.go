@@ -125,8 +125,6 @@ func GetGeneral() *config.General {
 		Mode:                   tunnel.Mode(),
 		LogLevel:               log.Level(),
 		IPv6:                   !resolver.DisableIPv6,
-		UseRemoteDnsDefault:    dns.UseRemoteDnsDefault(),
-		UseSystemDnsDial:       dns.UseSystemDnsDial(),
 		HealthCheckURL:         adapter.HealthCheckURL(),
 		HealthCheckLazyDefault: provider.HealthCheckLazyDefault(),
 		TouchAfterLazyPassNum:  provider.TouchAfterLazyPassNum(),
@@ -185,7 +183,6 @@ func updateExperimental(c *config.Config) {
 
 func updateDNS(c *config.DNS, ruleProvider map[string]providerTypes.RuleProvider) {
 	if !c.Enable {
-		resolver.DialerResolver = nil
 		resolver.DefaultResolver = nil
 		resolver.DefaultHostMapper = nil
 		resolver.DefaultLocalServer = nil
@@ -212,7 +209,8 @@ func updateDNS(c *config.DNS, ruleProvider map[string]providerTypes.RuleProvider
 		SearchDomains: c.SearchDomains,
 	}
 
-	dr, r := dns.NewResolver(cfg)
+	r := dns.NewResolver(cfg)
+	pr := dns.NewProxyServerHostResolver(r)
 	m := dns.NewEnhancer(cfg)
 
 	// reuse cache of old host mapper
@@ -220,13 +218,12 @@ func updateDNS(c *config.DNS, ruleProvider map[string]providerTypes.RuleProvider
 		m.PatchFrom(old.(*dns.ResolverEnhancer))
 	}
 
-	resolver.DialerResolver = dr
 	resolver.DefaultResolver = r
 	resolver.DefaultHostMapper = m
 	resolver.DefaultLocalServer = dns.NewLocalServer(r, m)
 
-	if dns.UseSystemDnsDial() {
-		resolver.DialerResolver = nil
+	if pr.Invalid() {
+		resolver.ProxyServerHostResolver = pr
 	}
 
 	dns.ReCreateServer(c.Listen, r, m)
@@ -282,8 +279,6 @@ func updateGeneral(general *config.General, force bool) {
 	log.SetLevel(general.LogLevel)
 	tunnel.SetMode(general.Mode)
 	resolver.DisableIPv6 = !general.IPv6
-	dns.SetUseRemoteDnsDefault(general.UseRemoteDnsDefault)
-	dns.SetUseSystemDnsDial(general.UseSystemDnsDial)
 	adapter.SetHealthCheckURL(general.HealthCheckURL)
 	provider.SetHealthCheckLazyDefault(general.HealthCheckLazyDefault)
 	provider.SetTouchAfterLazyPassNum(general.TouchAfterLazyPassNum)

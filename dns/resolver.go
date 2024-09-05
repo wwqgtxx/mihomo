@@ -18,29 +18,9 @@ import (
 	D "github.com/miekg/dns"
 	"github.com/samber/lo"
 	orderedmap "github.com/wk8/go-ordered-map/v2"
+	"golang.org/x/exp/maps"
 	"golang.org/x/sync/singleflight"
 )
-
-var (
-	useRemoteDnsDefault = true
-	useSystemDnsDial    = false
-)
-
-func UseRemoteDnsDefault() bool {
-	return useRemoteDnsDefault
-}
-
-func SetUseRemoteDnsDefault(newUseRemoteDnsDefault bool) {
-	useRemoteDnsDefault = newUseRemoteDnsDefault
-}
-
-func UseSystemDnsDial() bool {
-	return useSystemDnsDial
-}
-
-func SetUseSystemDnsDial(newSystemDnsDial bool) {
-	useSystemDnsDial = newSystemDnsDial
-}
 
 type dnsClient interface {
 	ExchangeContext(ctx context.Context, m *D.Msg) (msg *D.Msg, err error)
@@ -63,6 +43,7 @@ type Resolver struct {
 	lruCache              *cache.LruCache[string, *D.Msg]
 	policy                []dnsPolicy
 	searchDomains         []string
+	proxyServer           []dnsClient
 }
 
 // LookupIPPrimaryIPv4 request with TypeA and TypeAAAA, priority return TypeA
@@ -413,7 +394,7 @@ type NameServer struct {
 	Interface    string
 	ProxyAdapter C.ProxyAdapter
 	ProxyName    string
-	UseRemote    bool
+	Params       map[string]string
 }
 
 func (ns NameServer) Equal(ns2 NameServer) bool {
@@ -426,7 +407,7 @@ func (ns NameServer) Equal(ns2 NameServer) bool {
 		ns.Interface == ns2.Interface &&
 		ns.ProxyAdapter == ns2.ProxyAdapter &&
 		ns.ProxyName == ns2.ProxyName &&
-		ns.UseRemote == ns2.UseRemote {
+		maps.Equal(ns.Params, ns2.Params) {
 		return true
 	}
 	return false
@@ -452,7 +433,7 @@ type Config struct {
 	SearchDomains  []string
 }
 
-func NewResolver(config Config) (*Resolver, *Resolver) {
+func NewResolver(config Config) *Resolver {
 	defaultResolver := &Resolver{
 		main:     transform(config.Default, nil),
 		lruCache: cache.New[string, *D.Msg](cache.WithSize[string, *D.Msg](4096), cache.WithStale[string, *D.Msg](true)),
@@ -552,7 +533,17 @@ func NewResolver(config Config) (*Resolver, *Resolver) {
 		r.fallbackDomainFilters = fallbackDomainFilters
 	}
 
-	return defaultResolver, r
+	return r
+}
+
+func NewProxyServerHostResolver(old *Resolver) *Resolver {
+	r := &Resolver{
+		ipv6:     old.ipv6,
+		main:     old.proxyServer,
+		lruCache: old.lruCache,
+		hosts:    old.hosts,
+	}
+	return r
 }
 
 var ParseNameServer func(servers []string) ([]NameServer, error) // define in config/config.go

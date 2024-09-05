@@ -189,12 +189,13 @@ func NewSsh(option SshOption) (*Ssh, error) {
 
 	outbound := &Ssh{
 		Base: &Base{
-			name:  option.Name,
-			addr:  addr,
-			tp:    C.Ssh,
-			udp:   false,
-			iface: option.Interface,
-			rmark: option.RoutingMark,
+			name:   option.Name,
+			addr:   addr,
+			tp:     C.Ssh,
+			udp:    false,
+			iface:  option.Interface,
+			rmark:  option.RoutingMark,
+			prefer: C.NewDNSPrefer(option.IPVersion),
 		},
 		option: &option,
 		client: &sshClient{

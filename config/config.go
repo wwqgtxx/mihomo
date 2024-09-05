@@ -44,8 +44,6 @@ type General struct {
 	IPv6                   bool         `json:"ipv6"`
 	Interface              string       `json:"-"`
 	RoutingMark            int          `json:"-"`
-	UseRemoteDnsDefault    bool         `json:"use-remote-dns-default"`
-	UseSystemDnsDial       bool         `json:"use-system-dns-dial"`
 	HealthCheckURL         string       `json:"health-check-url"`
 	HealthCheckLazyDefault bool         `json:"health-check-lazy-default"`
 	TouchAfterLazyPassNum  int          `json:"touch-after-lazy-pass-num"`
@@ -157,19 +155,21 @@ type Config struct {
 }
 
 type RawDNS struct {
-	Enable            bool                                `yaml:"enable"`
-	IPv6              bool                                `yaml:"ipv6"`
-	UseHosts          bool                                `yaml:"use-hosts"`
-	NameServer        []string                            `yaml:"nameserver"`
-	Fallback          []string                            `yaml:"fallback"`
-	FallbackFilter    RawFallbackFilter                   `yaml:"fallback-filter"`
-	Listen            string                              `yaml:"listen"`
-	EnhancedMode      C.DNSMode                           `yaml:"enhanced-mode"`
-	FakeIPRange       string                              `yaml:"fake-ip-range"`
-	FakeIPFilter      []string                            `yaml:"fake-ip-filter"`
-	DefaultNameserver []string                            `yaml:"default-nameserver"`
-	NameServerPolicy  *orderedmap.OrderedMap[string, any] `yaml:"nameserver-policy"`
-	SearchDomains     []string                            `yaml:"search-domains"`
+	Enable                bool                                `yaml:"enable"`
+	IPv6                  bool                                `yaml:"ipv6"`
+	UseHosts              bool                                `yaml:"use-hosts"`
+	RespectRules          bool                                `yaml:"respect-rules"`
+	NameServer            []string                            `yaml:"nameserver"`
+	Fallback              []string                            `yaml:"fallback"`
+	FallbackFilter        RawFallbackFilter                   `yaml:"fallback-filter"`
+	Listen                string                              `yaml:"listen"`
+	EnhancedMode          C.DNSMode                           `yaml:"enhanced-mode"`
+	FakeIPRange           string                              `yaml:"fake-ip-range"`
+	FakeIPFilter          []string                            `yaml:"fake-ip-filter"`
+	DefaultNameserver     []string                            `yaml:"default-nameserver"`
+	NameServerPolicy      *orderedmap.OrderedMap[string, any] `yaml:"nameserver-policy"`
+	SearchDomains         []string                            `yaml:"search-domains"`
+	ProxyServerNameserver []string                            `yaml:"proxy-server-nameserver"`
 }
 
 type RawFallbackFilter struct {
@@ -206,8 +206,6 @@ type RawConfig struct {
 	Interface              string         `yaml:"interface-name"`
 	RoutingMark            int            `yaml:"routing-mark"`
 	Tunnels                []LC.Tunnel    `yaml:"tunnels"`
-	UseRemoteDnsDefault    bool           `yaml:"use-remote-dns-default"`
-	UseSystemDnsDial       bool           `yaml:"use-system-dns-dial"`
 	HealthCheckURL         string         `yaml:"health-check-url"`
 	HealthCheckLazyDefault bool           `yaml:"health-check-lazy-default"`
 	TouchAfterLazyPassNum  int            `yaml:"touch-after-lazy-pass-num"`
@@ -266,8 +264,6 @@ func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 		Mode:                   T.Rule,
 		Authentication:         []string{},
 		LogLevel:               log.INFO,
-		UseRemoteDnsDefault:    true,
-		UseSystemDnsDial:       false,
 		HealthCheckURL:         "",
 		HealthCheckLazyDefault: true,
 		TouchAfterLazyPassNum:  0,
@@ -347,6 +343,8 @@ func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 			StoreSelected: true,
 		},
 	}
+	rawCfg.DNS.RespectRules = true
+	rawCfg.DNS.ProxyServerNameserver = rawCfg.DNS.DefaultNameserver
 
 	if err := yaml.Unmarshal(buf, rawCfg); err != nil {
 		return nil, err
@@ -480,8 +478,6 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 		IPv6:                   cfg.IPv6,
 		Interface:              cfg.Interface,
 		RoutingMark:            cfg.RoutingMark,
-		UseRemoteDnsDefault:    cfg.UseRemoteDnsDefault,
-		UseSystemDnsDial:       cfg.UseSystemDnsDial,
 		HealthCheckURL:         cfg.HealthCheckURL,
 		HealthCheckLazyDefault: cfg.HealthCheckLazyDefault,
 		TouchAfterLazyPassNum:  cfg.TouchAfterLazyPassNum,
@@ -796,67 +792,34 @@ func parseHosts(cfg *RawConfig) (*trie.DomainTrie[netip.Addr], error) {
 }
 
 func hostWithDefaultPort(host string, defPort string) (string, error) {
-	if !strings.Contains(host, ":") {
-		host += ":"
-	}
-
 	hostname, port, err := net.SplitHostPort(host)
 	if err != nil {
-		return "", err
-	}
-
-	if port == "" {
-		port = defPort
+		if !strings.Contains(err.Error(), "missing port in address") {
+			return "", err
+		}
+		host = host + ":" + defPort
+		if hostname, port, err = net.SplitHostPort(host); err != nil {
+			return "", err
+		}
 	}
 
 	return net.JoinHostPort(hostname, port), nil
 }
 
-func parseNameServer(servers []string, useRemoteDnsDefault bool) ([]dns.NameServer, error) {
+func parseNameServer(servers []string, respectRules bool) ([]dns.NameServer, error) {
 	nameservers := []dns.NameServer{}
 
 	for idx, server := range servers {
-		if server == "system" {
-			server = "system://"
-		}
-
-		// parse remote dns request
-		useRemote := strings.HasPrefix(server, "remote-")
-		if useRemote {
-			server = strings.TrimPrefix(server, "remote-")
-		}
-		if useRemoteDnsDefault {
-			useRemote = true
-		}
-
-		// force use local
-		useLocal := strings.HasPrefix(server, "local-")
-		if useLocal {
-			server = strings.TrimPrefix(server, "local-")
-		}
-		if useLocal {
-			useRemote = false
-		}
-
-		// parse without scheme .e.g 8.8.8.8:53
-		if !strings.Contains(server, "://") {
-			if useRemote {
-				server = "tcp://" + server
-			} else {
-				server = "udp://" + server
-			}
-		}
-
+		server = parsePureDNSServer(server)
 		u, err := url.Parse(server)
 		if err != nil {
 			return nil, fmt.Errorf("DNS NameServer[%d] format error: %s", idx, err.Error())
 		}
 
-		// parse with specific interface
-		// .e.g 10.0.0.1#en0
-		interfaceName := u.Fragment
+		proxyName := u.Fragment
 
 		var addr, dnsNetType string
+		params := map[string]string{}
 		switch u.Scheme {
 		case "udp":
 			addr, err = hostWithDefaultPort(u.Host, "53")
@@ -868,14 +831,45 @@ func parseNameServer(servers []string, useRemoteDnsDefault bool) ([]dns.NameServ
 			addr, err = hostWithDefaultPort(u.Host, "853")
 			dnsNetType = "tcp-tls" // DNS over TLS
 		case "https":
-			clearURL := url.URL{Scheme: "https", Host: u.Host, Path: u.Path}
-			addr = clearURL.String()
-			dnsNetType = "https" // DNS over HTTPS
+			addr, err = hostWithDefaultPort(u.Host, "443")
+			if err == nil {
+				proxyName = ""
+				clearURL := url.URL{Scheme: "https", Host: addr, Path: u.Path, User: u.User}
+				addr = clearURL.String()
+				dnsNetType = "https" // DNS over HTTPS
+				if len(u.Fragment) != 0 {
+					for _, s := range strings.Split(u.Fragment, "&") {
+						arr := strings.Split(s, "=")
+						if len(arr) == 0 {
+							continue
+						} else if len(arr) == 1 {
+							proxyName = arr[0]
+						} else if len(arr) == 2 {
+							params[arr[0]] = arr[1]
+						} else {
+							params[arr[0]] = strings.Join(arr[1:], "=")
+						}
+					}
+				}
+			}
 		case "dhcp":
 			addr = u.Host
 			dnsNetType = "dhcp" // UDP from DHCP
 		case "system":
 			dnsNetType = "system" // System DNS
+		case "rcode":
+			dnsNetType = "rcode"
+			addr = u.Host
+			switch addr {
+			case "success",
+				"format_error",
+				"server_failure",
+				"name_error",
+				"not_implemented",
+				"refused":
+			default:
+				err = fmt.Errorf("unsupported RCode type: %s", addr)
+			}
 		default:
 			return nil, fmt.Errorf("DNS NameServer[%d] unsupport scheme: %s", idx, u.Scheme)
 		}
@@ -884,13 +878,17 @@ func parseNameServer(servers []string, useRemoteDnsDefault bool) ([]dns.NameServ
 			return nil, fmt.Errorf("DNS NameServer[%d] format error: %s", idx, err.Error())
 		}
 
+		if respectRules && len(proxyName) == 0 {
+			proxyName = dns.RespectRules
+		}
+
 		nameservers = append(
 			nameservers,
 			dns.NameServer{
 				Net:       dnsNetType,
 				Addr:      addr,
-				Interface: interfaceName,
-				UseRemote: useRemote,
+				ProxyName: proxyName,
+				Params:    params,
 			},
 		)
 	}
@@ -903,7 +901,30 @@ func init() {
 	}
 }
 
-func parseNameServerPolicy(nsPolicy *orderedmap.OrderedMap[string, any], ruleProviders map[string]providerTypes.RuleProvider, useRemoteDnsDefault bool) (*orderedmap.OrderedMap[string, []dns.NameServer], error) {
+func parsePureDNSServer(server string) string {
+	addPre := func(server string) string {
+		return "udp://" + server
+	}
+
+	if server == "system" {
+		return "system://"
+	}
+
+	if ip, err := netip.ParseAddr(server); err != nil {
+		if strings.Contains(server, "://") {
+			return server
+		}
+		return addPre(server)
+	} else {
+		if ip.Is4() {
+			return addPre(server)
+		} else {
+			return addPre("[" + server + "]")
+		}
+	}
+}
+
+func parseNameServerPolicy(nsPolicy *orderedmap.OrderedMap[string, any], ruleProviders map[string]providerTypes.RuleProvider, respectRules bool) (*orderedmap.OrderedMap[string, []dns.NameServer], error) {
 	policy := orderedmap.New[string, []dns.NameServer]()
 	updatedPolicy := orderedmap.New[string, any]()
 	re := regexp.MustCompile(`[a-zA-Z0-9\-]+\.[a-zA-Z]{2,}(\.[a-zA-Z]{2,})?`)
@@ -944,7 +965,7 @@ func parseNameServerPolicy(nsPolicy *orderedmap.OrderedMap[string, any], rulePro
 		if err != nil {
 			return nil, err
 		}
-		nameservers, err := parseNameServer(servers, useRemoteDnsDefault)
+		nameservers, err := parseNameServer(servers, respectRules)
 		if err != nil {
 			return nil, err
 		}
@@ -990,6 +1011,10 @@ func parseDNS(rawCfg *RawConfig, hosts *trie.DomainTrie[netip.Addr], ruleProvide
 		return nil, fmt.Errorf("if DNS configuration is turned on, NameServer cannot be empty")
 	}
 
+	if cfg.RespectRules && len(cfg.ProxyServerNameserver) == 0 {
+		return nil, fmt.Errorf("if “respect-rules” is turned on, “proxy-server-nameserver” cannot be empty")
+	}
+
 	dnsCfg := &DNS{
 		Enable:       cfg.Enable,
 		Listen:       cfg.Listen,
@@ -1000,15 +1025,15 @@ func parseDNS(rawCfg *RawConfig, hosts *trie.DomainTrie[netip.Addr], ruleProvide
 		},
 	}
 	var err error
-	if dnsCfg.NameServer, err = parseNameServer(cfg.NameServer, rawCfg.UseRemoteDnsDefault); err != nil {
+	if dnsCfg.NameServer, err = parseNameServer(cfg.NameServer, cfg.RespectRules); err != nil {
 		return nil, err
 	}
 
-	if dnsCfg.Fallback, err = parseNameServer(cfg.Fallback, rawCfg.UseRemoteDnsDefault); err != nil {
+	if dnsCfg.Fallback, err = parseNameServer(cfg.Fallback, cfg.RespectRules); err != nil {
 		return nil, err
 	}
 
-	if dnsCfg.NameServerPolicy, err = parseNameServerPolicy(cfg.NameServerPolicy, ruleProviders, rawCfg.UseRemoteDnsDefault); err != nil {
+	if dnsCfg.NameServerPolicy, err = parseNameServerPolicy(cfg.NameServerPolicy, ruleProviders, cfg.RespectRules); err != nil {
 		return nil, err
 	}
 

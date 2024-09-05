@@ -2,10 +2,7 @@ package listener
 
 import (
 	"fmt"
-	"golang.org/x/exp/slices"
 	"net"
-	"runtime"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -508,34 +505,30 @@ func ReCreateMixed(port int, tunnel C.Tunnel) {
 }
 
 func ReCreateTun(tunConf LC.Tun, tunnel C.Tunnel) {
+	tunConf.Sort()
+
 	tunMux.Lock()
-	defer tunMux.Unlock()
+	defer func() {
+		LastTunConf = tunConf
+		tunMux.Unlock()
+	}()
 
 	var err error
 	defer func() {
 		if err != nil {
-			log.Errorln("Start Tun interface error: %s", err.Error())
+			log.Errorln("Start TUN listening error: %s", err.Error())
+			tunConf.Enable = false
 		}
 	}()
 
-	shouldIgnore := false
-	changed := hasTunConfigChange(&tunConf)
-
-	if tunLister != nil {
-		if changed {
-			tunLister.Close()
-			tunLister = nil
-		} else {
-			shouldIgnore = true
+	if tunConf.Equal(LastTunConf) {
+		if tunLister != nil {
 			tunLister.FlushDefaultInterface()
 		}
-	}
-
-	if shouldIgnore {
 		return
 	}
 
-	LastTunConf = tunConf
+	closeTunListener()
 
 	generalInterface := dialer.GeneralInterface.Load()
 	defaultInterface := dialer.DefaultInterface.Load()
@@ -818,133 +811,14 @@ func genAddr(host string, port int, allowLan bool) string {
 	return fmt.Sprintf("127.0.0.1:%d", port)
 }
 
-func hasTunConfigChange(tunConf *LC.Tun) bool {
-	if LastTunConf.Enable != tunConf.Enable ||
-		LastTunConf.Device != tunConf.Device ||
-		LastTunConf.Stack != tunConf.Stack ||
-		LastTunConf.AutoRoute != tunConf.AutoRoute ||
-		LastTunConf.AutoDetectInterface != tunConf.AutoDetectInterface ||
-		LastTunConf.MTU != tunConf.MTU ||
-		LastTunConf.GSO != tunConf.GSO ||
-		LastTunConf.GSOMaxSize != tunConf.GSOMaxSize ||
-		LastTunConf.IPRoute2TableIndex != tunConf.IPRoute2TableIndex ||
-		LastTunConf.IPRoute2RuleIndex != tunConf.IPRoute2RuleIndex ||
-		LastTunConf.AutoRedirect != tunConf.AutoRedirect ||
-		LastTunConf.AutoRedirectInputMark != tunConf.AutoRedirectInputMark ||
-		LastTunConf.AutoRedirectOutputMark != tunConf.AutoRedirectOutputMark ||
-		LastTunConf.StrictRoute != tunConf.StrictRoute ||
-		LastTunConf.EndpointIndependentNat != tunConf.EndpointIndependentNat ||
-		LastTunConf.UDPTimeout != tunConf.UDPTimeout ||
-		LastTunConf.FileDescriptor != tunConf.FileDescriptor {
-		return true
+func closeTunListener() {
+	if tunLister != nil {
+		tunLister.Close()
+		tunLister = nil
 	}
-
-	if len(LastTunConf.DNSHijack) != len(tunConf.DNSHijack) {
-		return true
-	}
-
-	sort.Slice(tunConf.DNSHijack, func(i, j int) bool {
-		return tunConf.DNSHijack[i] < tunConf.DNSHijack[j]
-	})
-
-	sort.Slice(tunConf.RouteAddress, func(i, j int) bool {
-		return tunConf.RouteAddress[i].String() < tunConf.RouteAddress[j].String()
-	})
-
-	sort.Slice(tunConf.RouteAddressSet, func(i, j int) bool {
-		return tunConf.RouteAddressSet[i] < tunConf.RouteAddressSet[j]
-	})
-
-	sort.Slice(tunConf.RouteExcludeAddress, func(i, j int) bool {
-		return tunConf.RouteExcludeAddress[i].String() < tunConf.RouteExcludeAddress[j].String()
-	})
-
-	sort.Slice(tunConf.RouteExcludeAddressSet, func(i, j int) bool {
-		return tunConf.RouteExcludeAddressSet[i] < tunConf.RouteExcludeAddressSet[j]
-	})
-
-	sort.Slice(tunConf.Inet4Address, func(i, j int) bool {
-		return tunConf.Inet4Address[i].String() < tunConf.Inet4Address[j].String()
-	})
-
-	sort.Slice(tunConf.Inet6Address, func(i, j int) bool {
-		return tunConf.Inet6Address[i].String() < tunConf.Inet6Address[j].String()
-	})
-
-	sort.Slice(tunConf.Inet4RouteAddress, func(i, j int) bool {
-		return tunConf.Inet4RouteAddress[i].String() < tunConf.Inet4RouteAddress[j].String()
-	})
-
-	sort.Slice(tunConf.Inet6RouteAddress, func(i, j int) bool {
-		return tunConf.Inet6RouteAddress[i].String() < tunConf.Inet6RouteAddress[j].String()
-	})
-
-	sort.Slice(tunConf.IncludeInterface, func(i, j int) bool {
-		return tunConf.IncludeInterface[i] < tunConf.IncludeInterface[j]
-	})
-
-	sort.Slice(tunConf.ExcludeInterface, func(i, j int) bool {
-		return tunConf.ExcludeInterface[i] < tunConf.ExcludeInterface[j]
-	})
-
-	sort.Slice(tunConf.IncludeUID, func(i, j int) bool {
-		return tunConf.IncludeUID[i] < tunConf.IncludeUID[j]
-	})
-
-	sort.Slice(tunConf.IncludeUIDRange, func(i, j int) bool {
-		return tunConf.IncludeUIDRange[i] < tunConf.IncludeUIDRange[j]
-	})
-
-	sort.Slice(tunConf.ExcludeUID, func(i, j int) bool {
-		return tunConf.ExcludeUID[i] < tunConf.ExcludeUID[j]
-	})
-
-	sort.Slice(tunConf.ExcludeUIDRange, func(i, j int) bool {
-		return tunConf.ExcludeUIDRange[i] < tunConf.ExcludeUIDRange[j]
-	})
-
-	sort.Slice(tunConf.IncludeAndroidUser, func(i, j int) bool {
-		return tunConf.IncludeAndroidUser[i] < tunConf.IncludeAndroidUser[j]
-	})
-
-	sort.Slice(tunConf.IncludePackage, func(i, j int) bool {
-		return tunConf.IncludePackage[i] < tunConf.IncludePackage[j]
-	})
-
-	sort.Slice(tunConf.ExcludePackage, func(i, j int) bool {
-		return tunConf.ExcludePackage[i] < tunConf.ExcludePackage[j]
-	})
-
-	if !slices.Equal(tunConf.DNSHijack, LastTunConf.DNSHijack) ||
-		!slices.Equal(tunConf.RouteAddress, LastTunConf.RouteAddress) ||
-		!slices.Equal(tunConf.RouteAddressSet, LastTunConf.RouteAddressSet) ||
-		!slices.Equal(tunConf.RouteExcludeAddress, LastTunConf.RouteExcludeAddress) ||
-		!slices.Equal(tunConf.RouteExcludeAddressSet, LastTunConf.RouteExcludeAddressSet) ||
-		!slices.Equal(tunConf.Inet4Address, LastTunConf.Inet4Address) ||
-		!slices.Equal(tunConf.Inet6Address, LastTunConf.Inet6Address) ||
-		!slices.Equal(tunConf.Inet4RouteAddress, LastTunConf.Inet4RouteAddress) ||
-		!slices.Equal(tunConf.Inet6RouteAddress, LastTunConf.Inet6RouteAddress) ||
-		!slices.Equal(tunConf.IncludeInterface, LastTunConf.IncludeInterface) ||
-		!slices.Equal(tunConf.ExcludeInterface, LastTunConf.ExcludeInterface) ||
-		!slices.Equal(tunConf.IncludeUID, LastTunConf.IncludeUID) ||
-		!slices.Equal(tunConf.IncludeUIDRange, LastTunConf.IncludeUIDRange) ||
-		!slices.Equal(tunConf.ExcludeUID, LastTunConf.ExcludeUID) ||
-		!slices.Equal(tunConf.ExcludeUIDRange, LastTunConf.ExcludeUIDRange) ||
-		!slices.Equal(tunConf.IncludeAndroidUser, LastTunConf.IncludeAndroidUser) ||
-		!slices.Equal(tunConf.IncludePackage, LastTunConf.IncludePackage) ||
-		!slices.Equal(tunConf.ExcludePackage, LastTunConf.ExcludePackage) {
-		return true
-	}
-
-	return false
 }
 
 // CleanUp clean up something
 func CleanUp() {
-	if runtime.GOOS == "windows" {
-		if tunLister != nil {
-			tunLister.Close()
-			tunLister = nil
-		}
-	}
+	closeTunListener()
 }

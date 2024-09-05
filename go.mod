@@ -15,7 +15,7 @@ require (
 	github.com/insomniacslk/dhcp v0.0.0-20240419123447-f1cffa2c0c49
 	github.com/klauspost/compress v1.16.7
 	github.com/mdlayher/netlink v1.7.2
-	github.com/metacubex/quic-go v0.45.1-0.20240610004319-163fee60637e
+	github.com/metacubex/quic-go v0.46.1-0.20240807232329-1c6cb2d67f58
 	github.com/metacubex/randv2 v0.2.0
 	github.com/metacubex/sing-quic v0.0.0-20240518034124-7696d3f7da72
 	github.com/metacubex/sing-shadowsocks v0.2.6

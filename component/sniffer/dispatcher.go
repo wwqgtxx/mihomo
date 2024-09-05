@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net"
 	"net/netip"
-	"sync"
 	"time"
 
 	"github.com/metacubex/mihomo/common/cache"
@@ -30,7 +29,6 @@ type SnifferDispatcher struct {
 	forceDomain     *trie.DomainSet
 	skipSNI         *trie.DomainSet
 	skipList        *cache.LruCache[string, uint8]
-	rwMux           sync.RWMutex
 	forceDnsMapping bool
 	parsePureIp     bool
 }
@@ -89,14 +87,11 @@ func (sd *SnifferDispatcher) TCPSniff(conn *N.BufferedConn, metadata *C.Metadata
 			return
 		}
 
-		sd.rwMux.RLock()
 		dst := fmt.Sprintf("%s:%d", metadata.DstIP, metadata.DstPort)
 		if count, ok := sd.skipList.Get(dst); ok && count > 5 {
 			log.Debugln("[Sniffer] Skip sniffing[%s] due to multiple failures", dst)
-			defer sd.rwMux.RUnlock()
 			return
 		}
-		sd.rwMux.RUnlock()
 
 		if host, err := sd.sniffDomain(conn, metadata); err != nil {
 			sd.cacheSniffFailed(metadata)
@@ -108,9 +103,7 @@ func (sd *SnifferDispatcher) TCPSniff(conn *N.BufferedConn, metadata *C.Metadata
 				return
 			}
 
-			sd.rwMux.RLock()
 			sd.skipList.Delete(dst)
-			sd.rwMux.RUnlock()
 
 			sd.replaceDomain(metadata, host, overrideDest)
 		}
@@ -177,14 +170,13 @@ func (sd *SnifferDispatcher) sniffDomain(conn *N.BufferedConn, metadata *C.Metad
 }
 
 func (sd *SnifferDispatcher) cacheSniffFailed(metadata *C.Metadata) {
-	sd.rwMux.Lock()
 	dst := fmt.Sprintf("%s:%d", metadata.DstIP, metadata.DstPort)
-	count, _ := sd.skipList.Get(dst)
-	if count <= 5 {
-		count++
-	}
-	sd.skipList.Set(dst, count)
-	sd.rwMux.Unlock()
+	sd.skipList.Compute(dst, func(oldValue uint8, loaded bool) (newValue uint8, delete bool) {
+		if oldValue <= 5 {
+			oldValue++
+		}
+		return oldValue, false
+	})
 }
 
 func NewCloseSnifferDispatcher() (*SnifferDispatcher, error) {

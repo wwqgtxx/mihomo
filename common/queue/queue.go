@@ -57,8 +57,8 @@ func (q *Queue) Copy() []any {
 
 // Len returns the number of items in this queue.
 func (q *Queue) Len() int64 {
-	q.lock.Lock()
-	defer q.lock.Unlock()
+	q.lock.RLock()
+	defer q.lock.RUnlock()
 
 	return int64(len(q.items))
 }

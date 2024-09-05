@@ -31,12 +31,13 @@ type HealthCheckOption struct {
 }
 
 type HealthCheck struct {
+	ctx        context.Context
+	ctxCancel  context.CancelFunc
 	url        string
 	proxies    []C.Proxy
 	interval   time.Duration
 	lazy       bool
 	lastTouch  atomic.TypedValue[time.Time]
-	done       chan struct{}
 	gType      string
 	gName      string
 	checking   atomic.Bool
@@ -60,7 +61,7 @@ func (hc *HealthCheck) process() {
 					hc.touch()
 				}
 			}
-		case <-hc.done:
+		case <-hc.ctx.Done():
 			ticker.Stop()
 			return
 		}
@@ -111,7 +112,7 @@ func (hc *HealthCheck) check() {
 }
 
 func (hc *HealthCheck) normalCheck(id string) {
-	b, _ := batch.New(context.Background(), batch.WithConcurrencyNum(10))
+	b, _ := batch.New(hc.ctx, batch.WithConcurrencyNum(10))
 	for _, proxy := range hc.proxies {
 		p := proxy
 		b.Go(p.Name(), func() (any, error) {
@@ -146,7 +147,7 @@ func (hc *HealthCheck) fallbackCheck(id string) {
 			hc.cleanerRun.Store(false)
 		}()
 		log.Infoln("Start New Health Check Cleaner (%s) {%s}", hc.gName, id)
-		b, _ := batch.New(context.Background(), batch.WithConcurrencyNum(10))
+		b, _ := batch.New(hc.ctx, batch.WithConcurrencyNum(10))
 		for _, proxy := range hc.proxies {
 			if proxy.Alive() {
 				continue
@@ -188,21 +189,24 @@ func (hc *HealthCheck) fallbackCheck(id string) {
 }
 
 func (hc *HealthCheck) close() {
-	hc.done <- struct{}{}
+	hc.ctxCancel()
 }
 
 func NewHealthCheck(proxies []C.Proxy, url string, interval uint, lazy bool, gType string, gName string) *HealthCheck {
 	if url == "" {
 		url = "http://cp.cloudflare.com/generate_204"
 	}
+	ctx, cancel := context.WithCancel(context.Background())
+
 	return &HealthCheck{
-		proxies:  proxies,
-		url:      url,
-		interval: time.Duration(interval) * time.Second,
-		lazy:     lazy,
-		done:     make(chan struct{}, 1),
-		gType:    gType,
-		gName:    gName,
+		ctx:       ctx,
+		ctxCancel: cancel,
+		proxies:   proxies,
+		url:       url,
+		interval:  time.Duration(interval) * time.Second,
+		lazy:      lazy,
+		gType:     gType,
+		gName:     gName,
 	}
 }
 

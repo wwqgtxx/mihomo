@@ -262,8 +262,7 @@ func Parse(buf []byte) (*Config, error) {
 	return ParseRawConfig(rawCfg)
 }
 
-func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
-	// config with default value
+func DefaultRawConfig() *RawConfig {
 	rawCfg := &RawConfig{
 		InboundTfo:             true,
 		AllowLan:               false,
@@ -353,6 +352,12 @@ func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 	}
 	rawCfg.DNS.RespectRules = true
 	rawCfg.DNS.ProxyServerNameserver = rawCfg.DNS.DefaultNameserver
+	return rawCfg
+}
+
+func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
+	// config with default value
+	rawCfg := DefaultRawConfig()
 
 	if err := yaml.Unmarshal(buf, rawCfg); err != nil {
 		return nil, err

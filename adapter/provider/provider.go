@@ -203,6 +203,11 @@ func NewProxySetProvider(name string, interval time.Duration, filter string, exc
 	return wrapper, nil
 }
 
+func (pp *ProxySetProvider) Close() error {
+	runtime.SetFinalizer(pp, nil)
+	return pp.proxySetProvider.Close()
+}
+
 // for auto gc
 type CompatibleProvider struct {
 	*compatibleProvider
@@ -255,8 +260,9 @@ func (cp *compatibleProvider) Touch() {
 	cp.healthCheck.touch()
 }
 
-func stopCompatibleProvider(pd *CompatibleProvider) {
-	pd.healthCheck.close()
+func (cp *compatibleProvider) Close() error {
+	cp.healthCheck.close()
+	return nil
 }
 
 func NewCompatibleProvider(name string, proxies []C.Proxy, hc *HealthCheck) (*CompatibleProvider, error) {
@@ -275,6 +281,11 @@ func NewCompatibleProvider(name string, proxies []C.Proxy, hc *HealthCheck) (*Co
 	}
 
 	wrapper := &CompatibleProvider{pd}
-	runtime.SetFinalizer(wrapper, stopCompatibleProvider)
+	runtime.SetFinalizer(wrapper, (*CompatibleProvider).Close)
 	return wrapper, nil
+}
+
+func (cp *CompatibleProvider) Close() error {
+	runtime.SetFinalizer(cp, nil)
+	return cp.compatibleProvider.Close()
 }

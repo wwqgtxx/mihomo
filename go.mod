@@ -22,7 +22,7 @@ require (
 	github.com/metacubex/sing-shadowsocks2 v0.2.2
 	github.com/metacubex/sing-tun v0.2.7-0.20240729131039-ed03f557dee1
 	github.com/metacubex/sing-vmess v0.1.9-0.20240719134745-1df6fb20bbf9
-	github.com/metacubex/sing-wireguard v0.0.0-20240618022557-a6efaa37127a
+	github.com/metacubex/sing-wireguard v0.0.0-20240826061955-1e4e67afe5cd
 	github.com/metacubex/tfo-go v0.0.0-20240228025757-be1269474a66
 	github.com/miekg/dns v1.1.59
 	github.com/openacid/low v0.1.21

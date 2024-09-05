@@ -23,14 +23,15 @@ func (p domainTriePolicy) Match(domain string) []dnsClient {
 }
 
 type domainSetPolicy struct {
-	domainSetProvider provider.RuleProvider
-	dnsClients        []dnsClient
+	tunnel     provider.Tunnel
+	name       string
+	dnsClients []dnsClient
 }
 
 func (p domainSetPolicy) Match(domain string) []dnsClient {
-	metadata := &C.Metadata{Host: domain}
-	for _, rule := range p.domainSetProvider.Rules() {
-		if ok, _ := rule.Match(metadata); ok {
+	if ruleProvider, ok := p.tunnel.RuleProviders()[p.name]; ok {
+		metadata := &C.Metadata{Host: domain}
+		if ok := ruleProvider.Match(metadata); ok {
 			return p.dnsClients
 		}
 	}

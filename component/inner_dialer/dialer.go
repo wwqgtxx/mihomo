@@ -19,8 +19,8 @@ type RemoteDialer struct {
 	mType C.Type
 }
 
-func NewDialer(mType C.Type) *RemoteDialer {
-	return &RemoteDialer{mType: mType}
+func NewDialer(mType C.Type) RemoteDialer {
+	return RemoteDialer{mType: mType}
 }
 
 func (d RemoteDialer) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {

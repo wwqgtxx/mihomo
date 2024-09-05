@@ -34,7 +34,6 @@ const (
 	HYSTERIA2
 	INNER
 	DNS
-	PROVIDER
 )
 
 type NetWork int
@@ -90,8 +89,6 @@ func (t Type) String() string {
 		return "Inner"
 	case DNS:
 		return "DNS"
-	case PROVIDER:
-		return "Provider"
 	default:
 		return "Unknown"
 	}
@@ -142,6 +139,8 @@ type Metadata struct {
 	Type         Type       `json:"type"`
 	SrcIP        netip.Addr `json:"sourceIP"`
 	DstIP        netip.Addr `json:"destinationIP"`
+	SrcGeoIP     []string   `json:"sourceGeoIP"`            // can be nil if never queried, empty slice if got no result
+	DstGeoIP     []string   `json:"destinationGeoIP"`       // can be nil if never queried, empty slice if got no result
 	SrcPort      uint16     `json:"sourcePort,string"`      // `,string` is used to compatible with old version json output
 	DstPort      uint16     `json:"destinationPort,string"` // `,string` is used to compatible with old version json output
 	InIP         netip.Addr `json:"inboundIP"`
@@ -295,4 +294,10 @@ func (m *Metadata) SetRemoteAddress(rawAddress string) error {
 	m.DstPort = uint16Port
 
 	return nil
+}
+
+func (m *Metadata) SwapSrcDst() {
+	m.SrcIP, m.DstIP = m.DstIP, m.SrcIP
+	m.SrcPort, m.DstPort = m.DstPort, m.SrcPort
+	m.SrcGeoIP, m.DstGeoIP = m.DstGeoIP, m.SrcGeoIP
 }

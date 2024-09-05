@@ -68,7 +68,7 @@ func (sd *SnifferDispatcher) UDPSniff(packet C.PacketAdapter) bool {
 
 func (sd *SnifferDispatcher) TCPSniff(conn *N.BufferedConn, metadata *C.Metadata) {
 	switch metadata.Type {
-	case C.INNER, C.DNS, C.MTPROXY, C.PROVIDER: // ignore inner connection
+	case C.INNER, C.DNS, C.MTPROXY: // ignore inner connection
 		return
 	}
 

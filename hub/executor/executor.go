@@ -130,6 +130,7 @@ func GetGeneral() *config.General {
 		TouchAfterLazyPassNum:  provider.TouchAfterLazyPassNum(),
 		PreResolveProcessName:  tunnel.PreResolveProcessName(),
 		TCPConcurrent:          dialer.GetTcpConcurrent(),
+		GlobalUA:               C.UA,
 	}
 
 	return general
@@ -205,6 +206,7 @@ func updateDNS(c *config.DNS, ruleProvider map[string]providerTypes.RuleProvider
 		},
 		Default:       c.DefaultNameserver,
 		Policy:        c.NameServerPolicy,
+		Tunnel:        tunnel.Tunnel,
 		RuleProviders: ruleProvider,
 		SearchDomains: c.SearchDomains,
 	}

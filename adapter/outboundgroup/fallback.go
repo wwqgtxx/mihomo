@@ -18,7 +18,7 @@ type Fallback struct {
 	*outbound.Base
 	disableUDP bool
 	filter     string
-	single     *singledo.Single
+	single     *singledo.Single[[]C.Proxy]
 	providers  []providerTypes.ProxyProvider
 }
 
@@ -93,11 +93,11 @@ func (f *Fallback) Unwrap(metadata *C.Metadata, touch bool) C.Proxy {
 }
 
 func (f *Fallback) proxies(touch bool) []C.Proxy {
-	elm, _, _ := f.single.Do(func() (any, error) {
+	elm, _, _ := f.single.Do(func() ([]C.Proxy, error) {
 		return getProvidersProxies(f.providers, touch, f.filter), nil
 	})
 
-	return elm.([]C.Proxy)
+	return elm
 }
 
 func (f *Fallback) findAliveProxy(touch bool) C.Proxy {
@@ -124,7 +124,7 @@ func NewFallback(option *GroupCommonOption, providers []providerTypes.ProxyProvi
 			Interface:   option.Interface,
 			RoutingMark: option.RoutingMark,
 		}),
-		single:     singledo.NewSingle(defaultGetProxiesDuration),
+		single:     singledo.NewSingle[[]C.Proxy](defaultGetProxiesDuration),
 		providers:  providers,
 		disableUDP: option.DisableUDP,
 		filter:     option.Filter,

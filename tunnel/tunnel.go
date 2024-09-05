@@ -15,6 +15,7 @@ import (
 	"github.com/metacubex/mihomo/common/atomic"
 	"github.com/metacubex/mihomo/common/channel"
 	N "github.com/metacubex/mihomo/common/net"
+	"github.com/metacubex/mihomo/common/utils"
 	"github.com/metacubex/mihomo/component/inner_dialer"
 	"github.com/metacubex/mihomo/component/mmdb"
 	"github.com/metacubex/mihomo/component/nat"
@@ -54,11 +55,15 @@ var (
 
 	// experimental feature
 	UDPFallbackMatch = atomic.NewBool(false)
+
+	ruleUpdateCallback = utils.NewCallback[provider.RuleProvider]()
 )
 
 type tunnel struct{}
 
-var Tunnel C.Tunnel = tunnel{}
+var Tunnel = tunnel{}
+var _ C.Tunnel = Tunnel
+var _ provider.Tunnel = Tunnel
 
 func (t tunnel) HandleTCPConn(conn net.Conn, metadata *C.Metadata) {
 	connCtx := icontext.NewConnContext(conn, metadata)
@@ -75,6 +80,18 @@ func (t tunnel) HandleUDPPacket(packet C.UDPPacket, metadata *C.Metadata) {
 
 func (t tunnel) NatTable() C.NatTable {
 	return natTable
+}
+
+func (t tunnel) Providers() map[string]provider.ProxyProvider {
+	return providers
+}
+
+func (t tunnel) RuleProviders() map[string]provider.RuleProvider {
+	return ruleProviders
+}
+
+func (t tunnel) RuleUpdateCallback() *utils.Callback[provider.RuleProvider] {
+	return ruleUpdateCallback
 }
 
 func SetFakeIPRange(p netip.Prefix) {
@@ -499,7 +516,7 @@ func match(metadata *C.Metadata) (C.Proxy, C.Rule, error) {
 		resolved = true
 	}
 
-	checkResolved := func(rule C.Rule) {
+	for _, rule := range getRules(metadata) {
 		if !resolved && shouldResolveIP(rule, metadata) {
 			func() {
 				ctx, cancel := context.WithTimeout(context.Background(), resolver.DefaultDNSTimeout)
@@ -508,9 +525,8 @@ func match(metadata *C.Metadata) (C.Proxy, C.Rule, error) {
 				if err != nil {
 					log.Infoln("[DNS] resolve %s error: %s", metadata.Host, err.Error())
 				} else {
-					record, _ := mmdb.Instance().Country(ip.AsSlice())
-					if len(record.Country.IsoCode) > 0 {
-						log.Infoln("[DNS] %s --> %s [GEO=%s]", metadata.Host, ip.String(), record.Country.IsoCode)
+					if record := mmdb.IPInstance().LookupCode(ip.AsSlice()); len(record) > 0 {
+						log.Infoln("[DNS] %s --> %s [GEO=%s]", metadata.Host, ip.String(), record)
 					} else {
 						log.Infoln("[DNS] %s --> %s", metadata.Host, ip.String())
 					}
@@ -520,16 +536,22 @@ func match(metadata *C.Metadata) (C.Proxy, C.Rule, error) {
 				resolved = true
 			}()
 		}
-	}
 
-	for _, rule := range getRules(metadata) {
-		if rule.RuleType() == C.RuleSet {
-			ruleProvider, ok := ruleProviders[rule.Payload()]
-			if !ok {
-				log.Warnln("%s RuleProvider is not exists", rule.Payload())
-				continue
+		if !processFound && (rule.ShouldFindProcess() || preResolveProcessName) {
+			processFound = true
+
+			path, err := P.FindProcessName(metadata.NetWork.String(), metadata.SrcIP, int(metadata.SrcPort))
+			if err != nil {
+				log.Debugln("[Process] find process %s: %v", metadata.String(), err)
+			} else {
+				log.Debugln("[Process] %s from process %s", metadata.String(), path)
+				metadata.ProcessPath = path
+				metadata.Process = filepath.Base(path)
 			}
-			adapter, ok := proxies[rule.Adapter()]
+		}
+
+		if matched, ada := rule.Match(metadata); matched {
+			adapter, ok := proxies[ada]
 			if !ok {
 				continue
 			}
@@ -552,40 +574,6 @@ func match(metadata *C.Metadata) (C.Proxy, C.Rule, error) {
 				continue
 			}
 
-			for _, subRule := range ruleProvider.Rules() {
-				checkResolved(subRule)
-				if ok, _ := subRule.Match(metadata); ok {
-					return adapter, rule, nil
-				}
-			}
-			continue
-		}
-
-		checkResolved(rule)
-
-		if !processFound && (rule.ShouldFindProcess() || preResolveProcessName) {
-			processFound = true
-
-			path, err := P.FindProcessName(metadata.NetWork.String(), metadata.SrcIP, int(metadata.SrcPort))
-			if err != nil {
-				log.Debugln("[Process] find process %s: %v", metadata.String(), err)
-			} else {
-				log.Debugln("[Process] %s from process %s", metadata.String(), path)
-				metadata.ProcessPath = path
-				metadata.Process = filepath.Base(path)
-			}
-		}
-
-		if matched, ada := rule.Match(metadata); matched {
-			adapter, ok := proxies[ada]
-			if !ok {
-				continue
-			}
-
-			if metadata.NetWork == C.UDP && !adapter.SupportUDP() && UDPFallbackMatch.Load() {
-				log.Debugln("[Matcher] %s UDP is not supported, skip match", adapter.Name())
-				continue
-			}
 			return adapter, rule, nil
 		}
 	}

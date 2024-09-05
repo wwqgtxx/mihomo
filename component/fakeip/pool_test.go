@@ -210,3 +210,63 @@ func TestPool_Error(t *testing.T) {
 
 	assert.Error(t, err)
 }
+
+func TestPool_FlushFileCache(t *testing.T) {
+	ipnet := netip.MustParsePrefix("192.168.0.1/28")
+	pools, tempfile, err := createPools(Options{
+		IPNet: ipnet,
+		Size:  10,
+	})
+	assert.Nil(t, err)
+	defer os.Remove(tempfile)
+
+	for _, pool := range pools {
+		foo := pool.Lookup("foo.com")
+		bar := pool.Lookup("baz.com")
+		bax := pool.Lookup("baz.com")
+		fox := pool.Lookup("foo.com")
+
+		err = pool.FlushFakeIP()
+		assert.Nil(t, err)
+
+		next := pool.Lookup("baz.com")
+		baz := pool.Lookup("foo.com")
+		nero := pool.Lookup("foo.com")
+
+		assert.True(t, foo == fox)
+		assert.True(t, foo == next)
+		assert.False(t, foo == baz)
+		assert.True(t, bar == bax)
+		assert.True(t, bar == baz)
+		assert.False(t, bar == next)
+		assert.True(t, baz == nero)
+	}
+}
+
+func TestPool_FlushMemoryCache(t *testing.T) {
+	ipnet := netip.MustParsePrefix("192.168.0.1/28")
+	pool, _ := New(Options{
+		IPNet: ipnet,
+		Size:  10,
+	})
+
+	foo := pool.Lookup("foo.com")
+	bar := pool.Lookup("baz.com")
+	bax := pool.Lookup("baz.com")
+	fox := pool.Lookup("foo.com")
+
+	err := pool.FlushFakeIP()
+	assert.Nil(t, err)
+
+	next := pool.Lookup("baz.com")
+	baz := pool.Lookup("foo.com")
+	nero := pool.Lookup("foo.com")
+
+	assert.True(t, foo == fox)
+	assert.True(t, foo == next)
+	assert.False(t, foo == baz)
+	assert.True(t, bar == bax)
+	assert.True(t, bar == baz)
+	assert.False(t, bar == next)
+	assert.True(t, baz == nero)
+}

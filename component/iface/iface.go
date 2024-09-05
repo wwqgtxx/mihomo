@@ -11,8 +11,9 @@ import (
 
 type Interface struct {
 	Index        int
+	MTU          int
 	Name         string
-	Addrs        []netip.Prefix
+	Addresses    []netip.Prefix
 	HardwareAddr net.HardwareAddr
 }
 
@@ -21,10 +22,10 @@ var (
 	ErrAddrNotFound  = errors.New("addr not found")
 )
 
-var interfaces = singledo.NewSingle(time.Second * 20)
+var interfaces = singledo.NewSingle[map[string]*Interface](time.Second * 20)
 
-func ResolveInterface(name string) (*Interface, error) {
-	value, err, _ := interfaces.Do(func() (any, error) {
+func Interfaces() (map[string]*Interface, error) {
+	value, err, _ := interfaces.Do(func() (map[string]*Interface, error) {
 		ifaces, err := net.Interfaces()
 		if err != nil {
 			return nil, err
@@ -61,25 +62,45 @@ func ResolveInterface(name string) (*Interface, error) {
 
 			r[iface.Name] = &Interface{
 				Index:        iface.Index,
+				MTU:          iface.MTU,
 				Name:         iface.Name,
-				Addrs:        ipNets,
+				Addresses:    ipNets,
 				HardwareAddr: iface.HardwareAddr,
 			}
 		}
 
 		return r, nil
 	})
+	return value, err
+}
+
+func ResolveInterface(name string) (*Interface, error) {
+	ifaces, err := Interfaces()
 	if err != nil {
 		return nil, err
 	}
 
-	ifaces := value.(map[string]*Interface)
 	iface, ok := ifaces[name]
 	if !ok {
 		return nil, ErrIfaceNotFound
 	}
 
 	return iface, nil
+}
+
+func IsLocalIp(ip netip.Addr) (bool, error) {
+	ifaces, err := Interfaces()
+	if err != nil {
+		return false, err
+	}
+	for _, iface := range ifaces {
+		for _, addr := range iface.Addresses {
+			if addr.Contains(ip) {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
 }
 
 func FlushCache() {
@@ -101,7 +122,7 @@ func (iface *Interface) PickIPv6Addr(destination netip.Addr) (netip.Prefix, erro
 func (iface *Interface) pickIPAddr(destination netip.Addr, accept func(addr netip.Prefix) bool) (netip.Prefix, error) {
 	var fallback netip.Prefix
 
-	for _, addr := range iface.Addrs {
+	for _, addr := range iface.Addresses {
 		if !accept(addr) {
 			continue
 		}
@@ -114,7 +135,7 @@ func (iface *Interface) pickIPAddr(destination netip.Addr, accept func(addr neti
 			}
 		}
 
-		if !destination.IsValid() && addr.Contains(destination) {
+		if destination.IsValid() && addr.Contains(destination) {
 			return addr, nil
 		}
 	}

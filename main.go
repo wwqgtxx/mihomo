@@ -3,18 +3,19 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/metacubex/mihomo/component/mtproxy/tools"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"runtime"
 	"syscall"
 
+	"github.com/metacubex/mihomo/component/mtproxy/tools"
 	"github.com/metacubex/mihomo/config"
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/hub"
 	"github.com/metacubex/mihomo/hub/executor"
 	"github.com/metacubex/mihomo/log"
+	"github.com/metacubex/mihomo/rules/provider"
 
 	"go.uber.org/automaxprocs/maxprocs"
 )
@@ -45,6 +46,11 @@ func init() {
 func main() {
 	if len(os.Args) > 2 && os.Args[1] == "generate-secret" {
 		tools.Generate(os.Args[2])
+		return
+	}
+
+	if len(os.Args) > 1 && os.Args[1] == "convert-ruleset" {
+		provider.ConvertMain(os.Args[2:])
 		return
 	}
 

@@ -1,0 +1,118 @@
+package common
+
+import (
+	"net/netip"
+	"strings"
+
+	"github.com/metacubex/mihomo/component/mmdb"
+	"github.com/metacubex/mihomo/component/resolver"
+	C "github.com/metacubex/mihomo/constant"
+	"golang.org/x/exp/slices"
+)
+
+type GEOIP struct {
+	*Base
+	country     string
+	adapter     string
+	noResolveIP bool
+	isSourceIP  bool
+}
+
+var _ C.Rule = (*GEOIP)(nil)
+
+func (g *GEOIP) RuleType() C.RuleType {
+	if g.isSourceIP {
+		return C.SrcGEOIP
+	}
+	return C.GEOIP
+}
+
+func (g *GEOIP) Match(metadata *C.Metadata) (bool, string) {
+	ip := metadata.DstIP
+	if g.isSourceIP {
+		ip = metadata.SrcIP
+	}
+	if !ip.IsValid() {
+		return false, ""
+	}
+
+	if g.country == "lan" {
+		return g.isLan(ip), g.adapter
+	}
+
+	if g.isSourceIP {
+		if metadata.SrcGeoIP != nil {
+			return slices.Contains(metadata.SrcGeoIP, g.country), g.adapter
+		}
+	} else {
+		if metadata.DstGeoIP != nil {
+			return slices.Contains(metadata.DstGeoIP, g.country), g.adapter
+		}
+	}
+	codes := mmdb.IPInstance().LookupCode(ip.AsSlice())
+	if g.isSourceIP {
+		metadata.SrcGeoIP = codes
+	} else {
+		metadata.DstGeoIP = codes
+	}
+	if slices.Contains(codes, g.country) {
+		return true, g.adapter
+	}
+	return false, ""
+}
+
+// MatchIp implements C.IpMatcher
+func (g *GEOIP) MatchIp(ip netip.Addr) bool {
+	if !ip.IsValid() {
+		return false
+	}
+
+	if g.country == "lan" {
+		return g.isLan(ip)
+	}
+
+	codes := mmdb.IPInstance().LookupCode(ip.AsSlice())
+	return slices.Contains(codes, g.country)
+}
+
+func (g *GEOIP) isLan(ip netip.Addr) bool {
+	return ip.IsPrivate() ||
+		ip.IsUnspecified() ||
+		ip.IsLoopback() ||
+		ip.IsMulticast() ||
+		ip.IsLinkLocalUnicast() ||
+		resolver.IsFakeBroadcastIP(ip)
+}
+
+func (g *GEOIP) Adapter() string {
+	return g.adapter
+}
+
+func (g *GEOIP) Payload() string {
+	return g.country
+}
+
+func (g *GEOIP) ShouldResolveIP() bool {
+	return !g.noResolveIP
+}
+
+func (g *GEOIP) GetCountry() string {
+	return g.country
+}
+
+func (g *GEOIP) GetRecodeSize() int {
+	return 0
+}
+
+func NewGEOIP(country string, adapter string, isSrc, noResolveIP bool) (*GEOIP, error) {
+	country = strings.ToLower(country)
+
+	geoip := &GEOIP{
+		Base:        &Base{},
+		country:     country,
+		adapter:     adapter,
+		noResolveIP: noResolveIP,
+		isSourceIP:  isSrc,
+	}
+	return geoip, nil
+}

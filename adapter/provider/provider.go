@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/metacubex/mihomo/adapter"
+	"github.com/metacubex/mihomo/component/resource"
 	C "github.com/metacubex/mihomo/constant"
 	types "github.com/metacubex/mihomo/constant/provider"
 	"github.com/metacubex/mihomo/tunnel/statistic"
@@ -31,7 +32,7 @@ type ProxySetProvider struct {
 }
 
 type proxySetProvider struct {
-	*Fetcher
+	*resource.Fetcher[[]C.Proxy]
 	proxies     []C.Proxy
 	healthCheck *HealthCheck
 }
@@ -42,12 +43,12 @@ func (pp *proxySetProvider) MarshalJSON() ([]byte, error) {
 		"type":        pp.Type().String(),
 		"vehicleType": pp.VehicleType().String(),
 		"proxies":     pp.Proxies(),
-		"updatedAt":   pp.updatedAt,
+		"updatedAt":   pp.UpdatedAt(),
 	})
 }
 
 func (pp *proxySetProvider) Name() string {
-	return pp.name
+	return pp.Fetcher.Name()
 }
 
 func (pp *proxySetProvider) HealthCheck() {
@@ -57,7 +58,7 @@ func (pp *proxySetProvider) HealthCheck() {
 func (pp *proxySetProvider) Update() error {
 	elm, same, err := pp.Fetcher.Update()
 	if err == nil && !same {
-		pp.onUpdate(elm)
+		pp.OnUpdate(elm)
 	}
 	return err
 }
@@ -68,7 +69,7 @@ func (pp *proxySetProvider) Initial() error {
 		return err
 	}
 
-	pp.onUpdate(elm)
+	pp.OnUpdate(elm)
 	return nil
 }
 
@@ -104,9 +105,9 @@ func (pp *proxySetProvider) closeAllConnections() {
 	})
 }
 
-func stopProxyProvider(pd *ProxySetProvider) {
-	pd.healthCheck.close()
-	pd.Fetcher.Destroy()
+func (pp *proxySetProvider) Close() error {
+	pp.healthCheck.close()
+	return pp.Fetcher.Close()
 }
 
 func NewProxySetProvider(name string, interval time.Duration, filter string, excludeFilter string, dialerProxy string, vehicle types.Vehicle, hc *HealthCheck) (*ProxySetProvider, error) {
@@ -132,12 +133,11 @@ func NewProxySetProvider(name string, interval time.Duration, filter string, exc
 		healthCheck: hc,
 	}
 
-	onUpdate := func(elm any) {
-		ret := elm.([]C.Proxy)
-		pd.setProxies(ret)
+	onUpdate := func(elm []C.Proxy) {
+		pd.setProxies(elm)
 	}
 
-	proxiesParseAndFilter := func(buf []byte) (any, error) {
+	proxiesParseAndFilter := func(buf []byte) ([]C.Proxy, error) {
 		schema := &ProxySchema{}
 
 		if err := yaml.Unmarshal(buf, schema); err != nil {
@@ -195,11 +195,11 @@ func NewProxySetProvider(name string, interval time.Duration, filter string, exc
 		return proxies, nil
 	}
 
-	fetcher := NewFetcher(name, interval, vehicle, proxiesParseAndFilter, onUpdate)
+	fetcher := resource.NewFetcher[[]C.Proxy](name, interval, vehicle, proxiesParseAndFilter, onUpdate)
 	pd.Fetcher = fetcher
 
 	wrapper := &ProxySetProvider{pd}
-	runtime.SetFinalizer(wrapper, stopProxyProvider)
+	runtime.SetFinalizer(wrapper, (*ProxySetProvider).Close)
 	return wrapper, nil
 }
 

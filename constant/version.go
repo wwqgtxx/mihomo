@@ -1,6 +1,6 @@
 package constant
 
 var (
-	Version   = "unknown version"
+	Version   = "1.20.0"
 	BuildTime = "unknown time"
 )

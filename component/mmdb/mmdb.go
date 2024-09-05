@@ -4,56 +4,85 @@ import (
 	_ "embed"
 	"sync"
 
+	mihomoOnce "github.com/metacubex/mihomo/common/once"
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/log"
 
-	"github.com/oschwald/geoip2-golang"
+	"github.com/oschwald/maxminddb-golang"
+)
+
+type databaseType = uint8
+
+const (
+	typeMaxmind databaseType = iota
+	typeSing
+	typeMetaV0
 )
 
 var (
 	//go:embed Country.mmdb
 	EmbedMMDB []byte
-	mmdb      *geoip2.Reader
-	once      sync.Once
+	IPreader  IPReader
+	IPonce    sync.Once
 )
 
 func LoadFromBytes(buffer []byte) {
-	once.Do(func() {
-		var err error
-		mmdb, err = geoip2.FromBytes(buffer)
+	IPonce.Do(func() {
+		mmdb, err := maxminddb.FromBytes(buffer)
 		if err != nil {
 			log.Fatalln("Can't load mmdb: %s", err.Error())
+		}
+		IPreader = IPReader{Reader: mmdb}
+		switch mmdb.Metadata.DatabaseType {
+		case "sing-geoip":
+			IPreader.databaseType = typeSing
+		case "Meta-geoip0":
+			IPreader.databaseType = typeMetaV0
+		default:
+			IPreader.databaseType = typeMaxmind
 		}
 	})
 }
 
-func getInstance() (instance *geoip2.Reader, err error) {
-	if path := C.Path.MMDB(); path == "embed" {
-		instance, err = geoip2.FromBytes(EmbedMMDB)
+func getMmdbReader() (instance *maxminddb.Reader, err error) {
+	if mmdbPath := C.Path.MMDB(); mmdbPath == "embed" {
+		instance, err = maxminddb.FromBytes(EmbedMMDB)
 	} else {
-		instance, err = geoip2.Open(C.Path.MMDB())
+		log.Infoln("Load MMDB file: %s", mmdbPath)
+		instance, err = maxminddb.Open(C.Path.MMDB())
 	}
 
 	return
 }
 
 func Verify() bool {
-	instance, err := getInstance()
+	instance, err := getMmdbReader()
 	if err == nil {
 		instance.Close()
 	}
 	return err == nil
 }
 
-func Instance() *geoip2.Reader {
-	once.Do(func() {
-		var err error
-		mmdb, err = getInstance()
-
+func IPInstance() IPReader {
+	IPonce.Do(func() {
+		mmdb, err := getMmdbReader()
 		if err != nil {
-			log.Fatalln("Can't load mmdb: %s", err.Error())
+			log.Fatalln("Can't load MMDB: %s", err.Error())
+		}
+		IPreader = IPReader{Reader: mmdb}
+		switch mmdb.Metadata.DatabaseType {
+		case "sing-geoip":
+			IPreader.databaseType = typeSing
+		case "Meta-geoip0":
+			IPreader.databaseType = typeMetaV0
+		default:
+			IPreader.databaseType = typeMaxmind
 		}
 	})
 
-	return mmdb
+	return IPreader
+}
+
+func ReloadIP() {
+	mihomoOnce.Reset(&IPonce)
 }

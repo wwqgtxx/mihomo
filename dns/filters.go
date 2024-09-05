@@ -1,11 +1,10 @@
 package dns
 
 import (
-	"net/netip"
-	"strings"
-
 	"github.com/metacubex/mihomo/component/mmdb"
 	"github.com/metacubex/mihomo/component/trie"
+	"golang.org/x/exp/slices"
+	"net/netip"
 )
 
 type fallbackIPFilter interface {
@@ -17,8 +16,8 @@ type geoipFilter struct {
 }
 
 func (gf *geoipFilter) Match(ip netip.Addr) bool {
-	record, _ := mmdb.Instance().Country(ip.AsSlice())
-	return !strings.EqualFold(record.Country.IsoCode, gf.code) && !ip.IsPrivate()
+	record := mmdb.IPInstance().LookupCode(ip.AsSlice())
+	return !slices.Contains(record, gf.code) && !ip.IsPrivate()
 }
 
 type ipnetFilter struct {

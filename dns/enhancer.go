@@ -46,6 +46,18 @@ func (h *ResolverEnhancer) IsFakeIP(ip netip.Addr) bool {
 	return false
 }
 
+func (h *ResolverEnhancer) IsFakeBroadcastIP(ip netip.Addr) bool {
+	if !h.FakeIPEnabled() {
+		return false
+	}
+
+	if pool := h.fakePool; pool != nil {
+		return pool.Broadcast() == ip
+	}
+
+	return false
+}
+
 func (h *ResolverEnhancer) FindHostByIP(ip netip.Addr) (string, bool) {
 	if pool := h.fakePool; pool != nil {
 		if host, existed := pool.LookBack(ip); existed {

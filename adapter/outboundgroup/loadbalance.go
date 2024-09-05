@@ -25,7 +25,7 @@ type LoadBalance struct {
 	*outbound.Base
 	disableUDP bool
 	filter     string
-	single     *singledo.Single
+	single     *singledo.Single[[]C.Proxy]
 	providers  []provider.ProxyProvider
 	strategyFn strategyFn
 }
@@ -188,11 +188,11 @@ func (lb *LoadBalance) Unwrap(metadata *C.Metadata, touch bool) C.Proxy {
 }
 
 func (lb *LoadBalance) proxies(touch bool) []C.Proxy {
-	elm, _, _ := lb.single.Do(func() (any, error) {
+	elm, _, _ := lb.single.Do(func() ([]C.Proxy, error) {
 		return getProvidersProxies(lb.providers, touch, lb.filter), nil
 	})
 
-	return elm.([]C.Proxy)
+	return elm
 }
 
 // MarshalJSON implements C.ProxyAdapter
@@ -226,7 +226,7 @@ func NewLoadBalance(option *GroupCommonOption, providers []provider.ProxyProvide
 			Interface:   option.Interface,
 			RoutingMark: option.RoutingMark,
 		}),
-		single:     singledo.NewSingle(defaultGetProxiesDuration),
+		single:     singledo.NewSingle[[]C.Proxy](defaultGetProxiesDuration),
 		providers:  providers,
 		strategyFn: strategyFn,
 		disableUDP: option.DisableUDP,

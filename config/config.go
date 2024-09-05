@@ -28,7 +28,8 @@ import (
 	L "github.com/metacubex/mihomo/listener"
 	LC "github.com/metacubex/mihomo/listener/config"
 	"github.com/metacubex/mihomo/log"
-	R "github.com/metacubex/mihomo/rule"
+	R "github.com/metacubex/mihomo/rules"
+	RP "github.com/metacubex/mihomo/rules/provider"
 	T "github.com/metacubex/mihomo/tunnel"
 
 	orderedmap "github.com/wk8/go-ordered-map/v2"
@@ -51,6 +52,7 @@ type General struct {
 	TCPConcurrent          bool         `json:"tcp-concurrent"`
 	Sniffing               bool         `json:"sniffing"`
 	KeepAliveInterval      int          `json:"keep-alive-interval"`
+	GlobalUA               string       `json:"global-ua"`
 }
 
 // Inbound
@@ -211,10 +213,11 @@ type RawConfig struct {
 	TouchAfterLazyPassNum  int            `yaml:"touch-after-lazy-pass-num"`
 	PreResolveProcessName  bool           `yaml:"pre-resolve-process-name"`
 	TCPConcurrent          bool           `yaml:"tcp-concurrent"`
+	GlobalUA               string         `yaml:"global-ua" json:"global-ua"`
 	KeepAliveInterval      int            `yaml:"keep-alive-interval"`
 
 	Sniffer       RawSniffer                `yaml:"sniffer"`
-	RuleProviders map[string]map[string]any `yaml:"rule-providers"`
+	RuleProvider  map[string]map[string]any `yaml:"rule-providers"`
 	ProxyProvider map[string]map[string]any `yaml:"proxy-providers"`
 	Hosts         map[string]string         `yaml:"hosts"`
 	DNS           RawDNS                    `yaml:"dns"`
@@ -269,6 +272,7 @@ func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 		TouchAfterLazyPassNum:  0,
 		PreResolveProcessName:  false,
 		TCPConcurrent:          true,
+		GlobalUA:               "clash.meta/" + C.Version,
 		Hosts:                  map[string]string{},
 		Rule:                   []string{},
 		Proxy:                  []map[string]any{},
@@ -430,6 +434,8 @@ func ParseRawConfig(rawCfg *RawConfig) (*Config, error) {
 }
 
 func parseGeneral(cfg *RawConfig) (*General, error) {
+	C.UA = cfg.GlobalUA
+
 	externalUI := cfg.ExternalUI
 
 	// checkout externalUI exist
@@ -484,6 +490,7 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 		PreResolveProcessName:  cfg.PreResolveProcessName,
 		TCPConcurrent:          cfg.TCPConcurrent,
 		KeepAliveInterval:      cfg.KeepAliveInterval,
+		GlobalUA:               cfg.GlobalUA,
 	}, nil
 }
 
@@ -627,18 +634,17 @@ func parseListeners(cfg *RawConfig) (listeners map[string]C.InboundListener, err
 	return
 }
 
-func parseRuleProviders(cfg *RawConfig) (providersMap map[string]providerTypes.RuleProvider, err error) {
-	providersMap = make(map[string]providerTypes.RuleProvider)
-	providersConfig := cfg.RuleProviders
-
-	// parse and initial providers
-	for name, mapping := range providersConfig {
-		rd, err := R.ParseRuleProvider(name, mapping)
+func parseRuleProviders(cfg *RawConfig) (ruleProviders map[string]providerTypes.RuleProvider, err error) {
+	RP.SetTunnel(T.Tunnel)
+	ruleProviders = map[string]providerTypes.RuleProvider{}
+	// parse rule provider
+	for name, mapping := range cfg.RuleProvider {
+		rp, err := RP.ParseRuleProvider(name, mapping, R.ParseRule)
 		if err != nil {
-			return nil, fmt.Errorf("parse rule ruleProvider %s error: %w", name, err)
+			return nil, err
 		}
 
-		providersMap[name] = rd
+		ruleProviders[name] = rp
 	}
 
 	// --------------------------------
@@ -810,6 +816,16 @@ func parseNameServer(servers []string, respectRules bool) ([]dns.NameServer, err
 	nameservers := []dns.NameServer{}
 
 	for idx, server := range servers {
+		if strings.HasPrefix(server, "dhcp://") {
+			nameservers = append(
+				nameservers,
+				dns.NameServer{
+					Net:  "dhcp",
+					Addr: server[len("dhcp://"):],
+				},
+			)
+			continue
+		}
 		server = parsePureDNSServer(server)
 		u, err := url.Parse(server)
 		if err != nil {

@@ -14,6 +14,7 @@ import (
 	"github.com/metacubex/mihomo/component/trie"
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/constant/provider"
+	"github.com/metacubex/mihomo/log"
 
 	D "github.com/miekg/dns"
 	"github.com/samber/lo"
@@ -429,6 +430,7 @@ type Config struct {
 	Pool           *fakeip.Pool
 	Hosts          *trie.DomainTrie[netip.Addr]
 	Policy         *orderedmap.OrderedMap[string, []NameServer]
+	Tunnel         provider.Tunnel
 	RuleProviders  map[string]provider.RuleProvider
 	SearchDomains  []string
 }
@@ -482,11 +484,14 @@ func NewResolver(config Config) *Resolver {
 		r.policy = make([]dnsPolicy, 0)
 
 		var triePolicy *trie.DomainTrie[[]dnsClient]
-		insertTriePolicy := func() {
+		insertPolicy := func(policy dnsPolicy) {
 			if triePolicy != nil {
 				triePolicy.Optimize()
 				r.policy = append(r.policy, domainTriePolicy{triePolicy})
 				triePolicy = nil
+			}
+			if policy != nil {
+				r.policy = append(r.policy, policy)
 			}
 		}
 
@@ -499,13 +504,16 @@ func NewResolver(config Config) *Resolver {
 				key := temp[1]
 				switch strings.ToLower(prefix) {
 				case "rule-set":
-					if p, ok := config.RuleProviders[key]; ok {
-						insertTriePolicy()
-						r.policy = append(r.policy, domainSetPolicy{
-							domainSetProvider: p,
-							dnsClients:        cacheTransform(nameserver),
+					if _, ok := config.Tunnel.RuleProviders()[key]; ok {
+						log.Debugln("Adding rule-set policy: %s ", key)
+						insertPolicy(domainSetPolicy{
+							tunnel:     config.Tunnel,
+							name:       key,
+							dnsClients: cacheTransform(nameserver),
 						})
 						continue
+					} else {
+						log.Warnln("Can't found ruleset policy: %s", key)
 					}
 				}
 			}
@@ -514,7 +522,7 @@ func NewResolver(config Config) *Resolver {
 			}
 			_ = triePolicy.Insert(domain, cacheTransform(nameserver))
 		}
-		insertTriePolicy()
+		insertPolicy(nil)
 	}
 
 	fallbackIPFilters := []fallbackIPFilter{}

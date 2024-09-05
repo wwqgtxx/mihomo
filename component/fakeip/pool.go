@@ -6,8 +6,14 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/metacubex/mihomo/common/nnip"
 	"github.com/metacubex/mihomo/component/profile/cachefile"
 	"github.com/metacubex/mihomo/component/trie"
+)
+
+const (
+	offsetKey = "key-offset-fake-ip"
+	cycleKey  = "key-cycle-fake-ip"
 )
 
 type store interface {
@@ -18,14 +24,16 @@ type store interface {
 	DelByIP(ip netip.Addr)
 	Exist(ip netip.Addr) bool
 	CloneTo(store)
+	FlushFakeIP() error
 }
 
 // Pool is an implementation about fake ip generator without storage
 type Pool struct {
-	max     uint32
-	min     uint32
-	gateway uint32
-	offset  uint32
+	gateway netip.Addr
+	first   netip.Addr
+	last    netip.Addr
+	offset  netip.Addr
+	cycle   bool
 	mux     sync.Mutex
 	host    *trie.DomainSet
 	ipnet   netip.Prefix
@@ -82,7 +90,12 @@ func (p *Pool) Exist(ip netip.Addr) bool {
 
 // Gateway return gateway ip
 func (p *Pool) Gateway() netip.Addr {
-	return uintToIP(p.gateway)
+	return p.gateway
+}
+
+// Broadcast return the last ip
+func (p *Pool) Broadcast() netip.Addr {
+	return p.last
 }
 
 // IPNet return raw ipnet
@@ -96,25 +109,55 @@ func (p *Pool) CloneFrom(o *Pool) {
 }
 
 func (p *Pool) get(host string) netip.Addr {
-	current := p.offset
-	for {
-		ip := uintToIP(p.min + p.offset)
-		if !p.store.Exist(ip) {
-			break
-		}
+	p.offset = p.offset.Next()
 
-		p.offset = (p.offset + 1) % (p.max - p.min)
-		// Avoid infinite loops
-		if p.offset == current {
-			p.offset = (p.offset + 1) % (p.max - p.min)
-			ip := uintToIP(p.min + p.offset)
-			p.store.DelByIP(ip)
-			break
+	if !p.offset.Less(p.last) {
+		p.cycle = true
+		p.offset = p.first
+	}
+
+	if p.cycle || p.store.Exist(p.offset) {
+		p.store.DelByIP(p.offset)
+	}
+
+	p.store.PutByIP(p.offset, host)
+	return p.offset
+}
+
+func (p *Pool) FlushFakeIP() error {
+	err := p.store.FlushFakeIP()
+	if err == nil {
+		p.cycle = false
+		p.offset = p.first.Prev()
+	}
+	return err
+}
+
+func (p *Pool) StoreState() {
+	if s, ok := p.store.(*cachefileStore); ok {
+		s.PutByHost(offsetKey, p.offset)
+		if p.cycle {
+			s.PutByHost(cycleKey, p.offset)
 		}
 	}
-	ip := uintToIP(p.min + p.offset)
-	p.store.PutByIP(ip, host)
-	return ip
+}
+
+func (p *Pool) restoreState() {
+	if s, ok := p.store.(*cachefileStore); ok {
+		if _, exist := s.GetByHost(cycleKey); exist {
+			p.cycle = true
+		}
+
+		if offset, exist := s.GetByHost(offsetKey); exist {
+			if p.ipnet.Contains(offset) {
+				p.offset = offset
+			} else {
+				_ = p.FlushFakeIP()
+			}
+		} else if s.Exist(p.first) {
+			_ = p.FlushFakeIP()
+		}
+	}
 }
 
 func ipToUint(addr netip.Addr) uint32 {
@@ -145,20 +188,23 @@ type Options struct {
 
 // New return Pool instance
 func New(options Options) (*Pool, error) {
-	min := ipToUint(options.IPNet.Addr()) + 2 + 1 // default start with 198.18.0.4
+	var (
+		hostAddr = options.IPNet.Masked().Addr()
+		gateway  = hostAddr.Next()
+		first    = gateway.Next().Next().Next() // default start with 198.18.0.4
+		last     = nnip.UnMasked(options.IPNet)
+	)
 
-	ones, bits := options.IPNet.Bits(), options.IPNet.Addr().BitLen()
-	total := 1<<uint(bits-ones) - 2
-
-	if total <= 0 {
+	if !options.IPNet.IsValid() || !first.IsValid() || !first.Less(last) {
 		return nil, errors.New("ipnet don't have valid ip")
 	}
 
-	max := min + uint32(total) - 1
 	pool := &Pool{
-		min:     min,
-		max:     max,
-		gateway: min - 1 - 2,
+		gateway: gateway,
+		first:   first,
+		last:    last,
+		offset:  first.Prev(),
+		cycle:   false,
 		host:    options.Host,
 		ipnet:   options.IPNet,
 	}

@@ -7,8 +7,11 @@ const (
 	DomainKeyword
 	DomainRegex
 	GEOIP
+	SrcGEOIP
 	IPCIDR
 	SrcIPCIDR
+	IPSuffix
+	SrcIPSuffix
 	SrcPort
 	DstPort
 	InPort
@@ -46,10 +49,16 @@ func (rt RuleType) String() string {
 		return "DomainRegex"
 	case GEOIP:
 		return "GeoIP"
+	case SrcGEOIP:
+		return "SrcGeoIP"
 	case IPCIDR:
 		return "IPCIDR"
 	case SrcIPCIDR:
 		return "SrcIPCIDR"
+	case IPSuffix:
+		return "IPSuffix"
+	case SrcIPSuffix:
+		return "SrcIPSuffix"
 	case SrcPort:
 		return "SrcPort"
 	case DstPort:
@@ -104,4 +113,5 @@ type Rule interface {
 	Payload() string
 	ShouldResolveIP() bool
 	ShouldFindProcess() bool
+	ProviderNames() []string
 }

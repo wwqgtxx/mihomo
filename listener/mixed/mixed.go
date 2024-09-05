@@ -4,9 +4,9 @@ import (
 	"github.com/metacubex/mihomo/adapter/inbound"
 	"net"
 
-	"github.com/metacubex/mihomo/common/cache"
 	N "github.com/metacubex/mihomo/common/net"
 	C "github.com/metacubex/mihomo/constant"
+	authStore "github.com/metacubex/mihomo/listener/auth"
 	"github.com/metacubex/mihomo/listener/http"
 	"github.com/metacubex/mihomo/listener/socks"
 	"github.com/metacubex/mihomo/transport/socks4"
@@ -16,7 +16,6 @@ import (
 type Listener struct {
 	listener net.Listener
 	addr     string
-	cache    *cache.LruCache[string, bool]
 	closed   bool
 }
 
@@ -51,7 +50,6 @@ func New(addr string, tunnel C.Tunnel, additions ...inbound.Addition) (*Listener
 	ml := &Listener{
 		listener: l,
 		addr:     addr,
-		cache:    cache.New[string, bool](cache.WithAge[string, bool](30)),
 	}
 	go func() {
 		for {
@@ -62,14 +60,14 @@ func New(addr string, tunnel C.Tunnel, additions ...inbound.Addition) (*Listener
 				}
 				continue
 			}
-			go handleConn(c, tunnel, ml.cache, additions...)
+			go handleConn(c, tunnel, additions...)
 		}
 	}()
 
 	return ml, nil
 }
 
-func handleConn(conn net.Conn, tunnel C.Tunnel, cache *cache.LruCache[string, bool], additions ...inbound.Addition) {
+func handleConn(conn net.Conn, tunnel C.Tunnel, additions ...inbound.Addition) {
 	N.TCPKeepAlive(conn)
 
 	bufConn := N.NewBufferedConn(conn)
@@ -84,6 +82,6 @@ func handleConn(conn net.Conn, tunnel C.Tunnel, cache *cache.LruCache[string, bo
 	case socks5.Version:
 		socks.HandleSocks5(bufConn, tunnel, additions...)
 	default:
-		http.HandleConn(bufConn, tunnel, cache, additions...)
+		http.HandleConn(bufConn, tunnel, authStore.Authenticator(), additions...)
 	}
 }

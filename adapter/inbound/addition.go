@@ -63,3 +63,5 @@ func WithInAddr(addr net.Addr) Addition {
 		}
 	}
 }
+
+func Placeholder(metadata *C.Metadata) {}

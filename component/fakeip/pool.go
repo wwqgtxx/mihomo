@@ -62,10 +62,6 @@ func (p *Pool) LookBack(ip netip.Addr) (string, bool) {
 	p.mux.Lock()
 	defer p.mux.Unlock()
 
-	if !ip.Is4() {
-		return "", false
-	}
-
 	return p.store.GetByIP(ip)
 }
 
@@ -91,10 +87,6 @@ func (p *Pool) shouldSkipped(domain string) bool {
 func (p *Pool) Exist(ip netip.Addr) bool {
 	p.mux.Lock()
 	defer p.mux.Unlock()
-
-	if !ip.Is4() {
-		return false
-	}
 
 	return p.store.Exist(ip)
 }
@@ -171,19 +163,6 @@ func (p *Pool) restoreState() {
 	}
 }
 
-func ipToUint(addr netip.Addr) uint32 {
-	ip := addr.AsSlice()
-	v := uint32(ip[0]) << 24
-	v += uint32(ip[1]) << 16
-	v += uint32(ip[2]) << 8
-	v += uint32(ip[3])
-	return v
-}
-
-func uintToIP(v uint32) netip.Addr {
-	return netip.AddrFrom4([4]byte{byte(v >> 24), byte(v >> 16), byte(v >> 8), byte(v)})
-}
-
 type Options struct {
 	IPNet netip.Prefix
 	Host  []C.DomainMatcher
@@ -228,6 +207,8 @@ func New(options Options) (*Pool, error) {
 	} else {
 		pool.store = newMemoryStore(options.Size)
 	}
+
+	pool.restoreState()
 
 	return pool, nil
 }

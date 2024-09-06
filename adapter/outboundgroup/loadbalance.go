@@ -15,7 +15,7 @@ import (
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/constant/provider"
 
-	"github.com/zhangyunhao116/fastrand"
+	"github.com/metacubex/randv2"
 	"golang.org/x/net/publicsuffix"
 )
 
@@ -117,7 +117,7 @@ func strategyRandom() strategyFn {
 		if aliveNum == 0 {
 			return proxies[0]
 		}
-		idx := fastrand.Int63n(aliveNum)
+		idx := randv2.Int64N(aliveNum)
 
 		return aliveProxies[idx]
 	}

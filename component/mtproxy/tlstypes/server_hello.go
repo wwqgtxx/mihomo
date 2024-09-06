@@ -7,7 +7,7 @@ import (
 	"crypto/sha256"
 	"io"
 
-	"github.com/zhangyunhao116/fastrand"
+	"github.com/metacubex/randv2"
 	"golang.org/x/crypto/curve25519"
 )
 
@@ -35,8 +35,8 @@ func (s ServerHello) WelcomePacket() []byte {
 	}
 	recChangeCipher.WriteBytes(buf)
 
-	hostCert := make([]byte, 1024+fastrand.Intn(3092)) // nolint: gosec
-	rand.Read(hostCert)                                // nolint: errcheck
+	hostCert := make([]byte, 1024+randv2.IntN(3092)) // nolint: gosec
+	rand.Read(hostCert)                              // nolint: errcheck
 
 	recData := Record{
 		Type:    RecordTypeApplicationData,

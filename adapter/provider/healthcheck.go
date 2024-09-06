@@ -10,7 +10,7 @@ import (
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/log"
 
-	"github.com/zhangyunhao116/fastrand"
+	"github.com/metacubex/randv2"
 )
 
 const (
@@ -181,7 +181,7 @@ func (hc *HealthCheck) fallbackCheck(id string) {
 		}
 	}
 	if lenReds := len(reds); lenReds > 0 {
-		redProxy := reds[fastrand.Intn(lenReds)] // random choose a red proxy to check
+		redProxy := reds[randv2.IntN(lenReds)] // random choose a red proxy to check
 		check(redProxy)
 	}
 

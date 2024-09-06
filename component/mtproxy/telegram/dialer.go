@@ -7,7 +7,7 @@ import (
 
 	"github.com/metacubex/mihomo/component/mtproxy/common"
 
-	"github.com/zhangyunhao116/fastrand"
+	"github.com/metacubex/randv2"
 )
 
 const (
@@ -121,7 +121,7 @@ func (b *TelegramDialer) chooseAddress(addresses map[common.DC][]string, dc, def
 	case len(addrs) == 1:
 		return addrs[0]
 	case len(addrs) > 1:
-		return addrs[fastrand.Intn(len(addrs))]
+		return addrs[randv2.IntN(len(addrs))]
 	}
 
 	return ""

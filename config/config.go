@@ -159,6 +159,7 @@ type RawDNS struct {
 	EnhancedMode          C.DNSMode                           `yaml:"enhanced-mode" json:"enhanced-mode"`
 	FakeIPRange           string                              `yaml:"fake-ip-range" json:"fake-ip-range"`
 	FakeIPFilter          []string                            `yaml:"fake-ip-filter" json:"fake-ip-filter"`
+	FakeIPFilterMode      C.FilterMode                        `yaml:"fake-ip-filter-mode" json:"fake-ip-filter-mode"`
 	DefaultNameserver     []string                            `yaml:"default-nameserver" json:"default-nameserver"`
 	NameServerPolicy      *orderedmap.OrderedMap[string, any] `yaml:"nameserver-policy" json:"nameserver-policy"`
 	ProxyServerNameserver []string                            `yaml:"proxy-server-nameserver" json:"proxy-server-nameserver"`
@@ -322,6 +323,7 @@ func DefaultRawConfig() *RawConfig {
 				"www.msftnsci.com",
 				"www.msftconnecttest.com",
 			},
+			FakeIPFilterMode: C.FilterBlackList,
 		},
 		Tun: LC.Tun{
 			Enable:              false,
@@ -1156,6 +1158,7 @@ func parseDNS(rawCfg *RawConfig, hosts *trie.DomainTrie[netip.Addr], ruleProvide
 			IPNet:       fakeIPRange,
 			Size:        1000,
 			Host:        host,
+			Mode:        cfg.FakeIPFilterMode,
 			Persistence: rawCfg.Profile.StoreFakeIP,
 		})
 		if err != nil {

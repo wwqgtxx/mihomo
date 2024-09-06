@@ -123,6 +123,8 @@ func GetGeneral() *config.General {
 			LanDisAllowedIPs:  inbound.DisAllowedIPs(),
 			AllowLan:          listener.AllowLan(),
 			BindAddress:       listener.BindAddress(),
+			InboundTfo:        inbound.Tfo(),
+			InboundMPTCP:      inbound.MPTCP(),
 		},
 		Mode:                   tunnel.Mode(),
 		LogLevel:               log.Level(),

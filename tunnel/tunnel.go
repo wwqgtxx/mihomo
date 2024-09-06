@@ -12,7 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/metacubex/mihomo/common/atomic"
 	"github.com/metacubex/mihomo/common/channel"
 	N "github.com/metacubex/mihomo/common/net"
 	"github.com/metacubex/mihomo/common/utils"
@@ -32,16 +31,15 @@ import (
 )
 
 var (
-	tcpQueue       = channel.NewInfiniteChannel[C.ConnContext]()
-	udpQueue       = channel.NewInfiniteChannel[C.PacketAdapter]()
-	natTable       = nat.New()
-	rules          []C.Rule
-	subRules       map[string][]C.Rule
-	ruleProviders  map[string]providerTypes.RuleProvider
-	proxies        = make(map[string]C.Proxy)
-	providers      map[string]provider.ProxyProvider
-	sniffingEnable = false
-	configMux      sync.RWMutex
+	tcpQueue      = channel.NewInfiniteChannel[C.ConnContext]()
+	udpQueue      = channel.NewInfiniteChannel[C.PacketAdapter]()
+	natTable      = nat.New()
+	rules         []C.Rule
+	subRules      map[string][]C.Rule
+	ruleProviders map[string]providerTypes.RuleProvider
+	proxies       = make(map[string]C.Proxy)
+	providers     map[string]provider.ProxyProvider
+	configMux     sync.RWMutex
 
 	// Outbound Rule
 	mode = Rule
@@ -53,8 +51,8 @@ var (
 
 	fakeIPRange netip.Prefix
 
-	// experimental feature
-	UDPFallbackMatch = atomic.NewBool(false)
+	snifferDispatcher *sniffer.Dispatcher
+	sniffingEnable    = false
 
 	ruleUpdateCallback = utils.NewCallback[provider.RuleProvider]()
 )
@@ -103,22 +101,22 @@ func FakeIPRange() netip.Prefix {
 }
 
 func SetSniffing(b bool) {
-	if sniffer.Dispatcher.Enable() {
+	if snifferDispatcher.Enable() {
 		configMux.Lock()
 		sniffingEnable = b
 		configMux.Unlock()
 	}
 }
 
-func UpdateSniffer(dispatcher *sniffer.SnifferDispatcher) {
-	configMux.Lock()
-	sniffer.Dispatcher = dispatcher
-	sniffingEnable = dispatcher.Enable()
-	configMux.Unlock()
-}
-
 func IsSniffing() bool {
 	return sniffingEnable
+}
+
+func UpdateSniffer(dispatcher *sniffer.Dispatcher) {
+	configMux.Lock()
+	snifferDispatcher = dispatcher
+	sniffingEnable = dispatcher.Enable()
+	configMux.Unlock()
 }
 
 func PreResolveProcessName() bool {
@@ -293,8 +291,8 @@ func handleUDPConn(packet C.PacketAdapter) {
 		return
 	}
 
-	if sniffer.Dispatcher.Enable() && sniffingEnable {
-		sniffer.Dispatcher.UDPSniff(packet)
+	if sniffingEnable && snifferDispatcher.Enable() {
+		snifferDispatcher.UDPSniff(packet)
 	}
 
 	// local resolve UDP dns
@@ -381,15 +379,28 @@ func handleTCPConn(connCtx C.ConnContext) {
 		return
 	}
 
+	preHandleFailed := false
 	if err := preHandleMetadata(metadata); err != nil {
 		log.Debugln("[Metadata PreHandle] error: %s", err)
-		return
+		preHandleFailed = true
 	}
 
 	conn := connCtx.Conn()
 	conn.ResetPeeked() // reset before sniffer
-	if sniffer.Dispatcher.Enable() && sniffingEnable {
-		sniffer.Dispatcher.TCPSniff(conn, metadata)
+	if sniffingEnable && snifferDispatcher.Enable() {
+		// Try to sniff a domain when `preHandleMetadata` failed, this is usually
+		// caused by a "Fake DNS record missing" error when enhanced-mode is fake-ip.
+		if snifferDispatcher.TCPSniff(conn, metadata) {
+			// we now have a domain name
+			preHandleFailed = false
+		}
+	}
+
+	// If both trials have failed, we can do nothing but give up
+	if preHandleFailed {
+		log.Debugln("[Metadata PreHandle] failed to sniff a domain for connection %s --> %s, give up",
+			metadata.SourceDetail(), metadata.RemoteAddress())
+		return
 	}
 
 	peekMutex := sync.Mutex{}

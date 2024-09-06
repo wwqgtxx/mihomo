@@ -75,6 +75,28 @@ func (g *GEOIP) MatchIp(ip netip.Addr) bool {
 	return slices.Contains(codes, g.country)
 }
 
+// MatchIp implements C.IpMatcher
+func (g dnsFallbackFilter) MatchIp(ip netip.Addr) bool {
+	if !ip.IsValid() {
+		return false
+	}
+
+	if g.isLan(ip) { // compatible with original behavior
+		return false
+	}
+
+	codes := mmdb.IPInstance().LookupCode(ip.AsSlice())
+	return !slices.Contains(codes, g.country)
+}
+
+type dnsFallbackFilter struct {
+	*GEOIP
+}
+
+func (g *GEOIP) DnsFallbackFilter() C.IpMatcher { // for dns.fallback-filter.geoip
+	return dnsFallbackFilter{GEOIP: g}
+}
+
 func (g *GEOIP) isLan(ip netip.Addr) bool {
 	return ip.IsPrivate() ||
 		ip.IsUnspecified() ||

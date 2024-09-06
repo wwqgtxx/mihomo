@@ -18,8 +18,9 @@ import (
 	N "github.com/metacubex/mihomo/common/net"
 	"github.com/metacubex/mihomo/common/utils"
 	"github.com/metacubex/mihomo/component/auth"
+	"github.com/metacubex/mihomo/component/cidr"
 	"github.com/metacubex/mihomo/component/fakeip"
-	SNIFF "github.com/metacubex/mihomo/component/sniffer"
+	"github.com/metacubex/mihomo/component/sniffer"
 	"github.com/metacubex/mihomo/component/trie"
 	C "github.com/metacubex/mihomo/constant"
 	providerTypes "github.com/metacubex/mihomo/constant/provider"
@@ -29,6 +30,7 @@ import (
 	LC "github.com/metacubex/mihomo/listener/config"
 	"github.com/metacubex/mihomo/log"
 	R "github.com/metacubex/mihomo/rules"
+	RC "github.com/metacubex/mihomo/rules/common"
 	RP "github.com/metacubex/mihomo/rules/provider"
 	T "github.com/metacubex/mihomo/tunnel"
 
@@ -39,12 +41,11 @@ import (
 // General config
 type General struct {
 	Inbound
-	Controller
 	Mode                   T.TunnelMode `json:"mode"`
 	LogLevel               log.LogLevel `json:"log-level"`
 	IPv6                   bool         `json:"ipv6"`
-	Interface              string       `json:"-"`
-	RoutingMark            int          `json:"-"`
+	Interface              string       `json:"interface-name"`
+	RoutingMark            int          `json:"routing-mark"`
 	HealthCheckURL         string       `json:"health-check-url"`
 	HealthCheckLazyDefault bool         `json:"health-check-lazy-default"`
 	TouchAfterLazyPassNum  int          `json:"touch-after-lazy-pass-num"`
@@ -80,71 +81,57 @@ type Inbound struct {
 
 // Controller
 type Controller struct {
-	ExternalController     string `json:"-"`
-	ExternalControllerTLS  string `json:"-"`
-	ExternalControllerUnix string `json:"-"`
-	ExternalUI             string `json:"-"`
-	ExternalDohServer      string `json:"-"`
-	Secret                 string `json:"-"`
-}
-
-// DNS config
-type DNS struct {
-	Enable            bool             `yaml:"enable"`
-	IPv6              bool             `yaml:"ipv6"`
-	NameServer        []dns.NameServer `yaml:"nameserver"`
-	Fallback          []dns.NameServer `yaml:"fallback"`
-	FallbackFilter    FallbackFilter   `yaml:"fallback-filter"`
-	Listen            string           `yaml:"listen"`
-	EnhancedMode      C.DNSMode        `yaml:"enhanced-mode"`
-	DefaultNameserver []dns.NameServer `yaml:"default-nameserver"`
-	FakeIPRange       *fakeip.Pool
-	Hosts             *trie.DomainTrie[netip.Addr]
-	NameServerPolicy  *orderedmap.OrderedMap[string, []dns.NameServer]
-	SearchDomains     []string
-}
-
-// FallbackFilter config
-type FallbackFilter struct {
-	GeoIP     bool           `yaml:"geoip"`
-	GeoIPCode string         `yaml:"geoip-code"`
-	IPCIDR    []netip.Prefix `yaml:"ipcidr"`
-	Domain    []string       `yaml:"domain"`
-}
-
-type TLS struct {
-	Certificate     string   `yaml:"certificate"`
-	PrivateKey      string   `yaml:"private-key"`
-	CustomTrustCert []string `yaml:"custom-certifactes"`
-}
-
-// Profile config
-type Profile struct {
-	StoreSelected bool `yaml:"store-selected"`
-	StoreFakeIP   bool `yaml:"store-fake-ip"`
-}
-
-type Sniffer struct {
-	Enable          bool
-	Sniffers        map[snifferTypes.Type]SNIFF.SnifferConfig
-	ForceDomain     *trie.DomainSet
-	SkipDomain      *trie.DomainSet
-	ForceDnsMapping bool
-	ParsePureIp     bool
+	ExternalController     string
+	ExternalControllerTLS  string
+	ExternalControllerUnix string
+	ExternalUI             string
+	ExternalDohServer      string
+	Secret                 string
 }
 
 // Experimental config
 type Experimental struct {
-	UDPFallbackMatch bool `yaml:"udp-fallback-match"`
-	QUICGoDisableGSO bool `yaml:"quic-go-disable-gso"`
-	QUICGoDisableECN bool `yaml:"quic-go-disable-ecn"`
+	QUICGoDisableGSO bool
+	QUICGoDisableECN bool
+}
+
+// DNS config
+type DNS struct {
+	Enable                bool
+	IPv6                  bool
+	NameServer            []dns.NameServer
+	Fallback              []dns.NameServer
+	FallbackIPFilter      []C.IpMatcher
+	FallbackDomainFilter  []C.DomainMatcher
+	Listen                string
+	EnhancedMode          C.DNSMode
+	DefaultNameserver     []dns.NameServer
+	FakeIPRange           *fakeip.Pool
+	Hosts                 *trie.DomainTrie[netip.Addr]
+	NameServerPolicy      []dns.Policy
+	ProxyServerNameserver []dns.NameServer
+	SearchDomains         []string
+}
+
+// Profile config
+type Profile struct {
+	StoreSelected bool
+	StoreFakeIP   bool
+}
+
+// TLS config
+type TLS struct {
+	Certificate     string
+	PrivateKey      string
+	CustomTrustCert []string
 }
 
 // Config is mihomo config manager
 type Config struct {
 	General       *General
-	DNS           *DNS
+	Controller    *Controller
 	Experimental  *Experimental
+	DNS           *DNS
 	Hosts         *trie.DomainTrie[netip.Addr]
 	Profile       *Profile
 	Rules         []C.Rule
@@ -155,105 +142,127 @@ type Config struct {
 	Providers     map[string]providerTypes.ProxyProvider
 	Listeners     map[string]C.InboundListener
 	Tunnels       []LC.Tunnel
-	Sniffer       *Sniffer
+	Sniffer       *sniffer.Config
 	TLS           *TLS
 }
 
 type RawDNS struct {
-	Enable                bool                                `yaml:"enable"`
-	IPv6                  bool                                `yaml:"ipv6"`
-	UseHosts              bool                                `yaml:"use-hosts"`
-	RespectRules          bool                                `yaml:"respect-rules"`
-	NameServer            []string                            `yaml:"nameserver"`
-	Fallback              []string                            `yaml:"fallback"`
-	FallbackFilter        RawFallbackFilter                   `yaml:"fallback-filter"`
-	Listen                string                              `yaml:"listen"`
-	EnhancedMode          C.DNSMode                           `yaml:"enhanced-mode"`
-	FakeIPRange           string                              `yaml:"fake-ip-range"`
-	FakeIPFilter          []string                            `yaml:"fake-ip-filter"`
-	DefaultNameserver     []string                            `yaml:"default-nameserver"`
-	NameServerPolicy      *orderedmap.OrderedMap[string, any] `yaml:"nameserver-policy"`
-	SearchDomains         []string                            `yaml:"search-domains"`
-	ProxyServerNameserver []string                            `yaml:"proxy-server-nameserver"`
+	Enable                bool                                `yaml:"enable" json:"enable"`
+	IPv6                  bool                                `yaml:"ipv6" json:"ipv6"`
+	UseHosts              bool                                `yaml:"use-hosts" json:"use-hosts"`
+	UseSystemHosts        bool                                `yaml:"use-system-hosts" json:"use-system-hosts"`
+	RespectRules          bool                                `yaml:"respect-rules" json:"respect-rules"`
+	NameServer            []string                            `yaml:"nameserver" json:"nameserver"`
+	Fallback              []string                            `yaml:"fallback" json:"fallback"`
+	FallbackFilter        RawFallbackFilter                   `yaml:"fallback-filter" json:"fallback-filter"`
+	Listen                string                              `yaml:"listen" json:"listen"`
+	EnhancedMode          C.DNSMode                           `yaml:"enhanced-mode" json:"enhanced-mode"`
+	FakeIPRange           string                              `yaml:"fake-ip-range" json:"fake-ip-range"`
+	FakeIPFilter          []string                            `yaml:"fake-ip-filter" json:"fake-ip-filter"`
+	DefaultNameserver     []string                            `yaml:"default-nameserver" json:"default-nameserver"`
+	NameServerPolicy      *orderedmap.OrderedMap[string, any] `yaml:"nameserver-policy" json:"nameserver-policy"`
+	ProxyServerNameserver []string                            `yaml:"proxy-server-nameserver" json:"proxy-server-nameserver"`
+	SearchDomains         []string                            `yaml:"search-domains" json:"search-domains"`
 }
 
 type RawFallbackFilter struct {
-	GeoIP     bool     `yaml:"geoip"`
-	GeoIPCode string   `yaml:"geoip-code"`
-	IPCIDR    []string `yaml:"ipcidr"`
-	Domain    []string `yaml:"domain"`
+	GeoIP     bool     `yaml:"geoip" json:"geoip"`
+	GeoIPCode string   `yaml:"geoip-code" json:"geoip-code"`
+	IPCIDR    []string `yaml:"ipcidr" json:"ipcidr"`
+	Domain    []string `yaml:"domain" json:"domain"`
 }
 
-type RawConfig struct {
-	Port                   int            `yaml:"port"`
-	SocksPort              int            `yaml:"socks-port"`
-	RedirPort              int            `yaml:"redir-port"`
-	TProxyPort             int            `yaml:"tproxy-port"`
-	MixedPort              int            `yaml:"mixed-port"`
-	MixECConfig            string         `yaml:"mixec-config"`
-	ShadowSocksConfig      string         `yaml:"ss-config"`
-	VmessConfig            string         `yaml:"vmess-config"`
-	MTProxyConfig          string         `yaml:"mtproxy-config"`
-	InboundTfo             bool           `yaml:"inbound-tfo"`
-	InboundMPTCP           bool           `yaml:"inbound-mptcp"`
-	Authentication         []string       `yaml:"authentication"`
-	SkipAuthPrefixes       []netip.Prefix `yaml:"skip-auth-prefixes"`
-	LanAllowedIPs          []netip.Prefix `yaml:"lan-allowed-ips"`
-	LanDisAllowedIPs       []netip.Prefix `yaml:"lan-disallowed-ips"`
-	AllowLan               bool           `yaml:"allow-lan"`
-	BindAddress            string         `yaml:"bind-address"`
-	Mode                   T.TunnelMode   `yaml:"mode"`
-	LogLevel               log.LogLevel   `yaml:"log-level"`
-	IPv6                   bool           `yaml:"ipv6"`
-	ExternalController     string         `yaml:"external-controller"`
-	ExternalControllerUnix string         `yaml:"external-controller-unix"`
-	ExternalControllerTLS  string         `yaml:"external-controller-tls"`
-	ExternalUI             string         `yaml:"external-ui"`
-	ExternalDohServer      string         `yaml:"external-doh-server"`
-	Secret                 string         `yaml:"secret"`
-	Interface              string         `yaml:"interface-name"`
-	RoutingMark            int            `yaml:"routing-mark"`
-	Tunnels                []LC.Tunnel    `yaml:"tunnels"`
-	HealthCheckURL         string         `yaml:"health-check-url"`
-	HealthCheckLazyDefault bool           `yaml:"health-check-lazy-default"`
-	TouchAfterLazyPassNum  int            `yaml:"touch-after-lazy-pass-num"`
-	PreResolveProcessName  bool           `yaml:"pre-resolve-process-name"`
-	TCPConcurrent          bool           `yaml:"tcp-concurrent"`
-	GlobalUA               string         `yaml:"global-ua" json:"global-ua"`
-	KeepAliveIdle          int            `yaml:"keep-alive-idle"`
-	KeepAliveInterval      int            `yaml:"keep-alive-interval"`
-	DisableKeepAlive       bool           `yaml:"disable-keep-alive"`
+type RawExperimental struct {
+	QUICGoDisableGSO bool `yaml:"quic-go-disable-gso"`
+	QUICGoDisableECN bool `yaml:"quic-go-disable-ecn"`
+}
 
-	Sniffer       RawSniffer                `yaml:"sniffer"`
-	RuleProvider  map[string]map[string]any `yaml:"rule-providers"`
-	ProxyProvider map[string]map[string]any `yaml:"proxy-providers"`
-	Hosts         map[string]string         `yaml:"hosts"`
-	DNS           RawDNS                    `yaml:"dns"`
-	Tun           LC.Tun                    `yaml:"tun"`
-	TuicServer    LC.TuicServer             `yaml:"tuic-server"`
-	Experimental  Experimental              `yaml:"experimental"`
-	Profile       Profile                   `yaml:"profile"`
-	Proxy         []map[string]any          `yaml:"proxies"`
-	ProxyGroup    []map[string]any          `yaml:"proxy-groups"`
-	Rule          []string                  `yaml:"rules"`
-	SubRules      map[string][]string       `yaml:"sub-rules"`
-	RawTLS        TLS                       `yaml:"tls"`
-	Listeners     []map[string]any          `yaml:"listeners"`
+type RawProfile struct {
+	StoreSelected bool `yaml:"store-selected" json:"store-selected"`
+	StoreFakeIP   bool `yaml:"store-fake-ip" json:"store-fake-ip"`
 }
 
 type RawSniffer struct {
-	Enable          bool                         `yaml:"enable" json:"enable"`
-	OverrideDest    bool                         `yaml:"override-destination" json:"override-destination"`
-	ForceDomain     []string                     `yaml:"force-domain" json:"force-domain"`
-	SkipDomain      []string                     `yaml:"skip-domain" json:"skip-domain"`
-	ForceDnsMapping bool                         `yaml:"force-dns-mapping" json:"force-dns-mapping"`
-	ParsePureIp     bool                         `yaml:"parse-pure-ip" json:"parse-pure-ip"`
-	Sniff           map[string]RawSniffingConfig `yaml:"sniff" json:"sniff"`
+	Enable          bool     `yaml:"enable" json:"enable"`
+	OverrideDest    bool     `yaml:"override-destination" json:"override-destination"`
+	Sniffing        []string `yaml:"sniffing" json:"sniffing"`
+	ForceDomain     []string `yaml:"force-domain" json:"force-domain"`
+	SkipSrcAddress  []string `yaml:"skip-src-address" json:"skip-src-address"`
+	SkipDstAddress  []string `yaml:"skip-dst-address" json:"skip-dst-address"`
+	SkipDomain      []string `yaml:"skip-domain" json:"skip-domain"`
+	Ports           []string `yaml:"port-whitelist" json:"port-whitelist"`
+	ForceDnsMapping bool     `yaml:"force-dns-mapping" json:"force-dns-mapping"`
+	ParsePureIp     bool     `yaml:"parse-pure-ip" json:"parse-pure-ip"`
+
+	Sniff map[string]RawSniffingConfig `yaml:"sniff" json:"sniff"`
 }
 
 type RawSniffingConfig struct {
 	Ports        []string `yaml:"ports" json:"ports"`
 	OverrideDest *bool    `yaml:"override-destination" json:"override-destination"`
+}
+
+type RawTLS struct {
+	Certificate     string   `yaml:"certificate" json:"certificate"`
+	PrivateKey      string   `yaml:"private-key" json:"private-key"`
+	CustomTrustCert []string `yaml:"custom-certifactes" json:"custom-certifactes"`
+}
+
+type RawConfig struct {
+	Port                   int            `yaml:"port" json:"port"`
+	SocksPort              int            `yaml:"socks-port" json:"socks-port"`
+	RedirPort              int            `yaml:"redir-port" json:"redir-port"`
+	TProxyPort             int            `yaml:"tproxy-port" json:"tproxy-port"`
+	MixedPort              int            `yaml:"mixed-port" json:"mixed-port"`
+	MixECConfig            string         `yaml:"mixec-config" json:"mix-ec-config"`
+	ShadowSocksConfig      string         `yaml:"ss-config" json:"shadow-socks-config"`
+	VmessConfig            string         `yaml:"vmess-config" json:"vmess-config"`
+	MTProxyConfig          string         `yaml:"mtproxy-config" json:"mt-proxy-config"`
+	InboundTfo             bool           `yaml:"inbound-tfo" json:"inbound-tfo"`
+	InboundMPTCP           bool           `yaml:"inbound-mptcp" json:"inbound-mptcp"`
+	Authentication         []string       `yaml:"authentication" json:"authentication"`
+	SkipAuthPrefixes       []netip.Prefix `yaml:"skip-auth-prefixes" json:"skip-auth-prefixes"`
+	LanAllowedIPs          []netip.Prefix `yaml:"lan-allowed-ips" json:"lan-allowed-i-ps"`
+	LanDisAllowedIPs       []netip.Prefix `yaml:"lan-disallowed-ips" json:"lan-dis-allowed-i-ps"`
+	AllowLan               bool           `yaml:"allow-lan" json:"allow-lan"`
+	BindAddress            string         `yaml:"bind-address" json:"bind-address"`
+	Mode                   T.TunnelMode   `yaml:"mode" json:"mode"`
+	LogLevel               log.LogLevel   `yaml:"log-level" json:"log-level"`
+	IPv6                   bool           `yaml:"ipv6" json:"ipv6"`
+	ExternalController     string         `yaml:"external-controller" json:"external-controller"`
+	ExternalControllerUnix string         `yaml:"external-controller-unix" json:"external-controller-unix"`
+	ExternalControllerTLS  string         `yaml:"external-controller-tls" json:"external-controller-tls"`
+	ExternalUI             string         `yaml:"external-ui" json:"external-ui"`
+	ExternalDohServer      string         `yaml:"external-doh-server" json:"external-doh-server"`
+	Secret                 string         `yaml:"secret" json:"secret"`
+	Interface              string         `yaml:"interface-name" json:"interface"`
+	RoutingMark            int            `yaml:"routing-mark" json:"routing-mark"`
+	Tunnels                []LC.Tunnel    `yaml:"tunnels" json:"tunnels"`
+	HealthCheckURL         string         `yaml:"health-check-url" json:"health-check-url"`
+	HealthCheckLazyDefault bool           `yaml:"health-check-lazy-default" json:"health-check-lazy-default"`
+	TouchAfterLazyPassNum  int            `yaml:"touch-after-lazy-pass-num" json:"touch-after-lazy-pass-num"`
+	PreResolveProcessName  bool           `yaml:"pre-resolve-process-name" json:"pre-resolve-process-name"`
+	TCPConcurrent          bool           `yaml:"tcp-concurrent" json:"tcp-concurrent"`
+	GlobalUA               string         `yaml:"global-ua" json:"global-ua"`
+	KeepAliveIdle          int            `yaml:"keep-alive-idle" json:"keep-alive-idle"`
+	KeepAliveInterval      int            `yaml:"keep-alive-interval" json:"keep-alive-interval"`
+	DisableKeepAlive       bool           `yaml:"disable-keep-alive" json:"disable-keep-alive"`
+
+	ProxyProvider map[string]map[string]any `yaml:"proxy-providers" json:"proxy-provider"`
+	RuleProvider  map[string]map[string]any `yaml:"rule-providers" json:"rule-provider"`
+	Proxy         []map[string]any          `yaml:"proxies" json:"proxy"`
+	ProxyGroup    []map[string]any          `yaml:"proxy-groups" json:"proxy-group"`
+	Rule          []string                  `yaml:"rules" json:"rule"`
+	SubRules      map[string][]string       `yaml:"sub-rules" json:"sub-rules"`
+	Listeners     []map[string]any          `yaml:"listeners" json:"listeners"`
+	Hosts         map[string]string         `yaml:"hosts" json:"hosts"`
+	DNS           RawDNS                    `yaml:"dns" json:"dns"`
+	Tun           LC.Tun                    `yaml:"tun" json:"tun"`
+	TuicServer    LC.TuicServer             `yaml:"tuic-server" json:"tuic-server"`
+	Experimental  RawExperimental           `yaml:"experimental" json:"experimental"`
+	Profile       RawProfile                `yaml:"profile" json:"profile"`
+	Sniffer       RawSniffer                `yaml:"sniffer" json:"sniffer"`
+	TLS           RawTLS                    `yaml:"tls" json:"tls"`
 }
 
 // Parse config
@@ -281,43 +290,6 @@ func DefaultRawConfig() *RawConfig {
 		PreResolveProcessName:  false,
 		TCPConcurrent:          true,
 		GlobalUA:               "clash.meta/" + C.Version,
-		Hosts:                  map[string]string{},
-		Rule:                   []string{},
-		Proxy:                  []map[string]any{},
-		ProxyGroup:             []map[string]any{},
-		Tun: LC.Tun{
-			Enable:              false,
-			Stack:               C.TunSystem,
-			DNSHijack:           []string{},
-			AutoDetectInterface: true,
-			AutoRoute:           true,
-			Inet4Address:        []netip.Prefix{netip.MustParsePrefix("198.18.0.1/30")},
-			Inet6Address:        []netip.Prefix{netip.MustParsePrefix("fdfe:dcba:9876::1/126")},
-		},
-		TuicServer: LC.TuicServer{
-			Enable:                false,
-			Token:                 nil,
-			Users:                 nil,
-			Certificate:           "",
-			PrivateKey:            "",
-			Listen:                "",
-			CongestionController:  "",
-			MaxIdleTime:           15000,
-			AuthenticationTimeout: 1000,
-			ALPN:                  []string{"h3"},
-			MaxUdpRelayPacketSize: 1500,
-		},
-		Sniffer: RawSniffer{
-			Enable:          true,
-			ForceDomain:     []string{},
-			SkipDomain:      []string{},
-			ForceDnsMapping: true,
-			ParsePureIp:     false,
-			Sniff: map[string]RawSniffingConfig{
-				snifferTypes.HTTP.String(): {Ports: []string{"80"}},
-				snifferTypes.TLS.String():  {Ports: []string{"443"}},
-			},
-		},
 		DNS: RawDNS{
 			Enable:      true,
 			IPv6:        true,
@@ -351,8 +323,46 @@ func DefaultRawConfig() *RawConfig {
 				"www.msftconnecttest.com",
 			},
 		},
-		Profile: Profile{
+		Tun: LC.Tun{
+			Enable:              false,
+			Stack:               C.TunSystem,
+			DNSHijack:           []string{},
+			AutoDetectInterface: true,
+			AutoRoute:           true,
+			Inet4Address:        []netip.Prefix{netip.MustParsePrefix("198.18.0.1/30")},
+			Inet6Address:        []netip.Prefix{netip.MustParsePrefix("fdfe:dcba:9876::1/126")},
+		},
+		TuicServer: LC.TuicServer{
+			Enable:                false,
+			Token:                 nil,
+			Users:                 nil,
+			Certificate:           "",
+			PrivateKey:            "",
+			Listen:                "",
+			CongestionController:  "",
+			MaxIdleTime:           15000,
+			AuthenticationTimeout: 1000,
+			ALPN:                  []string{"h3"},
+			MaxUdpRelayPacketSize: 1500,
+		},
+		Experimental: RawExperimental{
+			// https://github.com/quic-go/quic-go/issues/4178
+			// Quic-go currently cannot automatically fall back on platforms that do not support ecn, so this feature is turned off by default.
+			QUICGoDisableECN: true,
+		},
+		Profile: RawProfile{
 			StoreSelected: true,
+		},
+		Sniffer: RawSniffer{
+			Enable:          true,
+			ForceDomain:     []string{},
+			SkipDomain:      []string{},
+			ForceDnsMapping: true,
+			ParsePureIp:     false,
+			Sniff: map[string]RawSniffingConfig{
+				snifferTypes.HTTP.String(): {Ports: []string{"80"}},
+				snifferTypes.TLS.String():  {Ports: []string{"443"}},
+			},
 		},
 	}
 	rawCfg.DNS.RespectRules = true
@@ -374,15 +384,35 @@ func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 func ParseRawConfig(rawCfg *RawConfig) (*Config, error) {
 	config := &Config{}
 
-	config.Experimental = &rawCfg.Experimental
-	config.Profile = &rawCfg.Profile
-	config.TLS = &rawCfg.RawTLS
-
 	general, err := parseGeneral(rawCfg)
 	if err != nil {
 		return nil, err
 	}
 	config.General = general
+
+	controller, err := parseController(rawCfg)
+	if err != nil {
+		return nil, err
+	}
+	config.Controller = controller
+
+	experimental, err := parseExperimental(rawCfg)
+	if err != nil {
+		return nil, err
+	}
+	config.Experimental = experimental
+
+	profile, err := parseProfile(rawCfg)
+	if err != nil {
+		return nil, err
+	}
+	config.Profile = profile
+
+	tlsCfg, err := parseTLS(rawCfg)
+	if err != nil {
+		return nil, err
+	}
+	config.TLS = tlsCfg
 
 	proxies, providers, err := parseProxies(rawCfg)
 	if err != nil {
@@ -439,7 +469,7 @@ func ParseRawConfig(rawCfg *RawConfig) (*Config, error) {
 		}
 	}
 
-	config.Sniffer, err = parseSniffer(rawCfg.Sniffer)
+	config.Sniffer, err = parseSniffer(rawCfg.Sniffer, ruleProviders)
 	if err != nil {
 		return nil, err
 	}
@@ -490,14 +520,6 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 			InboundTfo:        cfg.InboundTfo,
 			InboundMPTCP:      cfg.InboundMPTCP,
 		},
-		Controller: Controller{
-			ExternalController:     cfg.ExternalController,
-			ExternalUI:             cfg.ExternalUI,
-			Secret:                 cfg.Secret,
-			ExternalControllerUnix: cfg.ExternalControllerUnix,
-			ExternalControllerTLS:  cfg.ExternalControllerTLS,
-			ExternalDohServer:      cfg.ExternalDohServer,
-		},
 		Mode:                   cfg.Mode,
 		LogLevel:               cfg.LogLevel,
 		IPv6:                   cfg.IPv6,
@@ -510,6 +532,39 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 		TCPConcurrent:          cfg.TCPConcurrent,
 		KeepAliveInterval:      cfg.KeepAliveInterval,
 		GlobalUA:               cfg.GlobalUA,
+	}, nil
+}
+
+func parseController(cfg *RawConfig) (*Controller, error) {
+	return &Controller{
+		ExternalController:     cfg.ExternalController,
+		ExternalUI:             cfg.ExternalUI,
+		Secret:                 cfg.Secret,
+		ExternalControllerUnix: cfg.ExternalControllerUnix,
+		ExternalControllerTLS:  cfg.ExternalControllerTLS,
+		ExternalDohServer:      cfg.ExternalDohServer,
+	}, nil
+}
+
+func parseExperimental(cfg *RawConfig) (*Experimental, error) {
+	return &Experimental{
+		QUICGoDisableGSO: cfg.Experimental.QUICGoDisableGSO,
+		QUICGoDisableECN: cfg.Experimental.QUICGoDisableECN,
+	}, nil
+}
+
+func parseProfile(cfg *RawConfig) (*Profile, error) {
+	return &Profile{
+		StoreSelected: cfg.Profile.StoreSelected,
+		StoreFakeIP:   cfg.Profile.StoreFakeIP,
+	}, nil
+}
+
+func parseTLS(cfg *RawConfig) (*TLS, error) {
+	return &TLS{
+		Certificate:     cfg.TLS.Certificate,
+		PrivateKey:      cfg.TLS.PrivateKey,
+		CustomTrustCert: cfg.TLS.CustomTrustCert,
 	}, nil
 }
 
@@ -963,44 +1018,13 @@ func parsePureDNSServer(server string) string {
 	}
 }
 
-func parseNameServerPolicy(nsPolicy *orderedmap.OrderedMap[string, any], ruleProviders map[string]providerTypes.RuleProvider, respectRules bool) (*orderedmap.OrderedMap[string, []dns.NameServer], error) {
-	policy := orderedmap.New[string, []dns.NameServer]()
-	updatedPolicy := orderedmap.New[string, any]()
+func parseNameServerPolicy(nsPolicy *orderedmap.OrderedMap[string, any], ruleProviders map[string]providerTypes.RuleProvider, respectRules bool) ([]dns.Policy, error) {
+	var policy []dns.Policy
 	re := regexp.MustCompile(`[a-zA-Z0-9\-]+\.[a-zA-Z]{2,}(\.[a-zA-Z]{2,})?`)
 
 	for pair := nsPolicy.Oldest(); pair != nil; pair = pair.Next() {
 		k, v := pair.Key, pair.Value
-		if strings.Contains(k, ",") {
-			if strings.Contains(k, "geosite:") {
-				subkeys := strings.Split(k, ":")
-				subkeys = subkeys[1:]
-				subkeys = strings.Split(subkeys[0], ",")
-				for _, subkey := range subkeys {
-					newKey := "geosite:" + subkey
-					updatedPolicy.Store(newKey, v)
-				}
-			} else if strings.Contains(k, "rule-set:") {
-				subkeys := strings.Split(k, ":")
-				subkeys = subkeys[1:]
-				subkeys = strings.Split(subkeys[0], ",")
-				for _, subkey := range subkeys {
-					newKey := "rule-set:" + subkey
-					updatedPolicy.Store(newKey, v)
-				}
-			} else if re.MatchString(k) {
-				subkeys := strings.Split(k, ",")
-				for _, subkey := range subkeys {
-					updatedPolicy.Store(subkey, v)
-				}
-			}
-		} else {
-			updatedPolicy.Store(k, v)
-		}
-	}
-
-	for pair := updatedPolicy.Oldest(); pair != nil; pair = pair.Next() {
-		domain, server := pair.Key, pair.Value
-		servers, err := utils.ToStringSlice(server)
+		servers, err := utils.ToStringSlice(v)
 		if err != nil {
 			return nil, err
 		}
@@ -1008,40 +1032,50 @@ func parseNameServerPolicy(nsPolicy *orderedmap.OrderedMap[string, any], rulePro
 		if err != nil {
 			return nil, err
 		}
-		if _, valid := trie.ValidAndSplitDomain(domain); !valid {
-			return nil, fmt.Errorf("DNS ResoverRule invalid domain: %s", domain)
-		}
-		if strings.HasPrefix(domain, "rule-set:") {
-			domainSetName := domain[9:]
-			if provider, ok := ruleProviders[domainSetName]; !ok {
-				return nil, fmt.Errorf("not found rule-set: %s", domainSetName)
-			} else {
-				switch provider.Behavior() {
-				case providerTypes.IPCIDR:
-					return nil, fmt.Errorf("rule provider type error, except domain,actual %s", provider.Behavior())
-				case providerTypes.Classical:
-					log.Warnln("%s provider is %s, only matching it contain domain rule", provider.Name(), provider.Behavior())
+		if strings.Contains(strings.ToLower(k), ",") {
+			if strings.Contains(strings.ToLower(k), "rule-set:") {
+				subkeys := strings.Split(k, ":")
+				subkeys = subkeys[1:]
+				subkeys = strings.Split(subkeys[0], ",")
+				for _, subkey := range subkeys {
+					newKey := "rule-set:" + subkey
+					policy = append(policy, dns.Policy{Domain: newKey, NameServers: nameservers})
+				}
+			} else if re.MatchString(k) {
+				subkeys := strings.Split(k, ",")
+				for _, subkey := range subkeys {
+					policy = append(policy, dns.Policy{Domain: subkey, NameServers: nameservers})
 				}
 			}
+		} else {
+			if strings.Contains(strings.ToLower(k), "geosite:") {
+				policy = append(policy, dns.Policy{Domain: "geosite:" + k[8:], NameServers: nameservers})
+			} else if strings.Contains(strings.ToLower(k), "rule-set:") {
+				policy = append(policy, dns.Policy{Domain: "rule-set:" + k[9:], NameServers: nameservers})
+			} else {
+				policy = append(policy, dns.Policy{Domain: k, NameServers: nameservers})
+			}
 		}
-		policy.Store(domain, nameservers)
+	}
+
+	for idx, p := range policy {
+		domain, nameservers := p.Domain, p.NameServers
+
+		if strings.HasPrefix(domain, "rule-set:") {
+			domainSetName := domain[9:]
+			matcher, err := parseDomainRuleSet(domainSetName, "dns.nameserver-policy", ruleProviders)
+			if err != nil {
+				return nil, err
+			}
+			policy[idx] = dns.Policy{Matcher: matcher, NameServers: nameservers}
+		} else {
+			if _, valid := trie.ValidAndSplitDomain(domain); !valid {
+				return nil, fmt.Errorf("DNS ResoverRule invalid domain: %s", domain)
+			}
+		}
 	}
 
 	return policy, nil
-}
-
-func parseFallbackIPCIDR(ips []string) ([]netip.Prefix, error) {
-	ipNets := []netip.Prefix{}
-
-	for idx, ip := range ips {
-		ipnet, err := netip.ParsePrefix(ip)
-		if err != nil {
-			return nil, fmt.Errorf("DNS FallbackIP[%d] format error: %s", idx, err.Error())
-		}
-		ipNets = append(ipNets, ipnet)
-	}
-
-	return ipNets, nil
 }
 
 func parseDNS(rawCfg *RawConfig, hosts *trie.DomainTrie[netip.Addr], ruleProviders map[string]providerTypes.RuleProvider) (*DNS, error) {
@@ -1059,9 +1093,6 @@ func parseDNS(rawCfg *RawConfig, hosts *trie.DomainTrie[netip.Addr], ruleProvide
 		Listen:       cfg.Listen,
 		IPv6:         cfg.IPv6,
 		EnhancedMode: cfg.EnhancedMode,
-		FallbackFilter: FallbackFilter{
-			IPCIDR: []netip.Prefix{},
-		},
 	}
 	var err error
 	if dnsCfg.NameServer, err = parseNameServer(cfg.NameServer, cfg.RespectRules); err != nil {
@@ -1073,6 +1104,10 @@ func parseDNS(rawCfg *RawConfig, hosts *trie.DomainTrie[netip.Addr], ruleProvide
 	}
 
 	if dnsCfg.NameServerPolicy, err = parseNameServerPolicy(cfg.NameServerPolicy, ruleProviders, cfg.RespectRules); err != nil {
+		return nil, err
+	}
+
+	if dnsCfg.ProxyServerNameserver, err = parseNameServer(cfg.ProxyServerNameserver, false); err != nil {
 		return nil, err
 	}
 
@@ -1100,15 +1135,21 @@ func parseDNS(rawCfg *RawConfig, hosts *trie.DomainTrie[netip.Addr], ruleProvide
 			return nil, err
 		}
 
-		var host *trie.DomainSet
-		// fake ip skip host filter
-		if len(cfg.FakeIPFilter) != 0 {
-			// fake ip skip host filter
-			tree := trie.New[struct{}]()
-			for _, domain := range cfg.FakeIPFilter {
-				tree.Insert(domain, struct{}{})
+		var fakeIPTrie *trie.DomainTrie[struct{}]
+		if len(dnsCfg.Fallback) != 0 {
+			fakeIPTrie = trie.New[struct{}]()
+			for _, fb := range dnsCfg.Fallback {
+				if net.ParseIP(fb.Addr) != nil {
+					continue
+				}
+				_ = fakeIPTrie.Insert(fb.Addr, struct{}{})
 			}
-			host = tree.NewDomainSet()
+		}
+
+		// fake ip skip host filter
+		host, err := parseDomain(cfg.FakeIPFilter, fakeIPTrie, "dns.fake-ip-filter", ruleProviders)
+		if err != nil {
+			return nil, err
 		}
 
 		pool, err := fakeip.New(fakeip.Options{
@@ -1124,12 +1165,41 @@ func parseDNS(rawCfg *RawConfig, hosts *trie.DomainTrie[netip.Addr], ruleProvide
 		dnsCfg.FakeIPRange = pool
 	}
 
-	dnsCfg.FallbackFilter.GeoIP = cfg.FallbackFilter.GeoIP
-	dnsCfg.FallbackFilter.GeoIPCode = cfg.FallbackFilter.GeoIPCode
-	if fallbackip, err := parseFallbackIPCIDR(cfg.FallbackFilter.IPCIDR); err == nil {
-		dnsCfg.FallbackFilter.IPCIDR = fallbackip
+	if len(cfg.Fallback) != 0 {
+		if cfg.FallbackFilter.GeoIP {
+			matcher, err := RC.NewGEOIP(cfg.FallbackFilter.GeoIPCode, "dns.fallback-filter.geoip", false, true)
+			if err != nil {
+				return nil, fmt.Errorf("load GeoIP dns fallback filter error, %w", err)
+			}
+			dnsCfg.FallbackIPFilter = append(dnsCfg.FallbackIPFilter, matcher.DnsFallbackFilter())
+		}
+		if len(cfg.FallbackFilter.IPCIDR) > 0 {
+			cidrSet := cidr.NewIpCidrSet()
+			for idx, ipcidr := range cfg.FallbackFilter.IPCIDR {
+				err = cidrSet.AddIpCidrForString(ipcidr)
+				if err != nil {
+					return nil, fmt.Errorf("DNS FallbackIP[%d] format error: %w", idx, err)
+				}
+			}
+			err = cidrSet.Merge()
+			if err != nil {
+				return nil, err
+			}
+			matcher := cidrSet // dns.fallback-filter.ipcidr
+			dnsCfg.FallbackIPFilter = append(dnsCfg.FallbackIPFilter, matcher)
+		}
+		if len(cfg.FallbackFilter.Domain) > 0 {
+			domainTrie := trie.New[struct{}]()
+			for idx, domain := range cfg.FallbackFilter.Domain {
+				err = domainTrie.Insert(domain, struct{}{})
+				if err != nil {
+					return nil, fmt.Errorf("DNS FallbackDomain[%d] format error: %w", idx, err)
+				}
+			}
+			matcher := domainTrie.NewDomainSet() // dns.fallback-filter.domain
+			dnsCfg.FallbackDomainFilter = append(dnsCfg.FallbackDomainFilter, matcher)
+		}
 	}
-	dnsCfg.FallbackFilter.Domain = cfg.FallbackFilter.Domain
 
 	if cfg.UseHosts {
 		dnsCfg.Hosts = hosts
@@ -1160,58 +1230,201 @@ func parseAuthentication(rawRecords []string) []auth.AuthUser {
 	return users
 }
 
-func parseSniffer(snifferRaw RawSniffer) (*Sniffer, error) {
-	sniffer := &Sniffer{
+func parseSniffer(snifferRaw RawSniffer, ruleProviders map[string]providerTypes.RuleProvider) (*sniffer.Config, error) {
+	snifferConfig := &sniffer.Config{
 		Enable:          snifferRaw.Enable,
 		ForceDnsMapping: snifferRaw.ForceDnsMapping,
 		ParsePureIp:     snifferRaw.ParsePureIp,
 	}
-	loadSniffer := make(map[snifferTypes.Type]SNIFF.SnifferConfig)
+	loadSniffer := make(map[snifferTypes.Type]sniffer.SnifferConfig)
 
-	for sniffType, sniffConfig := range snifferRaw.Sniff {
-		find := false
-		ports, err := utils.NewUnsignedRangesFromList[uint16](sniffConfig.Ports)
+	if len(snifferRaw.Sniff) != 0 {
+		for sniffType, sniffConfig := range snifferRaw.Sniff {
+			find := false
+			ports, err := utils.NewUnsignedRangesFromList[uint16](sniffConfig.Ports)
+			if err != nil {
+				return nil, err
+			}
+			overrideDest := snifferRaw.OverrideDest
+			if sniffConfig.OverrideDest != nil {
+				overrideDest = *sniffConfig.OverrideDest
+			}
+			for _, snifferType := range snifferTypes.List {
+				if snifferType.String() == strings.ToUpper(sniffType) {
+					find = true
+					loadSniffer[snifferType] = sniffer.SnifferConfig{
+						Ports:        ports,
+						OverrideDest: overrideDest,
+					}
+				}
+			}
+
+			if !find {
+				return nil, fmt.Errorf("not find the sniffer[%s]", sniffType)
+			}
+		}
+	} else {
+		if snifferConfig.Enable && len(snifferRaw.Sniffing) != 0 {
+			// Deprecated: Use Sniff instead
+			log.Warnln("Deprecated: Use Sniff instead")
+		}
+		globalPorts, err := utils.NewUnsignedRangesFromList[uint16](snifferRaw.Ports)
 		if err != nil {
 			return nil, err
 		}
-		overrideDest := snifferRaw.OverrideDest
-		if sniffConfig.OverrideDest != nil {
-			overrideDest = *sniffConfig.OverrideDest
-		}
-		for _, snifferType := range snifferTypes.List {
-			if snifferType.String() == strings.ToUpper(sniffType) {
-				find = true
-				loadSniffer[snifferType] = SNIFF.SnifferConfig{
-					Ports:        ports,
-					OverrideDest: overrideDest,
+
+		for _, snifferName := range snifferRaw.Sniffing {
+			find := false
+			for _, snifferType := range snifferTypes.List {
+				if snifferType.String() == strings.ToUpper(snifferName) {
+					find = true
+					loadSniffer[snifferType] = sniffer.SnifferConfig{
+						Ports:        globalPorts,
+						OverrideDest: snifferRaw.OverrideDest,
+					}
 				}
 			}
-		}
 
-		if !find {
-			return nil, fmt.Errorf("not find the sniffer[%s]", sniffType)
+			if !find {
+				return nil, fmt.Errorf("not find the sniffer[%s]", snifferName)
+			}
 		}
 	}
 
-	sniffer.Sniffers = loadSniffer
+	snifferConfig.Sniffers = loadSniffer
 
-	forceDomainTrie := trie.New[struct{}]()
-	for _, domain := range snifferRaw.ForceDomain {
-		err := forceDomainTrie.Insert(domain, struct{}{})
+	forceDomain, err := parseDomain(snifferRaw.ForceDomain, nil, "sniffer.force-domain", ruleProviders)
+	if err != nil {
+		return nil, fmt.Errorf("error in force-domain, error:%w", err)
+	}
+	snifferConfig.ForceDomain = forceDomain
+
+	skipSrcAddress, err := parseIPCIDR(snifferRaw.SkipSrcAddress, nil, "sniffer.skip-src-address", ruleProviders)
+	if err != nil {
+		return nil, fmt.Errorf("error in skip-src-address, error:%w", err)
+	}
+	snifferConfig.SkipSrcAddress = skipSrcAddress
+
+	skipDstAddress, err := parseIPCIDR(snifferRaw.SkipDstAddress, nil, "sniffer.skip-src-address", ruleProviders)
+	if err != nil {
+		return nil, fmt.Errorf("error in skip-dst-address, error:%w", err)
+	}
+	snifferConfig.SkipDstAddress = skipDstAddress
+
+	skipDomain, err := parseDomain(snifferRaw.SkipDomain, nil, "sniffer.skip-domain", ruleProviders)
+	if err != nil {
+		return nil, fmt.Errorf("error in skip-domain, error:%w", err)
+	}
+	snifferConfig.SkipDomain = skipDomain
+
+	return snifferConfig, nil
+}
+
+func parseIPCIDR(addresses []string, cidrSet *cidr.IpCidrSet, adapterName string, ruleProviders map[string]providerTypes.RuleProvider) (matchers []C.IpMatcher, err error) {
+	var matcher C.IpMatcher
+	for _, ipcidr := range addresses {
+		ipcidrLower := strings.ToLower(ipcidr)
+		if strings.Contains(ipcidrLower, "geoip:") {
+			subkeys := strings.Split(ipcidr, ":")
+			subkeys = subkeys[1:]
+			subkeys = strings.Split(subkeys[0], ",")
+			for _, country := range subkeys {
+				matcher, err = RC.NewGEOIP(country, adapterName, false, false)
+				if err != nil {
+					return nil, err
+				}
+				matchers = append(matchers, matcher)
+			}
+		} else if strings.Contains(ipcidrLower, "rule-set:") {
+			subkeys := strings.Split(ipcidr, ":")
+			subkeys = subkeys[1:]
+			subkeys = strings.Split(subkeys[0], ",")
+			for _, domainSetName := range subkeys {
+				matcher, err = parseIPRuleSet(domainSetName, adapterName, ruleProviders)
+				if err != nil {
+					return nil, err
+				}
+				matchers = append(matchers, matcher)
+			}
+		} else {
+			if cidrSet == nil {
+				cidrSet = cidr.NewIpCidrSet()
+			}
+			err = cidrSet.AddIpCidrForString(ipcidr)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	if !cidrSet.IsEmpty() {
+		err = cidrSet.Merge()
 		if err != nil {
-			return nil, fmt.Errorf("error domian[%s] in force-domain, error:%v", domain, err)
+			return nil, err
+		}
+		matcher = cidrSet
+		matchers = append(matchers, matcher)
+	}
+	return
+}
+
+func parseDomain(domains []string, domainTrie *trie.DomainTrie[struct{}], adapterName string, ruleProviders map[string]providerTypes.RuleProvider) (matchers []C.DomainMatcher, err error) {
+	var matcher C.DomainMatcher
+	for _, domain := range domains {
+		domainLower := strings.ToLower(domain)
+		if strings.Contains(domainLower, "rule-set:") {
+			subkeys := strings.Split(domain, ":")
+			subkeys = subkeys[1:]
+			subkeys = strings.Split(subkeys[0], ",")
+			for _, domainSetName := range subkeys {
+				matcher, err = parseDomainRuleSet(domainSetName, adapterName, ruleProviders)
+				if err != nil {
+					return nil, err
+				}
+				matchers = append(matchers, matcher)
+			}
+		} else {
+			if domainTrie == nil {
+				domainTrie = trie.New[struct{}]()
+			}
+			err = domainTrie.Insert(domain, struct{}{})
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
-	sniffer.ForceDomain = forceDomainTrie.NewDomainSet()
+	if !domainTrie.IsEmpty() {
+		matcher = domainTrie.NewDomainSet()
+		matchers = append(matchers, matcher)
+	}
+	return
+}
 
-	skipDomainTrie := trie.New[struct{}]()
-	for _, domain := range snifferRaw.SkipDomain {
-		err := skipDomainTrie.Insert(domain, struct{}{})
-		if err != nil {
-			return nil, fmt.Errorf("error domian[%s] in force-domain, error:%v", domain, err)
+func parseIPRuleSet(domainSetName string, adapterName string, ruleProviders map[string]providerTypes.RuleProvider) (C.IpMatcher, error) {
+	if rp, ok := ruleProviders[domainSetName]; !ok {
+		return nil, fmt.Errorf("not found rule-set: %s", domainSetName)
+	} else {
+		switch rp.Behavior() {
+		case providerTypes.Domain:
+			return nil, fmt.Errorf("rule provider type error, except ipcidr,actual %s", rp.Behavior())
+		case providerTypes.Classical:
+			log.Warnln("%s provider is %s, only matching it contain ip rule", rp.Name(), rp.Behavior())
+		default:
 		}
 	}
-	sniffer.SkipDomain = skipDomainTrie.NewDomainSet()
+	return RP.NewRuleSet(domainSetName, adapterName, false, true)
+}
 
-	return sniffer, nil
+func parseDomainRuleSet(domainSetName string, adapterName string, ruleProviders map[string]providerTypes.RuleProvider) (C.DomainMatcher, error) {
+	if rp, ok := ruleProviders[domainSetName]; !ok {
+		return nil, fmt.Errorf("not found rule-set: %s", domainSetName)
+	} else {
+		switch rp.Behavior() {
+		case providerTypes.IPCIDR:
+			return nil, fmt.Errorf("rule provider type error, except domain,actual %s", rp.Behavior())
+		case providerTypes.Classical:
+			log.Warnln("%s provider is %s, only matching it contain domain rule", rp.Name(), rp.Behavior())
+		default:
+		}
+	}
+	return RP.NewRuleSet(domainSetName, adapterName, false, true)
 }

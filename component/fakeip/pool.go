@@ -8,7 +8,7 @@ import (
 
 	"github.com/metacubex/mihomo/common/nnip"
 	"github.com/metacubex/mihomo/component/profile/cachefile"
-	"github.com/metacubex/mihomo/component/trie"
+	C "github.com/metacubex/mihomo/constant"
 )
 
 const (
@@ -35,7 +35,7 @@ type Pool struct {
 	offset  netip.Addr
 	cycle   bool
 	mux     sync.Mutex
-	host    *trie.DomainSet
+	host    []C.DomainMatcher
 	ipnet   netip.Prefix
 	store   store
 }
@@ -70,10 +70,12 @@ func (p *Pool) LookBack(ip netip.Addr) (string, bool) {
 
 // ShouldSkipped return if domain should be skipped
 func (p *Pool) ShouldSkipped(domain string) bool {
-	if p.host == nil {
-		return false
+	for _, matcher := range p.host {
+		if matcher.MatchDomain(domain) {
+			return true
+		}
 	}
-	return p.host.Has(domain)
+	return false
 }
 
 // Exist returns if given ip exists in fake-ip pool
@@ -175,7 +177,7 @@ func uintToIP(v uint32) netip.Addr {
 
 type Options struct {
 	IPNet netip.Prefix
-	Host  *trie.DomainSet
+	Host  []C.DomainMatcher
 
 	// Size sets the maximum number of entries in memory
 	// and does not work if Persistence is true

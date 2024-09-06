@@ -19,7 +19,7 @@ import (
 	"github.com/metacubex/mihomo/component/profile/cachefile"
 	"github.com/metacubex/mihomo/component/profile/cachefileplain"
 	"github.com/metacubex/mihomo/component/resolver"
-	SNI "github.com/metacubex/mihomo/component/sniffer"
+	"github.com/metacubex/mihomo/component/sniffer"
 	"github.com/metacubex/mihomo/component/trie"
 	"github.com/metacubex/mihomo/config"
 	C "github.com/metacubex/mihomo/constant"
@@ -82,6 +82,7 @@ func ApplyConfig(cfg *config.Config, force bool) {
 		}
 	}
 
+	updateExperimental(cfg.Experimental)
 	updateUsers(cfg.Users)
 	updateProxies(cfg.Proxies, cfg.Providers)
 	updateRules(cfg.Rules, cfg.SubRules, cfg.RuleProviders)
@@ -91,8 +92,7 @@ func ApplyConfig(cfg *config.Config, force bool) {
 	updateGeneral(cfg.General, force)
 	updateListeners(cfg.Listeners)
 	updateDNS(cfg.DNS, cfg.RuleProviders)
-	updateTun(cfg.General)
-	updateExperimental(cfg)
+	updateTun(cfg.General) // tun should not care "force"
 	loadProvider(cfg.RuleProviders, cfg.Providers)
 	updateTunnels(cfg.Tunnels)
 }
@@ -127,6 +127,8 @@ func GetGeneral() *config.General {
 		Mode:                   tunnel.Mode(),
 		LogLevel:               log.Level(),
 		IPv6:                   !resolver.DisableIPv6,
+		Interface:              dialer.DefaultInterface.Load(),
+		RoutingMark:            int(dialer.DefaultRoutingMark.Load()),
 		HealthCheckURL:         adapter.HealthCheckURL(),
 		HealthCheckLazyDefault: provider.HealthCheckLazyDefault(),
 		TouchAfterLazyPassNum:  provider.TouchAfterLazyPassNum(),
@@ -174,12 +176,11 @@ func updateListeners(listeners map[string]C.InboundListener) {
 	listener.PatchInboundListeners(listeners, tunnel.Tunnel, true)
 }
 
-func updateExperimental(c *config.Config) {
-	tunnel.UDPFallbackMatch.Store(c.Experimental.UDPFallbackMatch)
-	if c.Experimental.QUICGoDisableGSO {
+func updateExperimental(c *config.Experimental) {
+	if c.QUICGoDisableGSO {
 		_ = os.Setenv("QUIC_GO_DISABLE_GSO", strconv.FormatBool(true))
 	}
-	if c.Experimental.QUICGoDisableECN {
+	if c.QUICGoDisableECN {
 		_ = os.Setenv("QUIC_GO_DISABLE_ECN", strconv.FormatBool(true))
 	}
 }
@@ -194,23 +195,20 @@ func updateDNS(c *config.DNS, ruleProvider map[string]providerTypes.RuleProvider
 	}
 
 	cfg := dns.Config{
-		Main:         c.NameServer,
-		Fallback:     c.Fallback,
-		IPv6:         c.IPv6,
-		EnhancedMode: c.EnhancedMode,
-		Pool:         c.FakeIPRange,
-		Hosts:        c.Hosts,
-		FallbackFilter: dns.FallbackFilter{
-			GeoIP:     c.FallbackFilter.GeoIP,
-			GeoIPCode: c.FallbackFilter.GeoIPCode,
-			IPCIDR:    c.FallbackFilter.IPCIDR,
-			Domain:    c.FallbackFilter.Domain,
-		},
-		Default:       c.DefaultNameserver,
-		Policy:        c.NameServerPolicy,
-		Tunnel:        tunnel.Tunnel,
-		RuleProviders: ruleProvider,
-		SearchDomains: c.SearchDomains,
+		Main:                 c.NameServer,
+		Fallback:             c.Fallback,
+		IPv6:                 c.IPv6,
+		EnhancedMode:         c.EnhancedMode,
+		Pool:                 c.FakeIPRange,
+		Hosts:                c.Hosts,
+		FallbackIPFilter:     c.FallbackIPFilter,
+		FallbackDomainFilter: c.FallbackDomainFilter,
+		Default:              c.DefaultNameserver,
+		Policy:               c.NameServerPolicy,
+		ProxyServer:          c.ProxyServerNameserver,
+		Tunnel:               tunnel.Tunnel,
+		RuleProviders:        ruleProvider,
+		SearchDomains:        c.SearchDomains,
 	}
 
 	r := dns.NewResolver(cfg)
@@ -252,25 +250,17 @@ func updateTun(general *config.General) {
 	listener.ReCreateTun(general.Tun, tunnel.Tunnel)
 }
 
-func updateSniffer(sniffer *config.Sniffer) {
-	if sniffer.Enable {
-		dispatcher, err := SNI.NewSnifferDispatcher(
-			sniffer.Sniffers, sniffer.ForceDomain, sniffer.SkipDomain,
-			sniffer.ForceDnsMapping, sniffer.ParsePureIp,
-		)
-		if err != nil {
-			log.Warnln("initial sniffer failed, err:%v", err)
-		}
+func updateSniffer(snifferConfig *sniffer.Config) {
+	dispatcher, err := sniffer.NewDispatcher(snifferConfig)
+	if err != nil {
+		log.Warnln("initial sniffer failed, err:%v", err)
+	}
 
-		tunnel.UpdateSniffer(dispatcher)
+	tunnel.UpdateSniffer(dispatcher)
+
+	if snifferConfig.Enable {
 		log.Infoln("Sniffer is loaded and working")
 	} else {
-		dispatcher, err := SNI.NewCloseSnifferDispatcher()
-		if err != nil {
-			log.Warnln("initial sniffer failed, err:%v", err)
-		}
-
-		tunnel.UpdateSniffer(dispatcher)
 		log.Infoln("Sniffer is closed")
 	}
 }

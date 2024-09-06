@@ -2,6 +2,7 @@ package route
 
 import (
 	"bytes"
+	"crypto/subtle"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -18,6 +19,7 @@ import (
 
 	"github.com/metacubex/mihomo/adapter/inbound"
 	CN "github.com/metacubex/mihomo/common/net"
+	"github.com/metacubex/mihomo/common/utils"
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/log"
 	"github.com/metacubex/mihomo/tunnel/statistic"
@@ -31,10 +33,11 @@ import (
 )
 
 var (
-	serverSecret = ""
-	serverAddr   = ""
-
 	uiPath = ""
+
+	httpServer *http.Server
+	tlsServer  *http.Server
+	unixServer *http.Server
 
 	builtinMimeTypesLower = map[string]string{
 		".css":  "text/css; charset=utf-8",
@@ -56,21 +59,39 @@ type Traffic struct {
 	Down int64 `json:"down"`
 }
 
+type Config struct {
+	Addr        string
+	TLSAddr     string
+	UnixAddr    string
+	Secret      string
+	Certificate string
+	PrivateKey  string
+	DohServer   string
+	IsDebug     bool
+}
+
+func ReCreateServer(cfg *Config) {
+	C.SetECHandler(router(false, cfg.Secret, cfg.DohServer))
+	go start(cfg)
+	go startTLS(cfg)
+	go startUnix(cfg)
+}
+
 func SetUIPath(path string) {
 	uiPath = C.Path.Resolve(path)
 }
 
-func router(isDebug bool, withAuth bool, dohServer string) *chi.Mux {
+func router(isDebug bool, secret string, dohServer string) *chi.Mux {
 	r := chi.NewRouter()
 
-	cors := cors.New(cors.Options{
+	corsM := cors.New(cors.Options{
 		AllowedOrigins: []string{"*"},
 		AllowedMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE"},
 		AllowedHeaders: []string{"Content-Type", "Authorization"},
 		MaxAge:         300,
 	})
-
-	r.Use(cors.Handler)
+	r.Use(setPrivateNetworkAccess)
+	r.Use(corsM.Handler)
 	r.NotFound(closeTcpHandle)
 	r.MethodNotAllowed(closeTcpHandle)
 	if isDebug {
@@ -85,8 +106,8 @@ func router(isDebug bool, withAuth bool, dohServer string) *chi.Mux {
 		}())
 	}
 	r.Group(func(r chi.Router) {
-		if withAuth {
-			r.Use(authentication)
+		if secret != "" {
+			r.Use(authentication(secret))
 		}
 
 		//r.Get("/", hello)
@@ -152,11 +173,6 @@ func router(isDebug bool, withAuth bool, dohServer string) *chi.Mux {
 	return r
 }
 
-func Init(secret string) {
-	serverSecret = secret
-	C.SetECHandler(router(false, true, ""))
-}
-
 type fakeResponseWriter struct {
 	http.ResponseWriter
 	buf        *bytes.Buffer
@@ -172,122 +188,157 @@ func (w *fakeResponseWriter) WriteHeader(statusCode int) {
 	w.statusCode = statusCode
 }
 
-func Start(addr string, tlsAddr string, secret string,
-	certificate, privateKey string, dohServer string, isDebug bool) {
-	if serverAddr != "" {
-		return
+func start(cfg *Config) {
+	// first stop existing server
+	if httpServer != nil {
+		_ = httpServer.Close()
+		httpServer = nil
 	}
 
-	serverAddr = addr
-	serverSecret = secret
+	// handle addr
+	if len(cfg.Addr) > 0 {
+		l, err := inbound.Listen("tcp", cfg.Addr)
+		if err != nil {
+			log.Errorln("External controller listen error: %s", err)
+			return
+		}
+		log.Infoln("RESTful API listening at: %s", l.Addr().String())
 
-	if len(tlsAddr) > 0 {
-		go func() {
-			c, err := CN.ParseCert(certificate, privateKey, C.Path)
-			if err != nil {
-				log.Errorln("External controller tls listen error: %s", err)
-				return
-			}
-
-			l, err := inbound.Listen("tcp", tlsAddr)
-			if err != nil {
-				log.Errorln("External controller tls listen error: %s", err)
-				return
-			}
-
-			serverAddr = l.Addr().String()
-			log.Infoln("RESTful API tls listening at: %s", serverAddr)
-			tlsServe := &http.Server{
-				Handler: router(isDebug, true, dohServer),
-				TLSConfig: &tls.Config{
-					Certificates: []tls.Certificate{c},
-				},
-			}
-			if err = tlsServe.ServeTLS(l, "", ""); err != nil {
-				log.Errorln("External controller tls serve error: %s", err)
-			}
-		}()
+		server := &http.Server{
+			Handler: router(cfg.IsDebug, cfg.Secret, cfg.DohServer),
+		}
+		if err = server.Serve(l); err != nil {
+			log.Errorln("External controller serve error: %s", err)
+		}
+		httpServer = server
 	}
-
-	l, err := inbound.Listen("tcp", addr)
-	if err != nil {
-		log.Errorln("External controller listen error: %s", err)
-		return
-	}
-	serverAddr = l.Addr().String()
-	log.Infoln("RESTful API listening at: %s", serverAddr)
-
-	if err = http.Serve(l, router(isDebug, true, dohServer)); err != nil {
-		log.Errorln("External controller serve error: %s", err)
-	}
-
 }
 
-func StartUnix(addr string, dohServer string, isDebug bool) {
-	addr = C.Path.Resolve(addr)
+func startTLS(cfg *Config) {
+	// first stop existing server
+	if tlsServer != nil {
+		_ = tlsServer.Close()
+		tlsServer = nil
+	}
 
-	dir := filepath.Dir(addr)
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		if err := os.MkdirAll(dir, 0o755); err != nil {
+	// handle tlsAddr
+	if len(cfg.TLSAddr) > 0 {
+		c, err := CN.ParseCert(cfg.Certificate, cfg.PrivateKey, C.Path)
+		if err != nil {
+			log.Errorln("External controller tls listen error: %s", err)
+			return
+		}
+
+		l, err := inbound.Listen("tcp", cfg.TLSAddr)
+		if err != nil {
+			log.Errorln("External controller tls listen error: %s", err)
+			return
+		}
+
+		log.Infoln("RESTful API tls listening at: %s", l.Addr().String())
+		server := &http.Server{
+			Handler: router(cfg.IsDebug, cfg.Secret, cfg.DohServer),
+			TLSConfig: &tls.Config{
+				Certificates: []tls.Certificate{c},
+			},
+		}
+		if err = server.ServeTLS(l, "", ""); err != nil {
+			log.Errorln("External controller tls serve error: %s", err)
+		}
+		tlsServer = server
+	}
+}
+
+func startUnix(cfg *Config) {
+	// first stop existing server
+	if unixServer != nil {
+		_ = unixServer.Close()
+		unixServer = nil
+	}
+
+	// handle addr
+	if len(cfg.UnixAddr) > 0 {
+		addr := C.Path.Resolve(cfg.UnixAddr)
+
+		dir := filepath.Dir(addr)
+		if _, err := os.Stat(dir); os.IsNotExist(err) {
+			if err := os.MkdirAll(dir, 0o755); err != nil {
+				log.Errorln("External controller unix listen error: %s", err)
+				return
+			}
+		}
+
+		// https://devblogs.microsoft.com/commandline/af_unix-comes-to-windows/
+		//
+		// Note: As mentioned above in the ‘security’ section, when a socket binds a socket to a valid pathname address,
+		// a socket file is created within the filesystem. On Linux, the application is expected to unlink
+		// (see the notes section in the man page for AF_UNIX) before any other socket can be bound to the same address.
+		// The same applies to Windows unix sockets, except that, DeleteFile (or any other file delete API)
+		// should be used to delete the socket file prior to calling bind with the same path.
+		_ = syscall.Unlink(addr)
+
+		l, err := inbound.Listen("unix", addr)
+		if err != nil {
 			log.Errorln("External controller unix listen error: %s", err)
 			return
 		}
+		log.Infoln("RESTful API unix listening at: %s", l.Addr().String())
+
+		server := &http.Server{
+			Handler: router(cfg.IsDebug, "", cfg.DohServer),
+		}
+		if err = server.Serve(l); err != nil {
+			log.Errorln("External controller unix serve error: %s", err)
+		}
+		unixServer = server
 	}
 
-	// https://devblogs.microsoft.com/commandline/af_unix-comes-to-windows/
-	//
-	// Note: As mentioned above in the ‘security’ section, when a socket binds a socket to a valid pathname address,
-	// a socket file is created within the filesystem. On Linux, the application is expected to unlink
-	// (see the notes section in the man page for AF_UNIX) before any other socket can be bound to the same address.
-	// The same applies to Windows unix sockets, except that, DeleteFile (or any other file delete API)
-	// should be used to delete the socket file prior to calling bind with the same path.
-	_ = syscall.Unlink(addr)
-
-	l, err := inbound.Listen("unix", addr)
-	if err != nil {
-		log.Errorln("External controller unix listen error: %s", err)
-		return
-	}
-	serverAddr = l.Addr().String()
-	log.Infoln("RESTful API unix listening at: %s", serverAddr)
-
-	if err = http.Serve(l, router(isDebug, false, dohServer)); err != nil {
-		log.Errorln("External controller unix serve error: %s", err)
-	}
 }
 
-func authentication(next http.Handler) http.Handler {
-	fn := func(w http.ResponseWriter, r *http.Request) {
-		if serverSecret == "" {
-			next.ServeHTTP(w, r)
-			return
+func setPrivateNetworkAccess(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodOptions && r.Header.Get("Access-Control-Request-Method") != "" {
+			w.Header().Add("Access-Control-Allow-Private-Network", "true")
 		}
+		next.ServeHTTP(w, r)
+	})
+}
 
-		// Browser websocket not support custom header
-		if r.Header.Get("Upgrade") == "websocket" && r.URL.Query().Get("token") != "" {
-			token := r.URL.Query().Get("token")
-			if token != serverSecret {
+func safeEqual(a, b string) bool {
+	aBuf := utils.ImmutableBytesFromString(a)
+	bBuf := utils.ImmutableBytesFromString(b)
+	return subtle.ConstantTimeCompare(aBuf, bBuf) == 1
+}
+
+func authentication(secret string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			// Browser websocket not support custom header
+			if r.Header.Get("Upgrade") == "websocket" && r.URL.Query().Get("token") != "" {
+				token := r.URL.Query().Get("token")
+				if !safeEqual(token, secret) {
+					render.Status(r, http.StatusUnauthorized)
+					render.JSON(w, r, ErrUnauthorized)
+					return
+				}
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			header := r.Header.Get("Authorization")
+			bearer, token, found := strings.Cut(header, " ")
+
+			hasInvalidHeader := bearer != "Bearer"
+			hasInvalidSecret := !found || !safeEqual(token, secret)
+			if hasInvalidHeader || hasInvalidSecret {
 				render.Status(r, http.StatusUnauthorized)
 				render.JSON(w, r, ErrUnauthorized)
 				return
 			}
 			next.ServeHTTP(w, r)
-			return
 		}
-
-		header := r.Header.Get("Authorization")
-		bearer, token, found := strings.Cut(header, " ")
-
-		hasInvalidHeader := bearer != "Bearer"
-		hasInvalidSecret := !found || token != serverSecret
-		if hasInvalidHeader || hasInvalidSecret {
-			render.Status(r, http.StatusUnauthorized)
-			render.JSON(w, r, ErrUnauthorized)
-			return
-		}
-		next.ServeHTTP(w, r)
+		return http.HandlerFunc(fn)
 	}
-	return http.HandlerFunc(fn)
 }
 
 func hello(w http.ResponseWriter, r *http.Request) {

@@ -53,7 +53,6 @@ var once sync.Once
 var _chanListener *chanListener
 
 type ecHandler struct {
-	http.Handler
 	tunnel    C.Tunnel
 	additions []inbound.Addition
 }
@@ -80,7 +79,9 @@ func (h ecHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.Handler.ServeHTTP(w, r)
+	if handler := C.GetECHandler(); handler != nil {
+		handler.ServeHTTP(w, r)
+	}
 }
 
 func GetChanListener(tunnel C.Tunnel, additions ...inbound.Addition) ChanListener {
@@ -90,7 +91,7 @@ func GetChanListener(tunnel C.Tunnel, additions ...inbound.Addition) ChanListene
 			net.TCPAddrFromAddrPort(netip.AddrPortFrom(netip.IPv4Unspecified(), 0)),
 			atomic.NewBool(false),
 		}
-		go http.Serve(_chanListener, ecHandler{C.GetECHandler(), tunnel, additions})
+		go http.Serve(_chanListener, ecHandler{tunnel, additions})
 	})
 	return _chanListener
 }

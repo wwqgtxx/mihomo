@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/netip"
 	"os"
+	"runtime"
 	"strconv"
 	"sync"
 
@@ -93,8 +94,11 @@ func ApplyConfig(cfg *config.Config, force bool) {
 	updateListeners(cfg.Listeners)
 	updateDNS(cfg.DNS, cfg.RuleProviders)
 	updateTun(cfg.General) // tun should not care "force"
-	loadProvider(cfg.RuleProviders, cfg.Providers)
+	loadProvider(cfg.Providers)
+	loadProvider(cfg.RuleProviders)
 	updateTunnels(cfg.Tunnels)
+
+	runtime.GC()
 }
 
 func GetGeneral() *config.General {
@@ -142,8 +146,8 @@ func GetGeneral() *config.General {
 	return general
 }
 
-func loadProvider(ruleProviders map[string]providerTypes.RuleProvider, proxyProviders map[string]providerTypes.ProxyProvider) {
-	load := func(pv providerTypes.Provider) {
+func loadProvider[P providerTypes.Provider](providers map[string]P) {
+	load := func(pv P) {
 		if pv.VehicleType() == providerTypes.Compatible {
 			log.Infoln("Start initial compatible provider %s", pv.Name())
 		} else {
@@ -165,13 +169,20 @@ func loadProvider(ruleProviders map[string]providerTypes.RuleProvider, proxyProv
 		}
 	}
 
-	for _, proxyProvider := range proxyProviders {
-		load(proxyProvider)
+	// limit concurrent size
+	wg := sync.WaitGroup{}
+	ch := make(chan struct{}, concurrentCount)
+	for _, _provider := range providers {
+		_provider := _provider
+		wg.Add(1)
+		ch <- struct{}{}
+		go func() {
+			defer func() { <-ch; wg.Done() }()
+			load(_provider)
+		}()
 	}
 
-	for _, ruleProvider := range ruleProviders {
-		load(ruleProvider)
-	}
+	wg.Wait()
 }
 
 func updateListeners(listeners map[string]C.InboundListener) {

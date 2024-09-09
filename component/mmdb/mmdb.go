@@ -22,24 +22,24 @@ const (
 var (
 	//go:embed Country.mmdb
 	EmbedMMDB []byte
-	IPreader  IPReader
-	IPonce    sync.Once
+	ipReader  IPReader
+	ipOnce    sync.Once
 )
 
 func LoadFromBytes(buffer []byte) {
-	IPonce.Do(func() {
+	ipOnce.Do(func() {
 		mmdb, err := maxminddb.FromBytes(buffer)
 		if err != nil {
 			log.Fatalln("Can't load mmdb: %s", err.Error())
 		}
-		IPreader = IPReader{Reader: mmdb}
+		ipReader = IPReader{Reader: mmdb}
 		switch mmdb.Metadata.DatabaseType {
 		case "sing-geoip":
-			IPreader.databaseType = typeSing
+			ipReader.databaseType = typeSing
 		case "Meta-geoip0":
-			IPreader.databaseType = typeMetaV0
+			ipReader.databaseType = typeMetaV0
 		default:
-			IPreader.databaseType = typeMaxmind
+			ipReader.databaseType = typeMaxmind
 		}
 	})
 }
@@ -64,25 +64,25 @@ func Verify() bool {
 }
 
 func IPInstance() IPReader {
-	IPonce.Do(func() {
+	ipOnce.Do(func() {
 		mmdb, err := getMmdbReader()
 		if err != nil {
 			log.Fatalln("Can't load MMDB: %s", err.Error())
 		}
-		IPreader = IPReader{Reader: mmdb}
+		ipReader = IPReader{Reader: mmdb}
 		switch mmdb.Metadata.DatabaseType {
 		case "sing-geoip":
-			IPreader.databaseType = typeSing
+			ipReader.databaseType = typeSing
 		case "Meta-geoip0":
-			IPreader.databaseType = typeMetaV0
+			ipReader.databaseType = typeMetaV0
 		default:
-			IPreader.databaseType = typeMaxmind
+			ipReader.databaseType = typeMaxmind
 		}
 	})
 
-	return IPreader
+	return ipReader
 }
 
 func ReloadIP() {
-	mihomoOnce.Reset(&IPonce)
+	mihomoOnce.Reset(&ipOnce)
 }

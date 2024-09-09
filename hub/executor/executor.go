@@ -15,6 +15,7 @@ import (
 	"github.com/metacubex/mihomo/component/auth"
 	"github.com/metacubex/mihomo/component/ca"
 	"github.com/metacubex/mihomo/component/dialer"
+	mihomoHttp "github.com/metacubex/mihomo/component/http"
 	"github.com/metacubex/mihomo/component/iface"
 	"github.com/metacubex/mihomo/component/profile"
 	"github.com/metacubex/mihomo/component/profile/cachefile"
@@ -140,7 +141,7 @@ func GetGeneral() *config.General {
 		TouchAfterLazyPassNum:  provider.TouchAfterLazyPassNum(),
 		PreResolveProcessName:  tunnel.PreResolveProcessName(),
 		TCPConcurrent:          dialer.GetTcpConcurrent(),
-		GlobalUA:               C.UA,
+		GlobalUA:               mihomoHttp.UA(),
 	}
 
 	return general

@@ -393,6 +393,12 @@ func (r *Resolver) Invalid() bool {
 	return len(r.main) > 0
 }
 
+func (r *Resolver) ClearCache() {
+	if r != nil && r.lruCache != nil {
+		r.lruCache.Clear()
+	}
+}
+
 type NameServer struct {
 	Net          string
 	Addr         string

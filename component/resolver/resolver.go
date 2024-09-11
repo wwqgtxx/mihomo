@@ -45,6 +45,7 @@ type Resolver interface {
 	LookupIPv6(ctx context.Context, host string) ([]netip.Addr, error)
 	ExchangeContext(ctx context.Context, m *dns.Msg) (msg *dns.Msg, err error)
 	Invalid() bool
+	ClearCache()
 }
 
 // LookupIPv4WithResolver same as LookupIPv4, but with a resolver

@@ -81,6 +81,10 @@ func (pp *proxySetProvider) Proxies() []C.Proxy {
 	return pp.proxies
 }
 
+func (pp *proxySetProvider) Count() int {
+	return len(pp.proxies)
+}
+
 func (pp *proxySetProvider) Touch() {
 	pp.healthCheck.touch()
 }
@@ -254,6 +258,10 @@ func (cp *compatibleProvider) Type() types.ProviderType {
 
 func (cp *compatibleProvider) Proxies() []C.Proxy {
 	return cp.proxies
+}
+
+func (cp *compatibleProvider) Count() int {
+	return len(cp.proxies)
 }
 
 func (cp *compatibleProvider) Touch() {

@@ -6,10 +6,12 @@ import (
 	"crypto/tls"
 	"io"
 	"net/http"
+	"net/netip"
 	"time"
 
 	"github.com/metacubex/mihomo/component/ca"
 	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/log"
 
 	D "github.com/miekg/dns"
 )
@@ -20,29 +22,36 @@ const (
 )
 
 type dohClient struct {
-	url       string
-	transport *http.Transport
+	url         string
+	transport   *http.Transport
+	ecsPrefix   netip.Prefix
+	ecsOverride bool
 }
 
 var _ dnsClient = (*dohClient)(nil)
 
 // Address implements dnsClient
-func (dc *dohClient) Address() string {
-	return dc.url
+func (doh *dohClient) Address() string {
+	return doh.url
 }
 
-func (dc *dohClient) ExchangeContext(ctx context.Context, m *D.Msg) (msg *D.Msg, err error) {
+func (doh *dohClient) ExchangeContext(ctx context.Context, m *D.Msg) (msg *D.Msg, err error) {
 	// https://datatracker.ietf.org/doc/html/rfc8484#section-4.1
 	// In order to maximize cache friendliness, SHOULD use a DNS ID of 0 in every DNS request.
-	newM := *m
+	newM := m.Copy()
 	newM.Id = 0
-	req, err := dc.newRequest(&newM)
+
+	if doh.ecsPrefix.IsValid() {
+		setEdns0Subnet(m, doh.ecsPrefix, doh.ecsOverride)
+	}
+
+	req, err := doh.newRequest(newM)
 	if err != nil {
 		return nil, err
 	}
 
 	req = req.WithContext(ctx)
-	msg, err = dc.doRequest(req)
+	msg, err = doh.doRequest(req)
 	if err == nil {
 		msg.Id = m.Id
 	}
@@ -50,13 +59,13 @@ func (dc *dohClient) ExchangeContext(ctx context.Context, m *D.Msg) (msg *D.Msg,
 }
 
 // newRequest returns a new DoH request given a dns.Msg.
-func (dc *dohClient) newRequest(m *D.Msg) (*http.Request, error) {
+func (doh *dohClient) newRequest(m *D.Msg) (*http.Request, error) {
 	buf, err := m.Pack()
 	if err != nil {
 		return nil, err
 	}
 
-	req, err := http.NewRequest(http.MethodPost, dc.url, bytes.NewReader(buf))
+	req, err := http.NewRequest(http.MethodPost, doh.url, bytes.NewReader(buf))
 	if err != nil {
 		return req, err
 	}
@@ -66,8 +75,8 @@ func (dc *dohClient) newRequest(m *D.Msg) (*http.Request, error) {
 	return req, nil
 }
 
-func (dc *dohClient) doRequest(req *http.Request) (msg *D.Msg, err error) {
-	client := &http.Client{Transport: dc.transport, Timeout: 5 * time.Second}
+func (doh *dohClient) doRequest(req *http.Request) (msg *D.Msg, err error) {
+	client := &http.Client{Transport: doh.transport, Timeout: 5 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -91,7 +100,7 @@ func newDoHClient(url string, r *Resolver, proxyAdapter C.ProxyAdapter, proxyNam
 	if params["skip-cert-verify"] == "true" {
 		tlsConfig.InsecureSkipVerify = true
 	}
-	return &dohClient{
+	doh := &dohClient{
 		url: url,
 		transport: &http.Transport{
 			ForceAttemptHTTP2: true,
@@ -99,4 +108,28 @@ func newDoHClient(url string, r *Resolver, proxyAdapter C.ProxyAdapter, proxyNam
 			TLSClientConfig:   ca.GetGlobalTLSConfig(tlsConfig),
 		},
 	}
+
+	if ecs := params["ecs"]; ecs != "" {
+		prefix, err := netip.ParsePrefix(ecs)
+		if err != nil {
+			addr, err := netip.ParseAddr(ecs)
+			if err != nil {
+				log.Warnln("DOH [%s] config with invalid ecs: %s", url, ecs)
+			} else {
+				doh.ecsPrefix = netip.PrefixFrom(addr, addr.BitLen())
+			}
+		} else {
+			doh.ecsPrefix = prefix
+		}
+	}
+
+	if doh.ecsPrefix.IsValid() {
+		log.Debugln("DOH [%s] config with ecs: %s", url, doh.ecsPrefix)
+	}
+
+	if params["ecs-override"] == "true" {
+		doh.ecsOverride = true
+	}
+
+	return doh
 }

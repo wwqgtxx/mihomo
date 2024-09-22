@@ -7,7 +7,6 @@ import (
 	"net/netip"
 	"net/url"
 	"os"
-	"regexp"
 	"strings"
 	"time"
 
@@ -1023,7 +1022,6 @@ func parsePureDNSServer(server string) string {
 
 func parseNameServerPolicy(nsPolicy *orderedmap.OrderedMap[string, any], ruleProviders map[string]providerTypes.RuleProvider, respectRules bool) ([]dns.Policy, error) {
 	var policy []dns.Policy
-	re := regexp.MustCompile(`[a-zA-Z0-9\-]+\.[a-zA-Z]{2,}(\.[a-zA-Z]{2,})?`)
 
 	for pair := nsPolicy.Oldest(); pair != nil; pair = pair.Next() {
 		k, v := pair.Key, pair.Value
@@ -1035,8 +1033,9 @@ func parseNameServerPolicy(nsPolicy *orderedmap.OrderedMap[string, any], rulePro
 		if err != nil {
 			return nil, err
 		}
-		if strings.Contains(strings.ToLower(k), ",") {
-			if strings.Contains(strings.ToLower(k), "rule-set:") {
+		kLower := strings.ToLower(k)
+		if strings.Contains(kLower, ",") {
+			if strings.Contains(kLower, "rule-set:") {
 				subkeys := strings.Split(k, ":")
 				subkeys = subkeys[1:]
 				subkeys = strings.Split(subkeys[0], ",")
@@ -1044,16 +1043,16 @@ func parseNameServerPolicy(nsPolicy *orderedmap.OrderedMap[string, any], rulePro
 					newKey := "rule-set:" + subkey
 					policy = append(policy, dns.Policy{Domain: newKey, NameServers: nameservers})
 				}
-			} else if re.MatchString(k) {
+			} else {
 				subkeys := strings.Split(k, ",")
 				for _, subkey := range subkeys {
 					policy = append(policy, dns.Policy{Domain: subkey, NameServers: nameservers})
 				}
 			}
 		} else {
-			if strings.Contains(strings.ToLower(k), "geosite:") {
+			if strings.Contains(kLower, "geosite:") {
 				policy = append(policy, dns.Policy{Domain: "geosite:" + k[8:], NameServers: nameservers})
-			} else if strings.Contains(strings.ToLower(k), "rule-set:") {
+			} else if strings.Contains(kLower, "rule-set:") {
 				policy = append(policy, dns.Policy{Domain: "rule-set:" + k[9:], NameServers: nameservers})
 			} else {
 				policy = append(policy, dns.Policy{Domain: k, NameServers: nameservers})

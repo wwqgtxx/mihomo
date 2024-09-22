@@ -20,6 +20,7 @@ import (
 	"github.com/metacubex/mihomo/component/cidr"
 	"github.com/metacubex/mihomo/component/fakeip"
 	mihomoHttp "github.com/metacubex/mihomo/component/http"
+	"github.com/metacubex/mihomo/component/resource"
 	"github.com/metacubex/mihomo/component/sniffer"
 	"github.com/metacubex/mihomo/component/trie"
 	C "github.com/metacubex/mihomo/constant"
@@ -54,6 +55,7 @@ type General struct {
 	Sniffing               bool         `json:"sniffing"`
 	KeepAliveInterval      int          `json:"keep-alive-interval"`
 	GlobalUA               string       `json:"global-ua"`
+	ETagSupport            bool         `json:"etag-support"`
 }
 
 // Inbound
@@ -245,6 +247,7 @@ type RawConfig struct {
 	PreResolveProcessName  bool           `yaml:"pre-resolve-process-name" json:"pre-resolve-process-name"`
 	TCPConcurrent          bool           `yaml:"tcp-concurrent" json:"tcp-concurrent"`
 	GlobalUA               string         `yaml:"global-ua" json:"global-ua"`
+	ETagSupport            bool           `yaml:"etag-support" json:"etag-support"`
 	KeepAliveIdle          int            `yaml:"keep-alive-idle" json:"keep-alive-idle"`
 	KeepAliveInterval      int            `yaml:"keep-alive-interval" json:"keep-alive-interval"`
 	DisableKeepAlive       bool           `yaml:"disable-keep-alive" json:"disable-keep-alive"`
@@ -291,6 +294,7 @@ func DefaultRawConfig() *RawConfig {
 		PreResolveProcessName:  false,
 		TCPConcurrent:          true,
 		GlobalUA:               "clash.meta/" + C.Version,
+		ETagSupport:            true,
 		DNS: RawDNS{
 			Enable:      true,
 			IPv6:        true,
@@ -481,6 +485,7 @@ func ParseRawConfig(rawCfg *RawConfig) (*Config, error) {
 
 func parseGeneral(cfg *RawConfig) (*General, error) {
 	mihomoHttp.SetUA(cfg.GlobalUA)
+	resource.SetETag(cfg.ETagSupport)
 
 	externalUI := cfg.ExternalUI
 
@@ -534,6 +539,7 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 		TCPConcurrent:          cfg.TCPConcurrent,
 		KeepAliveInterval:      cfg.KeepAliveInterval,
 		GlobalUA:               cfg.GlobalUA,
+		ETagSupport:            cfg.ETagSupport,
 	}, nil
 }
 

@@ -21,6 +21,7 @@ import (
 	"github.com/metacubex/mihomo/component/profile/cachefile"
 	"github.com/metacubex/mihomo/component/profile/cachefileplain"
 	"github.com/metacubex/mihomo/component/resolver"
+	"github.com/metacubex/mihomo/component/resource"
 	"github.com/metacubex/mihomo/component/sniffer"
 	"github.com/metacubex/mihomo/component/trie"
 	"github.com/metacubex/mihomo/config"
@@ -142,6 +143,7 @@ func GetGeneral() *config.General {
 		PreResolveProcessName:  tunnel.PreResolveProcessName(),
 		TCPConcurrent:          dialer.GetTcpConcurrent(),
 		GlobalUA:               mihomoHttp.UA(),
+		ETagSupport:            resource.ETag(),
 	}
 
 	return general

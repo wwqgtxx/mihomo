@@ -36,6 +36,7 @@ import (
 	T "github.com/metacubex/mihomo/tunnel"
 
 	orderedmap "github.com/wk8/go-ordered-map/v2"
+	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
 )
 
@@ -898,16 +899,6 @@ func parseNameServer(servers []string, respectRules bool) ([]dns.NameServer, err
 	nameservers := []dns.NameServer{}
 
 	for idx, server := range servers {
-		if strings.HasPrefix(server, "dhcp://") {
-			nameservers = append(
-				nameservers,
-				dns.NameServer{
-					Net:  "dhcp",
-					Addr: server[len("dhcp://"):],
-				},
-			)
-			continue
-		}
 		server = parsePureDNSServer(server)
 		u, err := url.Parse(server)
 		if err != nil {
@@ -954,11 +945,15 @@ func parseNameServer(servers []string, respectRules bool) ([]dns.NameServer, err
 					}
 				}
 			}
-		case "dhcp":
-			addr = u.Host
-			dnsNetType = "dhcp" // UDP from DHCP
 		case "system":
 			dnsNetType = "system" // System DNS
+		case "dhcp":
+			addr = server[len("dhcp://"):] // some special notation cannot be parsed by url
+			dnsNetType = "dhcp"            // UDP from DHCP
+			if addr == "system" {          // Compatible with old writing "dhcp://system"
+				dnsNetType = "system"
+				addr = ""
+			}
 		case "rcode":
 			dnsNetType = "rcode"
 			addr = u.Host
@@ -984,15 +979,18 @@ func parseNameServer(servers []string, respectRules bool) ([]dns.NameServer, err
 			proxyName = dns.RespectRules
 		}
 
-		nameservers = append(
-			nameservers,
-			dns.NameServer{
-				Net:       dnsNetType,
-				Addr:      addr,
-				ProxyName: proxyName,
-				Params:    params,
-			},
-		)
+		nameserver := dns.NameServer{
+			Net:       dnsNetType,
+			Addr:      addr,
+			ProxyName: proxyName,
+			Params:    params,
+		}
+
+		if slices.ContainsFunc(nameservers, nameserver.Equal) {
+			continue // skip duplicates nameserver
+		}
+
+		nameservers = append(nameservers, nameserver)
 	}
 	return nameservers, nil
 }

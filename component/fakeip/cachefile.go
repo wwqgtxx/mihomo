@@ -7,46 +7,32 @@ import (
 )
 
 type cachefileStore struct {
-	cache *cachefile.CacheFile
+	cache *cachefile.FakeIpStore
 }
 
 // GetByHost implements store.GetByHost
 func (c *cachefileStore) GetByHost(host string) (netip.Addr, bool) {
-	elm := c.cache.GetFakeip([]byte(host))
-	ip := netip.Addr{}
-	if elm == nil {
-		return ip, false
-	}
-	_ = (&ip).UnmarshalBinary(elm)
-	return ip, true
+	return c.cache.GetByHost(host)
 }
 
 // PutByHost implements store.PutByHost
 func (c *cachefileStore) PutByHost(host string, ip netip.Addr) {
-	b, _ := ip.MarshalBinary()
-	_ = c.cache.PutFakeip([]byte(host), b)
+	c.cache.PutByHost(host, ip)
 }
 
 // GetByIP implements store.GetByIP
 func (c *cachefileStore) GetByIP(ip netip.Addr) (string, bool) {
-	b, _ := ip.MarshalBinary()
-	elm := c.cache.GetFakeip(b)
-	if elm == nil {
-		return "", false
-	}
-	return string(elm), true
+	return c.cache.GetByIP(ip)
 }
 
 // PutByIP implements store.PutByIP
 func (c *cachefileStore) PutByIP(ip netip.Addr, host string) {
-	b, _ := ip.MarshalBinary()
-	_ = c.cache.PutFakeip(b, []byte(host))
+	c.cache.PutByIP(ip, host)
 }
 
 // DelByIP implements store.DelByIP
 func (c *cachefileStore) DelByIP(ip netip.Addr) {
-	b, _ := ip.MarshalBinary()
-	_ = c.cache.DelFakeipPair(b, c.cache.GetFakeip(b))
+	c.cache.DelByIP(ip)
 }
 
 // Exist implements store.Exist
@@ -62,4 +48,8 @@ func (c *cachefileStore) CloneTo(store store) {}
 // FlushFakeIP implements store.FlushFakeIP
 func (c *cachefileStore) FlushFakeIP() error {
 	return c.cache.FlushFakeIP()
+}
+
+func newCachefileStore(cache *cachefile.CacheFile) *cachefileStore {
+	return &cachefileStore{cache.FakeIpStore()}
 }

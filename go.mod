@@ -14,6 +14,7 @@ require (
 	github.com/insomniacslk/dhcp v0.0.0-20240812123929-b105c29bd1b5
 	github.com/klauspost/compress v1.17.9
 	github.com/mdlayher/netlink v1.7.2
+	github.com/metacubex/amneziawg-go v0.0.0-20240922133038-fdf3a4d5a4ab
 	github.com/metacubex/bbolt v0.0.0-20240822011022-aed6d4850399
 	github.com/metacubex/chacha v0.1.0
 	github.com/metacubex/quic-go v0.47.1-0.20240909010619-6b38f24bfcc4
@@ -23,8 +24,9 @@ require (
 	github.com/metacubex/sing-shadowsocks2 v0.2.2
 	github.com/metacubex/sing-tun v0.2.7-0.20240729131039-ed03f557dee1
 	github.com/metacubex/sing-vmess v0.1.9-0.20240719134745-1df6fb20bbf9
-	github.com/metacubex/sing-wireguard v0.0.0-20240826061955-1e4e67afe5cd
+	github.com/metacubex/sing-wireguard v0.0.0-20240922131718-0f10c39a5531
 	github.com/metacubex/tfo-go v0.0.0-20240830120620-c5e019b67785
+	github.com/metacubex/wireguard-go v0.0.0-20240922131502-c182e7471181
 	github.com/miekg/dns v1.1.62
 	github.com/openacid/low v0.1.21
 	github.com/oschwald/maxminddb-golang v1.12.0
@@ -34,7 +36,6 @@ require (
 	github.com/sagernet/sing v0.5.0-alpha.13
 	github.com/sagernet/sing-mux v0.2.1-0.20240124034317-9bfb33698bb6
 	github.com/sagernet/sing-shadowtls v0.1.4
-	github.com/sagernet/wireguard-go v0.0.0-20231209092712-9a439356a62e
 	github.com/samber/lo v1.47.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.9.0

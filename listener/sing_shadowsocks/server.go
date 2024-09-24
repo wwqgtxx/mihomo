@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/metacubex/mihomo/adapter/inbound"
-	N "github.com/metacubex/mihomo/common/net"
 	"github.com/metacubex/mihomo/common/sockopt"
 	C "github.com/metacubex/mihomo/constant"
 	LC "github.com/metacubex/mihomo/listener/config"
@@ -153,7 +152,6 @@ func New(config LC.ShadowsocksServer, tunnel C.Tunnel, additions ...inbound.Addi
 					}
 					continue
 				}
-				N.TCPKeepAlive(c)
 
 				go sl.HandleConn(c, tunnel)
 			}

@@ -99,8 +99,6 @@ func (l *Listener) Config() string {
 }
 
 func handleECConn(conn net.Conn, cl ChanListener, tunnel C.Tunnel, getAuth func() auth.Authenticator, additions ...inbound.Addition) {
-	N.TCPKeepAlive(conn)
-
 	bufConn := N.NewBufferedConn(conn)
 	head, err := bufConn.Peek(1)
 	if err != nil {

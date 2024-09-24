@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 
-	N "github.com/metacubex/mihomo/common/net"
 	"github.com/metacubex/mihomo/component/dialer"
 	"github.com/metacubex/mihomo/component/resolver"
 	C "github.com/metacubex/mihomo/constant"
@@ -26,7 +25,6 @@ func (d *Direct) DialContext(ctx context.Context, metadata *C.Metadata, opts ...
 	if err != nil {
 		return nil, err
 	}
-	N.TCPKeepAlive(c)
 	return NewConn(c, d), nil
 }
 

@@ -95,7 +95,6 @@ func New(config string, tunnel C.Tunnel, additions ...inbound.Addition) (*Listen
 					}
 					continue
 				}
-				N.TCPKeepAlive(c)
 				go hl.HandleConn(c, tunnel)
 			}
 		}()

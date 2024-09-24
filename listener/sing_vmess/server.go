@@ -120,7 +120,6 @@ func New(config LC.VmessServer, tunnel C.Tunnel, additions ...inbound.Addition) 
 					}
 					continue
 				}
-				N.TCPKeepAlive(c)
 
 				go sl.HandleConn(c, tunnel)
 			}

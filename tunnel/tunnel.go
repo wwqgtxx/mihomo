@@ -12,7 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/metacubex/mihomo/common/channel"
 	N "github.com/metacubex/mihomo/common/net"
 	"github.com/metacubex/mihomo/common/utils"
 	"github.com/metacubex/mihomo/component/inner_dialer"
@@ -30,9 +29,14 @@ import (
 	"github.com/metacubex/mihomo/tunnel/statistic"
 )
 
+const (
+	queueCapacity  = 64  // chan capacity tcpQueue and udpQueue
+	senderCapacity = 128 // chan capacity of PacketSender
+)
+
 var (
-	tcpQueue      = channel.NewInfiniteChannel[C.ConnContext]()
-	udpQueues     []*channel.InfiniteChannel[C.PacketAdapter]
+	udpInit       sync.Once
+	udpQueues     []chan C.PacketAdapter
 	natTable      = nat.New()
 	rules         []C.Rule
 	subRules      map[string][]C.Rule
@@ -40,6 +44,12 @@ var (
 	proxies       = make(map[string]C.Proxy)
 	providers     map[string]provider.ProxyProvider
 	configMux     sync.RWMutex
+
+	// for compatibility, lazy init
+	tcpQueue  chan C.ConnContext
+	tcpInOnce sync.Once
+	udpQueue  chan C.PacketAdapter
+	udpInOnce sync.Once
 
 	// Outbound Rule
 	mode = Rule
@@ -68,15 +78,33 @@ func (t tunnel) HandleTCPConn(conn net.Conn, metadata *C.Metadata) {
 	handleTCPConn(connCtx)
 }
 
-func (t tunnel) HandleUDPPacket(packet C.UDPPacket, metadata *C.Metadata) {
-	packetAdapter := C.NewPacketAdapter(packet, metadata)
+func initUDP() {
+	numUDPWorkers := 4
+	if num := runtime.GOMAXPROCS(0); num > numUDPWorkers {
+		numUDPWorkers = num
+	}
 
-	hash := utils.MapHash(metadata.SourceAddress() + "-" + metadata.RemoteAddress())
+	udpQueues = make([]chan C.PacketAdapter, numUDPWorkers)
+	for i := 0; i < numUDPWorkers; i++ {
+		queue := make(chan C.PacketAdapter, queueCapacity)
+		udpQueues[i] = queue
+		go processUDP(queue)
+	}
+}
+
+func (t tunnel) HandleUDPPacket(packet C.UDPPacket, metadata *C.Metadata) {
+	udpInit.Do(initUDP)
+
+	packetAdapter := C.NewPacketAdapter(packet, metadata)
+	key := packetAdapter.Key()
+
+	hash := utils.MapHash(key)
 	queueNo := uint(hash) % uint(len(udpQueues))
 
 	select {
-	case udpQueues[queueNo].In() <- packetAdapter:
+	case udpQueues[queueNo] <- packetAdapter:
 	default:
+		packet.Drop()
 	}
 }
 
@@ -133,20 +161,34 @@ func SetPreResolveProcessName(b bool) {
 
 func init() {
 	inner_dialer.Init(Tunnel)
-	go process()
 }
 
 // TCPIn return fan-in queue
 // Deprecated: using Tunnel instead
 func TCPIn() chan<- C.ConnContext {
-	return tcpQueue.In()
+	tcpInOnce.Do(func() {
+		tcpQueue = make(chan C.ConnContext, queueCapacity)
+		go func() {
+			for connCtx := range tcpQueue {
+				go handleTCPConn(connCtx)
+			}
+		}()
+	})
+	return tcpQueue
 }
 
 // UDPIn return fan-in udp queue
 // Deprecated: using Tunnel instead
 func UDPIn() chan<- C.PacketAdapter {
-	// compatibility: first queue is always available for external callers
-	return udpQueues[0].In()
+	udpInOnce.Do(func() {
+		udpQueue = make(chan C.PacketAdapter, queueCapacity)
+		go func() {
+			for packet := range udpQueue {
+				Tunnel.HandleUDPPacket(packet, packet.Metadata())
+			}
+		}()
+	})
+	return udpQueue
 }
 
 // NatTable return nat table
@@ -199,31 +241,6 @@ func Mode() TunnelMode {
 // SetMode change the mode of tunnel
 func SetMode(m TunnelMode) {
 	mode = m
-}
-
-// processUDP starts a loop to handle udp packet
-func processUDP(queue chan C.PacketAdapter) {
-	for conn := range queue {
-		handleUDPConn(conn)
-	}
-}
-
-func process() {
-	numUDPWorkers := 4
-	if num := runtime.GOMAXPROCS(0); num > numUDPWorkers {
-		numUDPWorkers = num
-	}
-	udpQueues = make([]*channel.InfiniteChannel[C.PacketAdapter], numUDPWorkers)
-	for i := 0; i < numUDPWorkers; i++ {
-		queue := channel.NewInfiniteChannel[C.PacketAdapter]()
-		udpQueues[i] = queue
-		go processUDP(queue.Out())
-	}
-
-	queue := tcpQueue.Out()
-	for conn := range queue {
-		go handleTCPConn(conn)
-	}
 }
 
 func needLookupIP(metadata *C.Metadata) bool {
@@ -280,6 +297,25 @@ func resolveMetadata(metadata *C.Metadata) (proxy C.Proxy, rule C.Rule, err erro
 	return
 }
 
+func resolveUDP(metadata *C.Metadata) error {
+	// local resolve UDP dns
+	if !metadata.Resolved() {
+		ip, err := resolver.ResolveIP(context.Background(), metadata.Host)
+		if err != nil {
+			return err
+		}
+		metadata.DstIP = ip
+	}
+	return nil
+}
+
+// processUDP starts a loop to handle udp packet
+func processUDP(queue chan C.PacketAdapter) {
+	for conn := range queue {
+		handleUDPConn(conn)
+	}
+}
+
 func handleUDPConn(packet C.PacketAdapter) {
 	metadata := packet.Metadata()
 	if !metadata.Valid() {
@@ -302,79 +338,53 @@ func handleUDPConn(packet C.PacketAdapter) {
 		snifferDispatcher.UDPSniff(packet)
 	}
 
-	// local resolve UDP dns
-	if !metadata.Resolved() {
-		ips, err := resolver.LookupIP(context.Background(), metadata.Host)
-		if err != nil {
-			return
-		} else if len(ips) == 0 {
-			return
-		}
-		metadata.DstIP = ips[0]
-	}
-
-	key := packet.LocalAddr().String()
-
-	handle := func() bool {
-		pc, proxy := natTable.Get(key)
-		if pc != nil {
-			if proxy != nil {
-				proxy.UpdateWriteBack(packet)
+	key := packet.Key()
+	sender, loaded := natTable.GetOrCreate(key, newPacketSender)
+	if !loaded {
+		dial := func() (C.PacketConn, C.WriteBackProxy, error) {
+			if err := resolveUDP(metadata); err != nil {
+				log.Warnln("[UDP] Resolve Ip error: %s", err)
+				return nil, nil, err
 			}
-			_ = handleUDPToRemote(packet, pc, metadata)
-			return true
+
+			proxy, rule, err := resolveMetadata(metadata)
+			if err != nil {
+				log.Warnln("[UDP] Parse metadata failed: %s", err.Error())
+				return nil, nil, err
+			}
+
+			ctx, cancel := context.WithTimeout(context.Background(), C.DefaultUDPTimeout)
+			defer cancel()
+			rawPc, err := retry(ctx, func(ctx context.Context) (C.PacketConn, error) {
+				return proxy.ListenPacketContext(ctx, metadata.Pure())
+			}, func(err error) {
+				logMetadataErr(metadata, rule, proxy, err)
+			})
+			if err != nil {
+				return nil, nil, err
+			}
+			logMetadata(metadata, rule, rawPc)
+
+			pc := statistic.NewUDPTracker(rawPc, statistic.DefaultManager, metadata, rule, 0, 0, true)
+
+			oAddrPort := metadata.AddrPort()
+			writeBackProxy := nat.NewWriteBackProxy(packet)
+
+			go handleUDPToLocal(writeBackProxy, pc, sender, key, oAddrPort, fAddr)
+			return pc, writeBackProxy, nil
 		}
-		return false
-	}
 
-	if handle() {
-		return
-	}
-
-	cond, loaded := natTable.GetOrCreateLock(key)
-
-	go func() {
-		if loaded {
-			cond.L.Lock()
-			cond.Wait()
-			handle()
-			cond.L.Unlock()
-			return
-		}
-
-		defer func() {
-			natTable.DeleteLock(key)
-			cond.Broadcast()
+		go func() {
+			pc, proxy, err := dial()
+			if err != nil {
+				sender.Close()
+				natTable.Delete(key)
+				return
+			}
+			sender.Process(pc, proxy)
 		}()
-
-		proxy, rule, err := resolveMetadata(metadata)
-		if err != nil {
-			log.Warnln("[UDP] Parse metadata failed: %s", err.Error())
-			return
-		}
-
-		ctx, cancel := context.WithTimeout(context.Background(), C.DefaultUDPTimeout)
-		defer cancel()
-		rawPc, err := retry(ctx, func(ctx context.Context) (C.PacketConn, error) {
-			return proxy.ListenPacketContext(ctx, metadata.Pure())
-		}, func(err error) {
-			logMetadataErr(metadata, rule, proxy, err)
-		})
-		if err != nil {
-			return
-		}
-		logMetadata(metadata, rule, rawPc)
-
-		pc := statistic.NewUDPTracker(rawPc, statistic.DefaultManager, metadata, rule, 0, 0, true)
-
-		oAddrPort := metadata.AddrPort()
-		writeBackProxy := nat.NewWriteBackProxy(packet)
-		natTable.Set(key, pc, writeBackProxy)
-
-		go handleUDPToLocal(writeBackProxy, pc, key, oAddrPort, fAddr)
-
-		handle()
-	}()
+	}
+	sender.Send(packet) // nonblocking
 }
 
 func handleTCPConn(connCtx C.ConnContext) {

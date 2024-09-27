@@ -8,7 +8,8 @@ import (
 	"strings"
 	"time"
 
-	lru "github.com/metacubex/mihomo/common/cache"
+	"github.com/metacubex/mihomo/common/arc"
+	"github.com/metacubex/mihomo/common/lru"
 	"github.com/metacubex/mihomo/common/singleflight"
 	"github.com/metacubex/mihomo/component/fakeip"
 	"github.com/metacubex/mihomo/component/resolver"
@@ -28,6 +29,12 @@ type dnsClient interface {
 	ResetConnection()
 }
 
+type dnsCache interface {
+	GetWithExpire(key string) (*D.Msg, time.Time, bool)
+	SetWithExpire(key string, value *D.Msg, expire time.Time)
+	Clear()
+}
+
 type result struct {
 	Msg   *D.Msg
 	Error error
@@ -41,7 +48,7 @@ type Resolver struct {
 	fallbackDomainFilters []C.DomainMatcher
 	fallbackIPFilters     []C.IpMatcher
 	group                 singleflight.Group[*D.Msg]
-	lruCache              *lru.LruCache[string, *D.Msg]
+	cache                 dnsCache
 	policy                []dnsPolicy
 	searchDomains         []string
 	defaultResolver       *Resolver
@@ -145,7 +152,7 @@ func (r *Resolver) ExchangeContext(ctx context.Context, m *D.Msg) (msg *D.Msg, e
 	q := m.Question[0]
 	domain := msgToDomain(m)
 	_, qTypeStr := msgToQtype(m)
-	cacheM, expireTime, hit := r.lruCache.GetWithExpire(q.String())
+	cacheM, expireTime, hit := r.cache.GetWithExpire(q.String())
 	if hit {
 		ips := msgToIP(cacheM)
 		log.Debugln("[DNS] cache hit %s --> %s %s, expire at %s", domain, ips, qTypeStr, expireTime.Format("2006-01-02 15:04:05"))
@@ -189,7 +196,7 @@ func (r *Resolver) exchangeWithoutCache(ctx context.Context, m *D.Msg) (msg *D.M
 				msg.Extra = lo.Filter(msg.Extra, func(rr D.RR, index int) bool {
 					return rr.Header().Rrtype != D.TypeOPT
 				})
-				putMsgToCache(r.lruCache, q.String(), q, msg)
+				putMsgToCache(r.cache, q.String(), q, msg)
 			}
 		}()
 
@@ -395,8 +402,8 @@ func (r *Resolver) Invalid() bool {
 }
 
 func (r *Resolver) ClearCache() {
-	if r != nil && r.lruCache != nil {
-		r.lruCache.Clear()
+	if r != nil && r.cache != nil {
+		r.cache.Clear()
 	}
 }
 
@@ -421,10 +428,6 @@ type NameServer struct {
 	ProxyAdapter C.ProxyAdapter
 	ProxyName    string
 	Params       map[string]string
-}
-
-func (config Config) newCache() *lru.LruCache[string, *D.Msg] {
-		return lru.New(lru.WithSize[string, *D.Msg](4096), lru.WithStale[string, *D.Msg](true))
 }
 
 func (ns NameServer) Equal(ns2 NameServer) bool {
@@ -463,12 +466,21 @@ type Config struct {
 	Tunnel               provider.Tunnel
 	RuleProviders        map[string]provider.RuleProvider
 	SearchDomains        []string
+	CacheAlgorithm       string
+}
+
+func (config Config) newCache() dnsCache {
+	if config.CacheAlgorithm == "" || config.CacheAlgorithm == "lru" {
+		return lru.New(lru.WithSize[string, *D.Msg](4096), lru.WithStale[string, *D.Msg](true))
+	} else {
+		return arc.New(arc.WithSize[string, *D.Msg](4096))
+	}
 }
 
 func NewResolver(config Config) (r *Resolver, pr *Resolver) {
 	defaultResolver := &Resolver{
-		main:     transform(config.Default, nil),
-		lruCache: config.newCache(),
+		main:  transform(config.Default, nil),
+		cache: config.newCache(),
 	}
 
 	var nameServerCache []struct {
@@ -501,7 +513,7 @@ func NewResolver(config Config) (r *Resolver, pr *Resolver) {
 	r = &Resolver{
 		ipv6:          config.IPv6,
 		main:          cacheTransform(config.Main),
-		lruCache:      config.newCache(),
+		cache:         config.newCache(),
 		hosts:         config.Hosts,
 		searchDomains: config.SearchDomains,
 	}
@@ -509,10 +521,10 @@ func NewResolver(config Config) (r *Resolver, pr *Resolver) {
 
 	if len(config.ProxyServer) != 0 {
 		pr = &Resolver{
-			ipv6:        config.IPv6,
-			main:        cacheTransform(config.ProxyServer),
-			lruCache:       config.newCache(),
-			hosts:       config.Hosts,
+			ipv6:          config.IPv6,
+			main:          cacheTransform(config.ProxyServer),
+			cache:         config.newCache(),
+			hosts:         config.Hosts,
 			searchDomains: config.SearchDomains,
 		}
 	}

@@ -226,6 +226,7 @@ func updateDNS(c *config.DNS, ruleProvider map[string]providerTypes.RuleProvider
 		Tunnel:               tunnel.Tunnel,
 		RuleProviders:        ruleProvider,
 		SearchDomains:        c.SearchDomains,
+		CacheAlgorithm:       c.CacheAlgorithm,
 	}
 
 	r, pr := dns.NewResolver(cfg)

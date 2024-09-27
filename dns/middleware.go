@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/metacubex/mihomo/common/cache"
+	"github.com/metacubex/mihomo/common/lru"
 	"github.com/metacubex/mihomo/component/fakeip"
 	"github.com/metacubex/mihomo/component/trie"
 	C "github.com/metacubex/mihomo/constant"
@@ -63,7 +63,7 @@ func withHosts(hosts *trie.DomainTrie[netip.Addr]) middleware {
 	}
 }
 
-func withMapping(mapping *cache.LruCache[netip.Addr, string]) middleware {
+func withMapping(mapping *lru.LruCache[netip.Addr, string]) middleware {
 	return func(next handler) handler {
 		return func(ctx *context.DNSContext, r *D.Msg) (*D.Msg, error) {
 			q := r.Question[0]

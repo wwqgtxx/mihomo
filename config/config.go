@@ -110,6 +110,7 @@ type DNS struct {
 	Listen                string
 	EnhancedMode          C.DNSMode
 	DefaultNameserver     []dns.NameServer
+	CacheAlgorithm        string
 	FakeIPRange           *fakeip.Pool
 	Hosts                 *trie.DomainTrie[netip.Addr]
 	NameServerPolicy      []dns.Policy
@@ -165,6 +166,7 @@ type RawDNS struct {
 	FakeIPFilter          []string                            `yaml:"fake-ip-filter" json:"fake-ip-filter"`
 	FakeIPFilterMode      C.FilterMode                        `yaml:"fake-ip-filter-mode" json:"fake-ip-filter-mode"`
 	DefaultNameserver     []string                            `yaml:"default-nameserver" json:"default-nameserver"`
+	CacheAlgorithm        string                              `yaml:"cache-algorithm" json:"cache-algorithm"`
 	NameServerPolicy      *orderedmap.OrderedMap[string, any] `yaml:"nameserver-policy" json:"nameserver-policy"`
 	ProxyServerNameserver []string                            `yaml:"proxy-server-nameserver" json:"proxy-server-nameserver"`
 	SearchDomains         []string                            `yaml:"search-domains" json:"search-domains"`
@@ -1213,6 +1215,12 @@ func parseDNS(rawCfg *RawConfig, hosts *trie.DomainTrie[netip.Addr], ruleProvide
 
 	if cfg.UseHosts {
 		dnsCfg.Hosts = hosts
+	}
+
+	if cfg.CacheAlgorithm == "" || cfg.CacheAlgorithm == "lru" {
+		dnsCfg.CacheAlgorithm = "lru"
+	} else {
+		dnsCfg.CacheAlgorithm = "arc"
 	}
 
 	if len(cfg.SearchDomains) != 0 {

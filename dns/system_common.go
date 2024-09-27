@@ -67,3 +67,5 @@ func (c *systemClient) getDnsClients() ([]dnsClient, error) {
 	}
 	return nil, err
 }
+
+func (c *systemClient) ResetConnection() {}

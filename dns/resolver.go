@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/metacubex/mihomo/common/cache"
+	lru "github.com/metacubex/mihomo/common/cache"
 	"github.com/metacubex/mihomo/common/singleflight"
 	"github.com/metacubex/mihomo/component/fakeip"
 	"github.com/metacubex/mihomo/component/resolver"
@@ -25,6 +25,7 @@ import (
 type dnsClient interface {
 	ExchangeContext(ctx context.Context, m *D.Msg) (msg *D.Msg, err error)
 	Address() string
+	ResetConnection()
 }
 
 type result struct {
@@ -40,10 +41,10 @@ type Resolver struct {
 	fallbackDomainFilters []C.DomainMatcher
 	fallbackIPFilters     []C.IpMatcher
 	group                 singleflight.Group[*D.Msg]
-	lruCache              *cache.LruCache[string, *D.Msg]
+	lruCache              *lru.LruCache[string, *D.Msg]
 	policy                []dnsPolicy
 	searchDomains         []string
-	proxyServer           []dnsClient
+	defaultResolver       *Resolver
 }
 
 // LookupIPPrimaryIPv4 request with TypeA and TypeAAAA, priority return TypeA
@@ -399,6 +400,20 @@ func (r *Resolver) ClearCache() {
 	}
 }
 
+func (r *Resolver) ResetConnection() {
+	if r != nil {
+		for _, c := range r.main {
+			c.ResetConnection()
+		}
+		for _, c := range r.fallback {
+			c.ResetConnection()
+		}
+		if dr := r.defaultResolver; dr != nil {
+			dr.ResetConnection()
+		}
+	}
+}
+
 type NameServer struct {
 	Net          string
 	Addr         string
@@ -406,6 +421,10 @@ type NameServer struct {
 	ProxyAdapter C.ProxyAdapter
 	ProxyName    string
 	Params       map[string]string
+}
+
+func (config Config) newCache() *lru.LruCache[string, *D.Msg] {
+		return lru.New(lru.WithSize[string, *D.Msg](4096), lru.WithStale[string, *D.Msg](true))
 }
 
 func (ns NameServer) Equal(ns2 NameServer) bool {
@@ -446,10 +465,10 @@ type Config struct {
 	SearchDomains        []string
 }
 
-func NewResolver(config Config) *Resolver {
+func NewResolver(config Config) (r *Resolver, pr *Resolver) {
 	defaultResolver := &Resolver{
 		main:     transform(config.Default, nil),
-		lruCache: cache.New[string, *D.Msg](cache.WithSize[string, *D.Msg](4096), cache.WithStale[string, *D.Msg](true)),
+		lruCache: config.newCache(),
 	}
 
 	var nameServerCache []struct {
@@ -479,20 +498,27 @@ func NewResolver(config Config) *Resolver {
 		return
 	}
 
-	r := &Resolver{
+	r = &Resolver{
 		ipv6:          config.IPv6,
 		main:          cacheTransform(config.Main),
-		lruCache:      cache.New[string, *D.Msg](cache.WithSize[string, *D.Msg](4096), cache.WithStale[string, *D.Msg](true)),
+		lruCache:      config.newCache(),
 		hosts:         config.Hosts,
 		searchDomains: config.SearchDomains,
+	}
+	r.defaultResolver = defaultResolver
+
+	if len(config.ProxyServer) != 0 {
+		pr = &Resolver{
+			ipv6:        config.IPv6,
+			main:        cacheTransform(config.ProxyServer),
+			lruCache:       config.newCache(),
+			hosts:       config.Hosts,
+			searchDomains: config.SearchDomains,
+		}
 	}
 
 	if len(config.Fallback) != 0 {
 		r.fallback = cacheTransform(config.Fallback)
-	}
-
-	if len(config.ProxyServer) != 0 {
-		r.proxyServer = cacheTransform(config.ProxyServer)
 	}
 
 	if len(config.Policy) != 0 {
@@ -525,17 +551,7 @@ func NewResolver(config Config) *Resolver {
 	r.fallbackIPFilters = config.FallbackIPFilter
 	r.fallbackDomainFilters = config.FallbackDomainFilter
 
-	return r
-}
-
-func NewProxyServerHostResolver(old *Resolver) *Resolver {
-	r := &Resolver{
-		ipv6:     old.ipv6,
-		main:     old.proxyServer,
-		lruCache: old.lruCache,
-		hosts:    old.hosts,
-	}
-	return r
+	return
 }
 
 var ParseNameServer func(servers []string) ([]NameServer, error) // define in config/config.go

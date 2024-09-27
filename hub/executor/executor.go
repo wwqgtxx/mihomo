@@ -100,6 +100,7 @@ func ApplyConfig(cfg *config.Config, force bool) {
 	loadProvider(cfg.RuleProviders)
 	updateTunnels(cfg.Tunnels)
 
+	resolver.ResetConnection()
 	runtime.GC()
 }
 
@@ -227,8 +228,7 @@ func updateDNS(c *config.DNS, ruleProvider map[string]providerTypes.RuleProvider
 		SearchDomains:        c.SearchDomains,
 	}
 
-	r := dns.NewResolver(cfg)
-	pr := dns.NewProxyServerHostResolver(r)
+	r, pr := dns.NewResolver(cfg)
 	m := dns.NewEnhancer(cfg)
 
 	// reuse cache of old host mapper

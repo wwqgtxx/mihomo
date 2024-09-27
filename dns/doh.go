@@ -58,6 +58,10 @@ func (doh *dohClient) ExchangeContext(ctx context.Context, m *D.Msg) (msg *D.Msg
 	return
 }
 
+func (doh *dohClient) ResetConnection() {
+	doh.transport.CloseIdleConnections()
+}
+
 // newRequest returns a new DoH request given a dns.Msg.
 func (doh *dohClient) newRequest(m *D.Msg) (*http.Request, error) {
 	buf, err := m.Pack()

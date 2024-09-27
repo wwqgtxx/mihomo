@@ -84,6 +84,12 @@ func (h *ResolverEnhancer) PatchFrom(o *ResolverEnhancer) {
 	}
 }
 
+func (h *ResolverEnhancer) StoreFakePoolState() {
+	if h.fakePool != nil {
+		h.fakePool.StoreState()
+	}
+}
+
 func NewEnhancer(cfg Config) *ResolverEnhancer {
 	var fakePool *fakeip.Pool
 	var mapping *cache.LruCache[netip.Addr, string]

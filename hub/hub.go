@@ -69,7 +69,3 @@ func Parse(options ...Option) error {
 	ApplyConfig(cfg)
 	return nil
 }
-
-func CleanUp() {
-	executor.CleanUp()
-}

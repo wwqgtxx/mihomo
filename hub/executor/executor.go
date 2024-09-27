@@ -401,6 +401,9 @@ func patchSelectGroupPlain(proxies map[string]C.Proxy) {
 	}
 }
 
-func CleanUp() {
-	listener.CleanUp()
+func Shutdown() {
+	listener.Cleanup()
+	resolver.StoreFakePoolState()
+
+	log.Warnln("Mihomo shutting down")
 }

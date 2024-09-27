@@ -818,7 +818,7 @@ func closeTunListener() {
 	}
 }
 
-// CleanUp clean up something
-func CleanUp() {
+// Cleanup clean up something
+func Cleanup() {
 	closeTunListener()
 }

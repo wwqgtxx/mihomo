@@ -111,6 +111,8 @@ func main() {
 		log.Fatalln("Parse config error: %s", err.Error())
 	}
 
+	defer executor.Shutdown()
+
 	termSign := make(chan os.Signal, 1)
 	hupSign := make(chan os.Signal, 1)
 	signal.Notify(termSign, syscall.SIGINT, syscall.SIGTERM)
@@ -127,10 +129,4 @@ func main() {
 			}
 		}
 	}
-
-	// clean up
-	log.Warnln("Mihomo clean up")
-	hub.CleanUp()
-
-	log.Warnln("Mihomo shutting down")
 }

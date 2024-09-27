@@ -91,6 +91,12 @@ type Controller struct {
 	ExternalUI             string
 	ExternalDohServer      string
 	Secret                 string
+	Cors                   Cors
+}
+
+type Cors struct {
+	AllowOrigins        []string
+	AllowPrivateNetwork bool
 }
 
 // Experimental config
@@ -149,6 +155,11 @@ type Config struct {
 	Tunnels       []LC.Tunnel
 	Sniffer       *sniffer.Config
 	TLS           *TLS
+}
+
+type RawCors struct {
+	AllowOrigins        []string `yaml:"allow-origins" json:"allow-origins"`
+	AllowPrivateNetwork bool     `yaml:"allow-private-network" json:"allow-private-network"`
 }
 
 type RawDNS struct {
@@ -240,6 +251,7 @@ type RawConfig struct {
 	ExternalControllerPipe string         `yaml:"external-controller-pipe" json:"external-controller-pipe"`
 	ExternalControllerUnix string         `yaml:"external-controller-unix" json:"external-controller-unix"`
 	ExternalControllerTLS  string         `yaml:"external-controller-tls" json:"external-controller-tls"`
+	ExternalControllerCors RawCors        `yaml:"external-controller-cors" json:"external-controller-cors"`
 	ExternalUI             string         `yaml:"external-ui" json:"external-ui"`
 	ExternalDohServer      string         `yaml:"external-doh-server" json:"external-doh-server"`
 	Secret                 string         `yaml:"secret" json:"secret"`
@@ -374,6 +386,10 @@ func DefaultRawConfig() *RawConfig {
 				snifferTypes.HTTP.String(): {Ports: []string{"80"}},
 				snifferTypes.TLS.String():  {Ports: []string{"443"}},
 			},
+		},
+		ExternalControllerCors: RawCors{
+			AllowOrigins:        []string{"*"},
+			AllowPrivateNetwork: true,
 		},
 	}
 	rawCfg.DNS.RespectRules = true
@@ -557,6 +573,10 @@ func parseController(cfg *RawConfig) (*Controller, error) {
 		ExternalControllerUnix: cfg.ExternalControllerUnix,
 		ExternalControllerTLS:  cfg.ExternalControllerTLS,
 		ExternalDohServer:      cfg.ExternalDohServer,
+		Cors: Cors{
+			AllowOrigins:        cfg.ExternalControllerCors.AllowOrigins,
+			AllowPrivateNetwork: cfg.ExternalControllerCors.AllowPrivateNetwork,
+		},
 	}, nil
 }
 

@@ -27,6 +27,11 @@ type Proxy struct {
 	ignoreURLTest bool
 }
 
+// Adapter implements C.Proxy
+func (p *Proxy) Adapter() C.ProxyAdapter {
+	return p.ProxyAdapter
+}
+
 // Alive implements C.Proxy
 func (p *Proxy) Alive() bool {
 	if proxy := p.ProxyAdapter.Unwrap(nil, false); proxy != nil {

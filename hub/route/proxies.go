@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/metacubex/mihomo/adapter"
 	"github.com/metacubex/mihomo/adapter/outboundgroup"
 	"github.com/metacubex/mihomo/component/profile/cachefile"
 	"github.com/metacubex/mihomo/component/profile/cachefileplain"
@@ -79,8 +78,8 @@ func updateProxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	proxy := r.Context().Value(CtxKeyProxy).(*adapter.Proxy)
-	selector, ok := proxy.ProxyAdapter.(*outboundgroup.Selector)
+	proxy := r.Context().Value(CtxKeyProxy).(C.Proxy)
+	selector, ok := proxy.Adapter().(outboundgroup.SelectAble)
 	if !ok {
 		render.Status(r, http.StatusBadRequest)
 		render.JSON(w, r, newError("Must be a Selector"))

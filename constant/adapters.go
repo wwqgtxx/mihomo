@@ -137,6 +137,7 @@ type DelayHistory struct {
 
 type Proxy interface {
 	ProxyAdapter
+	Adapter() ProxyAdapter
 	Alive() bool
 	DelayHistory() []DelayHistory
 	LastDelay() uint16

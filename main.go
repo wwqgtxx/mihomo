@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
+	"net"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -46,6 +48,12 @@ func init() {
 }
 
 func main() {
+	// Defensive programming: panic when code mistakenly calls net.DefaultResolver
+	net.DefaultResolver.PreferGo = true
+	net.DefaultResolver.Dial = func(ctx context.Context, network, address string) (net.Conn, error) {
+		panic("should never be called")
+	}
+
 	if len(os.Args) > 2 && os.Args[1] == "generate-secret" {
 		tools.Generate(os.Args[2])
 		return

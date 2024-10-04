@@ -94,7 +94,7 @@ func ApplyConfig(cfg *config.Config, force bool) {
 	updateProfile(cfg)
 	updateGeneral(cfg.General, force)
 	updateListeners(cfg.Listeners)
-	updateDNS(cfg.DNS, cfg.RuleProviders)
+	updateDNS(cfg.DNS)
 	updateTun(cfg.General) // tun should not care "force"
 	loadProvider(cfg.Providers)
 	loadProvider(cfg.RuleProviders)
@@ -202,7 +202,7 @@ func updateExperimental(c *config.Experimental) {
 	}
 }
 
-func updateDNS(c *config.DNS, ruleProvider map[string]providerTypes.RuleProvider) {
+func updateDNS(c *config.DNS) {
 	if !c.Enable {
 		resolver.DefaultResolver = nil
 		resolver.DefaultHostMapper = nil
@@ -223,8 +223,6 @@ func updateDNS(c *config.DNS, ruleProvider map[string]providerTypes.RuleProvider
 		Default:              c.DefaultNameserver,
 		Policy:               c.NameServerPolicy,
 		ProxyServer:          c.ProxyServerNameserver,
-		Tunnel:               tunnel.Tunnel,
-		RuleProviders:        ruleProvider,
 		SearchDomains:        c.SearchDomains,
 		CacheAlgorithm:       c.CacheAlgorithm,
 	}

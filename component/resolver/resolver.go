@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net"
 	"net/netip"
 	"strings"
 	"time"
@@ -21,6 +20,9 @@ var (
 
 	// ProxyServerHostResolver resolve ip to proxies server host
 	ProxyServerHostResolver Resolver
+
+	// SystemResolver always using system dns, and was init in dns module
+	SystemResolver Resolver
 
 	// DisableIPv6 means don't resolve ipv6 host
 	// default value is true
@@ -68,14 +70,7 @@ func LookupIPv4WithResolver(ctx context.Context, host string, r Resolver) ([]net
 		return r.LookupIPv4(ctx, host)
 	}
 
-	ipAddrs, err := net.DefaultResolver.LookupNetIP(ctx, "ip4", host)
-	if err != nil {
-		return nil, err
-	} else if len(ipAddrs) == 0 {
-		return nil, ErrIPNotFound
-	}
-
-	return ipAddrs, nil
+	return SystemResolver.LookupIPv4(ctx, host)
 }
 
 // LookupIPv4 with a host, return ipv4 list
@@ -122,14 +117,7 @@ func LookupIPv6WithResolver(ctx context.Context, host string, r Resolver) ([]net
 		return r.LookupIPv6(ctx, host)
 	}
 
-	ipAddrs, err := net.DefaultResolver.LookupNetIP(ctx, "ip6", host)
-	if err != nil {
-		return nil, err
-	} else if len(ipAddrs) == 0 {
-		return nil, ErrIPNotFound
-	}
-
-	return ipAddrs, nil
+	return SystemResolver.LookupIPv6(ctx, host)
 }
 
 // LookupIPv6 with a host, return ipv6 list
@@ -171,14 +159,7 @@ func LookupIPWithResolver(ctx context.Context, host string, r Resolver) ([]netip
 		return []netip.Addr{ip}, nil
 	}
 
-	ips, err := net.DefaultResolver.LookupNetIP(ctx, "ip", host)
-	if err != nil {
-		return nil, err
-	} else if len(ips) == 0 {
-		return nil, ErrIPNotFound
-	}
-
-	return ips, nil
+	return SystemResolver.LookupIP(ctx, host)
 }
 
 // LookupIP with a host, return ip

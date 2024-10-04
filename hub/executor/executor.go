@@ -207,6 +207,8 @@ func updateDNS(c *config.DNS) {
 		resolver.DefaultResolver = nil
 		resolver.DefaultHostMapper = nil
 		resolver.DefaultLocalServer = nil
+		resolver.ProxyServerHostResolver = nil
+		resolver.DirectHostResolver = nil
 		dns.ReCreateServer("", nil, nil)
 		return
 	}
@@ -223,11 +225,13 @@ func updateDNS(c *config.DNS) {
 		Default:              c.DefaultNameserver,
 		Policy:               c.NameServerPolicy,
 		ProxyServer:          c.ProxyServerNameserver,
+		DirectServer:         c.DirectNameServer,
+		DirectFollowPolicy:   c.DirectFollowPolicy,
 		SearchDomains:        c.SearchDomains,
 		CacheAlgorithm:       c.CacheAlgorithm,
 	}
 
-	r, pr := dns.NewResolver(cfg)
+	r := dns.NewResolver(cfg)
 	m := dns.NewEnhancer(cfg)
 
 	// reuse cache of old host mapper
@@ -237,13 +241,21 @@ func updateDNS(c *config.DNS) {
 
 	resolver.DefaultResolver = r
 	resolver.DefaultHostMapper = m
-	resolver.DefaultLocalServer = dns.NewLocalServer(r, m)
+	resolver.DefaultLocalServer = dns.NewLocalServer(r.Resolver, m)
 
-	if pr.Invalid() {
-		resolver.ProxyServerHostResolver = pr
+	if r.ProxyResolver.Invalid() {
+		resolver.ProxyServerHostResolver = r.ProxyResolver
+	} else {
+		resolver.ProxyServerHostResolver = r.Resolver
 	}
 
-	dns.ReCreateServer(c.Listen, r, m)
+	if r.DirectResolver.Invalid() {
+		resolver.DirectHostResolver = r.DirectResolver
+	} else {
+		resolver.DirectHostResolver = r.Resolver
+	}
+
+	dns.ReCreateServer(c.Listen, r.Resolver, m)
 }
 
 func updateHosts(tree *trie.DomainTrie[netip.Addr]) {

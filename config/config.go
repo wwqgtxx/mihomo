@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/metacubex/mihomo/adapter"
 	"github.com/metacubex/mihomo/adapter/outbound"
@@ -19,7 +18,6 @@ import (
 	"github.com/metacubex/mihomo/component/cidr"
 	"github.com/metacubex/mihomo/component/fakeip"
 	mihomoHttp "github.com/metacubex/mihomo/component/http"
-	"github.com/metacubex/mihomo/component/keepalive"
 	"github.com/metacubex/mihomo/component/resource"
 	"github.com/metacubex/mihomo/component/sniffer"
 	"github.com/metacubex/mihomo/component/trie"
@@ -54,9 +52,11 @@ type General struct {
 	PreResolveProcessName  bool         `json:"pre-resolve-process-name"`
 	TCPConcurrent          bool         `json:"tcp-concurrent"`
 	Sniffing               bool         `json:"sniffing"`
-	KeepAliveInterval      int          `json:"keep-alive-interval"`
 	GlobalUA               string       `json:"global-ua"`
 	ETagSupport            bool         `json:"etag-support"`
+	KeepAliveIdle          int          `json:"keep-alive-idle"`
+	KeepAliveInterval      int          `json:"keep-alive-interval"`
+	DisableKeepAlive       bool         `json:"disable-keep-alive"`
 }
 
 // Inbound
@@ -524,14 +524,6 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 		}
 	}
 
-	if cfg.KeepAliveIdle != 0 {
-		keepalive.SetKeepAliveIdle(time.Duration(cfg.KeepAliveIdle) * time.Second)
-	}
-	if cfg.KeepAliveInterval != 0 {
-		keepalive.SetKeepAliveInterval(time.Duration(cfg.KeepAliveInterval) * time.Second)
-	}
-	keepalive.SetDisableKeepAlive(cfg.DisableKeepAlive)
-
 	return &General{
 		Inbound: Inbound{
 			Port:              cfg.Port,
@@ -563,9 +555,11 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 		TouchAfterLazyPassNum:  cfg.TouchAfterLazyPassNum,
 		PreResolveProcessName:  cfg.PreResolveProcessName,
 		TCPConcurrent:          cfg.TCPConcurrent,
-		KeepAliveInterval:      cfg.KeepAliveInterval,
 		GlobalUA:               cfg.GlobalUA,
 		ETagSupport:            cfg.ETagSupport,
+		KeepAliveIdle:          cfg.KeepAliveIdle,
+		KeepAliveInterval:      cfg.KeepAliveInterval,
+		DisableKeepAlive:       cfg.DisableKeepAlive,
 	}, nil
 }
 

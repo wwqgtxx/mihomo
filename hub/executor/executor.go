@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/metacubex/mihomo/adapter"
 	"github.com/metacubex/mihomo/adapter/inbound"
@@ -17,6 +18,7 @@ import (
 	"github.com/metacubex/mihomo/component/dialer"
 	mihomoHttp "github.com/metacubex/mihomo/component/http"
 	"github.com/metacubex/mihomo/component/iface"
+	"github.com/metacubex/mihomo/component/keepalive"
 	"github.com/metacubex/mihomo/component/profile"
 	"github.com/metacubex/mihomo/component/profile/cachefile"
 	"github.com/metacubex/mihomo/component/profile/cachefileplain"
@@ -145,6 +147,9 @@ func GetGeneral() *config.General {
 		TCPConcurrent:          dialer.GetTcpConcurrent(),
 		GlobalUA:               mihomoHttp.UA(),
 		ETagSupport:            resource.ETag(),
+		KeepAliveInterval:      int(keepalive.KeepAliveInterval() / time.Second),
+		KeepAliveIdle:          int(keepalive.KeepAliveIdle() / time.Second),
+		DisableKeepAlive:       keepalive.DisableKeepAlive(),
 	}
 
 	return general
@@ -311,6 +316,11 @@ func updateGeneral(general *config.General, force bool) {
 
 	inbound.SetTfo(general.InboundTfo)
 	inbound.SetMPTCP(general.InboundMPTCP)
+
+	keepalive.SetKeepAliveIdle(time.Duration(general.KeepAliveIdle) * time.Second)
+	keepalive.SetKeepAliveInterval(time.Duration(general.KeepAliveInterval) * time.Second)
+	keepalive.SetDisableKeepAlive(general.DisableKeepAlive)
+
 	dialer.DefaultInterface.Store(general.Interface)
 	dialer.GeneralInterface.Store(general.Interface)
 	dialer.DefaultRoutingMark.Store(int32(general.RoutingMark))

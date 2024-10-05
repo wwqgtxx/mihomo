@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"sync"
 	"time"
+	_ "unsafe"
 
 	"github.com/metacubex/mihomo/adapter"
 	"github.com/metacubex/mihomo/adapter/inbound"
@@ -79,6 +80,7 @@ func ParseWithBytes(buf []byte) (*config.Config, error) {
 func ApplyConfig(cfg *config.Config, force bool) {
 	mux.Lock()
 	defer mux.Unlock()
+	log.SetLevel(cfg.General.LogLevel)
 
 	ca.ResetCertificate()
 	for _, c := range cfg.TLS.CustomTrustCert {
@@ -94,8 +96,8 @@ func ApplyConfig(cfg *config.Config, force bool) {
 	updateSniffer(cfg.Sniffer)
 	updateHosts(cfg.Hosts)
 	updateProfile(cfg)
-	updateGeneral(cfg.General, force)
-	updateListeners(cfg.Listeners)
+	updateGeneral(cfg.General, true)
+	updateListeners(cfg.General, cfg.Listeners, force)
 	updateDNS(cfg.DNS)
 	updateTun(cfg.General) // tun should not care "force"
 	loadProvider(cfg.Providers)
@@ -194,8 +196,31 @@ func loadProvider[P providerTypes.Provider](providers map[string]P) {
 	wg.Wait()
 }
 
-func updateListeners(listeners map[string]C.InboundListener) {
+func updateListeners(general *config.General, listeners map[string]C.InboundListener, force bool) {
 	listener.PatchInboundListeners(listeners, tunnel.Tunnel, true)
+	if !force {
+		return
+	}
+
+	allowLan := general.AllowLan
+	listener.SetAllowLan(allowLan)
+	inbound.SetSkipAuthPrefixes(general.SkipAuthPrefixes)
+	inbound.SetAllowedIPs(general.LanAllowedIPs)
+	inbound.SetDisAllowedIPs(general.LanDisAllowedIPs)
+
+	bindAddress := general.BindAddress
+	listener.SetBindAddress(bindAddress)
+
+	listener.ReCreateHTTP(general.Port, tunnel.Tunnel)
+	listener.ReCreateSocks(general.SocksPort, tunnel.Tunnel)
+	listener.ReCreateRedir(general.RedirPort, tunnel.Tunnel)
+	listener.ReCreateTProxy(general.TProxyPort, tunnel.Tunnel)
+	listener.ReCreateMixed(general.MixedPort, tunnel.Tunnel)
+	listener.ReCreateMixEC(general.MixECConfig, tunnel.Tunnel)
+	listener.ReCreateShadowSocks(general.ShadowSocksConfig, tunnel.Tunnel)
+	listener.ReCreateVmess(general.VmessConfig, tunnel.Tunnel)
+	listener.ReCreateMTProxy(general.MTProxyConfig, tunnel.Tunnel)
+	listener.ReCreateTuic(general.TuicServer, tunnel.Tunnel)
 }
 
 func updateExperimental(c *config.Experimental) {
@@ -301,16 +326,24 @@ func updateTunnels(tunnels []LC.Tunnel) {
 	listener.PatchTunnel(tunnels, tunnel.Tunnel)
 }
 
-func updateGeneral(general *config.General, force bool) {
-	log.SetLevel(general.LogLevel)
+//go:linkname temporaryUpdateGeneral github.com/metacubex/mihomo/config.temporaryUpdateGeneral
+func temporaryUpdateGeneral(general *config.General) func() {
+	oldGeneral := GetGeneral()
+	updateGeneral(general, false)
+	return func() {
+		updateGeneral(oldGeneral, false)
+	}
+}
+
+func updateGeneral(general *config.General, logging bool) {
 	tunnel.SetMode(general.Mode)
 	resolver.DisableIPv6 = !general.IPv6
 	adapter.SetHealthCheckURL(general.HealthCheckURL)
 	provider.SetHealthCheckLazyDefault(general.HealthCheckLazyDefault)
 	provider.SetTouchAfterLazyPassNum(general.TouchAfterLazyPassNum)
 	tunnel.SetPreResolveProcessName(general.PreResolveProcessName)
-	if general.TCPConcurrent {
-		dialer.SetTcpConcurrent(general.TCPConcurrent)
+	dialer.SetTcpConcurrent(general.TCPConcurrent)
+	if logging && general.TCPConcurrent {
 		log.Infoln("Use tcp concurrent")
 	}
 
@@ -327,29 +360,8 @@ func updateGeneral(general *config.General, force bool) {
 
 	iface.FlushCache()
 
-	if !force {
-		return
-	}
-
-	allowLan := general.AllowLan
-	listener.SetAllowLan(allowLan)
-	inbound.SetSkipAuthPrefixes(general.SkipAuthPrefixes)
-	inbound.SetAllowedIPs(general.LanAllowedIPs)
-	inbound.SetDisAllowedIPs(general.LanDisAllowedIPs)
-
-	bindAddress := general.BindAddress
-	listener.SetBindAddress(bindAddress)
-
-	listener.ReCreateHTTP(general.Port, tunnel.Tunnel)
-	listener.ReCreateSocks(general.SocksPort, tunnel.Tunnel)
-	listener.ReCreateRedir(general.RedirPort, tunnel.Tunnel)
-	listener.ReCreateTProxy(general.TProxyPort, tunnel.Tunnel)
-	listener.ReCreateMixed(general.MixedPort, tunnel.Tunnel)
-	listener.ReCreateMixEC(general.MixECConfig, tunnel.Tunnel)
-	listener.ReCreateShadowSocks(general.ShadowSocksConfig, tunnel.Tunnel)
-	listener.ReCreateVmess(general.VmessConfig, tunnel.Tunnel)
-	listener.ReCreateMTProxy(general.MTProxyConfig, tunnel.Tunnel)
-	listener.ReCreateTuic(general.TuicServer, tunnel.Tunnel)
+	mihomoHttp.SetUA(general.GlobalUA)
+	resource.SetETag(general.ETagSupport)
 }
 
 func updateUsers(users []auth.AuthUser) {

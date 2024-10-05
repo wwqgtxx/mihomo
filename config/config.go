@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	_ "unsafe"
 
 	"github.com/metacubex/mihomo/adapter"
 	"github.com/metacubex/mihomo/adapter/outbound"
@@ -422,6 +423,12 @@ func ParseRawConfig(rawCfg *RawConfig) (*Config, error) {
 	}
 	config.General = general
 
+	// We need to temporarily apply some configuration in general and roll back after parsing the complete configuration.
+	// The loading and downloading of geodata in the parseRules and parseRuleProviders rely on these.
+	// This implementation is very disgusting, but there is currently no better solution
+	rollback := temporaryUpdateGeneral(config.General)
+	defer rollback()
+
 	controller, err := parseController(rawCfg)
 	if err != nil {
 		return nil, err
@@ -508,6 +515,9 @@ func ParseRawConfig(rawCfg *RawConfig) (*Config, error) {
 
 	return config, nil
 }
+
+//go:linkname temporaryUpdateGeneral
+func temporaryUpdateGeneral(general *General) func()
 
 func parseGeneral(cfg *RawConfig) (*General, error) {
 	mihomoHttp.SetUA(cfg.GlobalUA)

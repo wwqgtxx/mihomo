@@ -13,6 +13,7 @@ import (
 	"github.com/metacubex/mihomo/component/resource"
 	C "github.com/metacubex/mihomo/constant"
 	P "github.com/metacubex/mihomo/constant/provider"
+	"github.com/metacubex/mihomo/rules/common"
 
 	"gopkg.in/yaml.v3"
 )
@@ -23,17 +24,6 @@ func SetTunnel(t P.Tunnel) {
 	tunnel = t
 }
 
-type ruleSetProvider struct {
-	*resource.Fetcher[ruleStrategy]
-	behavior P.RuleBehavior
-	format   P.RuleFormat
-	strategy ruleStrategy
-}
-
-type RuleSetProvider struct {
-	*ruleSetProvider
-}
-
 type RulePayload struct {
 	/**
 	key: Domain or IP Cidr
@@ -41,6 +31,17 @@ type RulePayload struct {
 	*/
 	Payload []string `yaml:"payload"`
 	Rules   []string `yaml:"rules"`
+}
+
+type providerForApi struct {
+	Behavior    string    `json:"behavior"`
+	Format      string    `json:"format"`
+	Name        string    `json:"name"`
+	RuleCount   int       `json:"ruleCount"`
+	Type        string    `json:"type"`
+	VehicleType string    `json:"vehicleType"`
+	UpdatedAt   time.Time `json:"updatedAt"`
+	Payload     []string  `json:"payload,omitempty"`
 }
 
 type ruleStrategy interface {
@@ -61,8 +62,47 @@ type mrsRuleStrategy interface {
 	DumpMrs(f func(key string) bool)
 }
 
-func (rp *ruleSetProvider) Type() P.ProviderType {
+type baseProvider struct {
+	behavior P.RuleBehavior
+	strategy ruleStrategy
+}
+
+func (bp *baseProvider) Type() P.ProviderType {
 	return P.Rule
+}
+
+func (bp *baseProvider) Behavior() P.RuleBehavior {
+	return bp.behavior
+}
+
+func (bp *baseProvider) Count() int {
+	return bp.strategy.Count()
+}
+
+func (bp *baseProvider) Match(metadata *C.Metadata) bool {
+	return bp.strategy != nil && bp.strategy.Match(metadata)
+}
+
+func (bp *baseProvider) ShouldResolveIP() bool {
+	return bp.strategy.ShouldResolveIP()
+}
+
+func (bp *baseProvider) ShouldFindProcess() bool {
+	return bp.strategy.ShouldFindProcess()
+}
+
+func (bp *baseProvider) Strategy() any {
+	return bp.strategy
+}
+
+type ruleSetProvider struct {
+	baseProvider
+	*resource.Fetcher[ruleStrategy]
+	format P.RuleFormat
+}
+
+type RuleSetProvider struct {
+	*ruleSetProvider
 }
 
 func (rp *ruleSetProvider) Initial() error {
@@ -75,40 +115,16 @@ func (rp *ruleSetProvider) Update() error {
 	return err
 }
 
-func (rp *ruleSetProvider) Behavior() P.RuleBehavior {
-	return rp.behavior
-}
-
-func (rp *ruleSetProvider) Count() int {
-	return rp.strategy.Count()
-}
-
-func (rp *ruleSetProvider) Match(metadata *C.Metadata) bool {
-	return rp.strategy != nil && rp.strategy.Match(metadata)
-}
-
-func (rp *ruleSetProvider) ShouldResolveIP() bool {
-	return rp.strategy.ShouldResolveIP()
-}
-
-func (rp *ruleSetProvider) ShouldFindProcess() bool {
-	return rp.strategy.ShouldFindProcess()
-}
-
-func (rp *ruleSetProvider) Strategy() any {
-	return rp.strategy
-}
-
 func (rp *ruleSetProvider) MarshalJSON() ([]byte, error) {
 	return json.Marshal(
-		map[string]interface{}{
-			"behavior":    rp.behavior.String(),
-			"format":      rp.format.String(),
-			"name":        rp.Name(),
-			"ruleCount":   rp.strategy.Count(),
-			"type":        rp.Type().String(),
-			"updatedAt":   rp.UpdatedAt(),
-			"vehicleType": rp.VehicleType().String(),
+		providerForApi{
+			Behavior:    rp.behavior.String(),
+			Format:      rp.format.String(),
+			Name:        rp.Fetcher.Name(),
+			RuleCount:   rp.strategy.Count(),
+			Type:        rp.Type().String(),
+			UpdatedAt:   rp.UpdatedAt(),
+			VehicleType: rp.VehicleType().String(),
 		})
 }
 
@@ -117,11 +133,12 @@ func (rp *RuleSetProvider) Close() error {
 	return rp.ruleSetProvider.Close()
 }
 
-func NewRuleSetProvider(name string, behavior P.RuleBehavior, format P.RuleFormat, interval time.Duration, vehicle P.Vehicle,
-	parse func(tp, payload, target string, params []string, subRules map[string][]C.Rule) (parsed C.Rule, parseErr error)) P.RuleProvider {
+func NewRuleSetProvider(name string, behavior P.RuleBehavior, format P.RuleFormat, interval time.Duration, vehicle P.Vehicle, parse common.ParseRuleFunc) P.RuleProvider {
 	rp := &ruleSetProvider{
-		behavior: behavior,
-		format:   format,
+		baseProvider: baseProvider{
+			behavior: behavior,
+		},
+		format: format,
 	}
 
 	onUpdate := func(strategy ruleStrategy) {
@@ -142,7 +159,7 @@ func NewRuleSetProvider(name string, behavior P.RuleBehavior, format P.RuleForma
 	return wrapper
 }
 
-func newStrategy(behavior P.RuleBehavior, parse func(tp, payload, target string, params []string, subRules map[string][]C.Rule) (parsed C.Rule, parseErr error)) ruleStrategy {
+func newStrategy(behavior P.RuleBehavior, parse common.ParseRuleFunc) ruleStrategy {
 	switch behavior {
 	case P.Domain:
 		strategy := NewDomainStrategy()
@@ -158,8 +175,10 @@ func newStrategy(behavior P.RuleBehavior, parse func(tp, payload, target string,
 	}
 }
 
-var ErrNoPayload = errors.New("file must have a `payload` field")
-var ErrInvalidFormat = errors.New("invalid format")
+var (
+	ErrNoPayload     = errors.New("file must have a `payload` field")
+	ErrInvalidFormat = errors.New("invalid format")
+)
 
 func rulesParse(buf []byte, strategy ruleStrategy, format P.RuleFormat) (ruleStrategy, error) {
 	strategy.Reset()
@@ -253,4 +272,77 @@ func rulesParse(buf []byte, strategy ruleStrategy, format P.RuleFormat) (ruleStr
 	strategy.FinishInsert()
 
 	return strategy, nil
+}
+
+func rulesParseInline(rs []string, strategy ruleStrategy) ruleStrategy {
+	strategy.Reset()
+	for _, r := range rs {
+		if r != "" {
+			strategy.Insert(r)
+		}
+	}
+	strategy.FinishInsert()
+	return strategy
+}
+
+type InlineProvider struct {
+	*inlineProvider
+}
+
+type inlineProvider struct {
+	baseProvider
+	name     string
+	updateAt time.Time
+	payload  []string
+}
+
+func (i *inlineProvider) Name() string {
+	return i.name
+}
+
+func (i *inlineProvider) Initial() error {
+	return nil
+}
+
+func (i *inlineProvider) Update() error {
+	// make api update happy
+	i.updateAt = time.Now()
+	return nil
+}
+
+func (i *inlineProvider) VehicleType() P.VehicleType {
+	return P.Inline
+}
+
+func (i *inlineProvider) MarshalJSON() ([]byte, error) {
+	return json.Marshal(
+		providerForApi{
+			Behavior:    i.behavior.String(),
+			Name:        i.Name(),
+			RuleCount:   i.strategy.Count(),
+			Type:        i.Type().String(),
+			VehicleType: i.VehicleType().String(),
+			UpdatedAt:   i.updateAt,
+			Payload:     i.payload,
+		})
+}
+
+func NewInlineProvider(name string, behavior P.RuleBehavior, payload []string, parse common.ParseRuleFunc) P.RuleProvider {
+	ip := &inlineProvider{
+		baseProvider: baseProvider{
+			behavior: behavior,
+			strategy: newStrategy(behavior, parse),
+		},
+		payload:  payload,
+		name:     name,
+		updateAt: time.Now(),
+	}
+	ip.strategy = rulesParseInline(payload, ip.strategy)
+
+	wrapper := &InlineProvider{
+		ip,
+	}
+
+	//runtime.SetFinalizer(wrapper, (*InlineProvider).Close)
+	return wrapper
 }

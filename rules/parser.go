@@ -80,3 +80,5 @@ func ParseRule(tp, payload, target string, params []string, subRules map[string]
 
 	return
 }
+
+var _ RC.ParseRuleFunc = ParseRule

@@ -18,6 +18,7 @@ type Base struct {
 	iface  string
 	tp     C.AdapterType
 	udp    bool
+	xudp   bool
 	tfo    bool
 	mpTcp  bool
 	rmark  int
@@ -69,9 +70,15 @@ func (b *Base) SupportUDP() bool {
 	return b.udp
 }
 
-// SupportTFO implements C.ProxyAdapter
-func (b *Base) SupportTFO() bool {
-	return b.tfo
+// ProxyInfo implements C.ProxyAdapter
+func (b *Base) ProxyInfo() (info C.ProxyInfo) {
+	info.XUDP = b.xudp
+	info.TFO = b.tfo
+	info.MPTCP = b.mpTcp
+	info.SMUX = false
+	info.Interface = b.iface
+	info.RoutingMark = b.rmark
+	return
 }
 
 // IsL3Protocol implements C.ProxyAdapter

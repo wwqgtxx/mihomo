@@ -156,6 +156,17 @@ func (p *Proxy) MarshalJSON() ([]byte, error) {
 	mapping["alive"] = p.Alive()
 	mapping["name"] = p.Name()
 	mapping["udp"] = p.SupportUDP()
+	mapping["uot"] = p.SupportUOT()
+
+	proxyInfo := p.ProxyInfo()
+	mapping["xudp"] = proxyInfo.XUDP
+	mapping["tfo"] = proxyInfo.TFO
+	mapping["mptcp"] = proxyInfo.MPTCP
+	mapping["smux"] = proxyInfo.SMUX
+	mapping["interface"] = proxyInfo.Interface
+	mapping["dialer-proxy"] = proxyInfo.DialerProxy
+	mapping["routing-mark"] = proxyInfo.RoutingMark
+
 	return json.Marshal(mapping)
 }
 

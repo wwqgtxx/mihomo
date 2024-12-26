@@ -610,6 +610,13 @@ func (r *refProxyAdapter) SupportUDP() bool {
 	return false
 }
 
+func (r *refProxyAdapter) ProxyInfo() C.ProxyInfo {
+	if r.proxyAdapter != nil {
+		return r.proxyAdapter.ProxyInfo()
+	}
+	return C.ProxyInfo{}
+}
+
 func (r *refProxyAdapter) MarshalJSON() ([]byte, error) {
 	if r.proxyAdapter != nil {
 		return r.proxyAdapter.MarshalJSON()

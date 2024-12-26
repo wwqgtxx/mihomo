@@ -94,6 +94,13 @@ func (h *Http) SupportWithDialer() C.NetWork {
 	return C.TCP
 }
 
+// ProxyInfo implements C.ProxyAdapter
+func (h *Http) ProxyInfo() C.ProxyInfo {
+	info := h.Base.ProxyInfo()
+	info.DialerProxy = h.option.DialerProxy
+	return info
+}
+
 func (h *Http) shakeHand(metadata *C.Metadata, rw io.ReadWriter) error {
 	addr := metadata.RemoteAddress()
 	req := &http.Request{

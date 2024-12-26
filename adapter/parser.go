@@ -123,6 +123,13 @@ func ParseProxy(mapping map[string]any) (C.Proxy, error) {
 			break
 		}
 		proxy, err = outbound.NewSsh(*sshOption)
+	case "mieru":
+		mieruOption := &outbound.MieruOption{}
+		err = decoder.Decode(mapping, mieruOption)
+		if err != nil {
+			break
+		}
+		proxy, err = outbound.NewMieru(*mieruOption)
 	default:
 		return nil, fmt.Errorf("unsupport proxy type: %s", proxyType)
 	}

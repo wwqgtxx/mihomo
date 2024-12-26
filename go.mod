@@ -6,6 +6,7 @@ require (
 	github.com/3andne/restls-client-go v0.1.6
 	github.com/bahlo/generic-list-go v0.2.0
 	github.com/dlclark/regexp2 v1.11.4
+	github.com/enfein/mieru/v3 v3.8.4
 	github.com/go-chi/chi/v5 v5.1.0
 	github.com/go-chi/render v1.0.3
 	github.com/gobwas/ws v1.4.0
@@ -48,6 +49,7 @@ require (
 	golang.org/x/exp v0.0.0-20240904232852-e7e105dedf7e // lastest version compatible with golang1.20
 	golang.org/x/net v0.31.0
 	golang.org/x/sys v0.27.0
+	google.golang.org/protobuf v1.34.2
 	gopkg.in/yaml.v3 v3.0.1
 	lukechampine.com/blake3 v1.3.0
 )

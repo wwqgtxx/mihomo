@@ -93,9 +93,12 @@ func (f *Fallback) Unwrap(metadata *C.Metadata, touch bool) C.Proxy {
 }
 
 func (f *Fallback) proxies(touch bool) []C.Proxy {
-	elm, _, _ := f.single.Do(func() ([]C.Proxy, error) {
+	elm, _, shared := f.single.Do(func() ([]C.Proxy, error) {
 		return getProvidersProxies(f.providers, touch, f.filter), nil
 	})
+	if shared && touch { // a shared fastSingle.Do() may cause providers untouched, so we touch them again
+		touchProviders(f.providers)
+	}
 
 	return elm
 }

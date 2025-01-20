@@ -188,9 +188,12 @@ func (lb *LoadBalance) Unwrap(metadata *C.Metadata, touch bool) C.Proxy {
 }
 
 func (lb *LoadBalance) proxies(touch bool) []C.Proxy {
-	elm, _, _ := lb.single.Do(func() ([]C.Proxy, error) {
+	elm, _, shared := lb.single.Do(func() ([]C.Proxy, error) {
 		return getProvidersProxies(lb.providers, touch, lb.filter), nil
 	})
+	if shared && touch { // a shared fastSingle.Do() may cause providers untouched, so we touch them again
+		touchProviders(lb.providers)
+	}
 
 	return elm
 }

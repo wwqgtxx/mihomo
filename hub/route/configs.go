@@ -42,8 +42,6 @@ type configSchema struct {
 	MixECConfig            *string            `json:"mixec-config"`
 	ShadowSocksConfig      *string            `json:"ss-config"`
 	VmessConfig            *string            `json:"vmess-config"`
-	TcptunConfig           *string            `json:"tcptun-config"`
-	UdptunConfig           *string            `json:"udptun-config"`
 	AllowLan               *bool              `json:"allow-lan"`
 	SkipAuthPrefixes       *[]netip.Prefix    `json:"skip-auth-prefixes"`
 	LanAllowedIPs          *[]netip.Prefix    `json:"lan-allowed-ips"`

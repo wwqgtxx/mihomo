@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/metacubex/mihomo/log"
+	"github.com/metacubex/mihomo/ntp"
 
 	"github.com/metacubex/randv2"
 	utls "github.com/metacubex/utls"
@@ -65,7 +66,7 @@ func GetRealityConn(ctx context.Context, conn net.Conn, ClientFingerprint string
 			rawSessionID[i] = 0
 		}
 
-		binary.BigEndian.PutUint64(hello.SessionId, uint64(time.Now().Unix()))
+		binary.BigEndian.PutUint64(hello.SessionId, uint64(ntp.Now().Unix()))
 
 		copy(hello.SessionId[8:], realityConfig.ShortID[:])
 		hello.SessionId[0] = 1

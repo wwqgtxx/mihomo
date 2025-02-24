@@ -13,6 +13,7 @@ import (
 	C "github.com/metacubex/mihomo/constant"
 	LC "github.com/metacubex/mihomo/listener/config"
 	"github.com/metacubex/mihomo/listener/sing"
+	"github.com/metacubex/mihomo/ntp"
 	mihomoVMess "github.com/metacubex/mihomo/transport/vmess"
 
 	vmess "github.com/metacubex/sing-vmess"
@@ -49,7 +50,7 @@ func New(config LC.VmessServer, tunnel C.Tunnel, additions ...inbound.Addition) 
 		return nil, err
 	}
 
-	service := vmess.NewService[string](h, vmess.ServiceWithDisableHeaderProtection())
+	service := vmess.NewService[string](h, vmess.ServiceWithDisableHeaderProtection(), vmess.ServiceWithTimeFunc(ntp.Now))
 	err = service.UpdateUsers(
 		common.Map(config.Users, func(it LC.VmessUser) string {
 			return it.Username

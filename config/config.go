@@ -107,6 +107,16 @@ type Experimental struct {
 	QUICGoDisableECN bool
 }
 
+// NTP config
+type NTP struct {
+	Enable        bool
+	Server        string
+	Port          int
+	Interval      int
+	DialerProxy   string
+	WriteToSystem bool
+}
+
 // DNS config
 type DNS struct {
 	Enable                bool
@@ -194,6 +204,15 @@ type RawFallbackFilter struct {
 	GeoIPCode string   `yaml:"geoip-code" json:"geoip-code"`
 	IPCIDR    []string `yaml:"ipcidr" json:"ipcidr"`
 	Domain    []string `yaml:"domain" json:"domain"`
+}
+
+type RawNTP struct {
+	Enable        bool   `yaml:"enable" json:"enable"`
+	Server        string `yaml:"server" json:"server"`
+	Port          int    `yaml:"port" json:"port"`
+	Interval      int    `yaml:"interval" json:"interval"`
+	DialerProxy   string `yaml:"dialer-proxy" json:"dialer-proxy"`
+	WriteToSystem bool   `yaml:"write-to-system" json:"write-to-system"`
 }
 
 type RawExperimental struct {
@@ -285,6 +304,7 @@ type RawConfig struct {
 	Listeners     []map[string]any          `yaml:"listeners" json:"listeners"`
 	Hosts         map[string]string         `yaml:"hosts" json:"hosts"`
 	DNS           RawDNS                    `yaml:"dns" json:"dns"`
+	NTP           RawNTP                    `yaml:"ntp" json:"ntp"`
 	Tun           LC.Tun                    `yaml:"tun" json:"tun"`
 	TuicServer    LC.TuicServer             `yaml:"tuic-server" json:"tuic-server"`
 	Experimental  RawExperimental           `yaml:"experimental" json:"experimental"`
@@ -596,6 +616,17 @@ func parseExperimental(cfg *RawConfig) (*Experimental, error) {
 	return &Experimental{
 		QUICGoDisableGSO: cfg.Experimental.QUICGoDisableGSO,
 		QUICGoDisableECN: cfg.Experimental.QUICGoDisableECN,
+	}, nil
+}
+
+func parseNTP(cfg *RawConfig) (*NTP, error) {
+	return &NTP{
+		Enable:        cfg.NTP.Enable,
+		Server:        cfg.NTP.Server,
+		Port:          cfg.NTP.Port,
+		Interval:      cfg.NTP.Interval,
+		DialerProxy:   cfg.NTP.DialerProxy,
+		WriteToSystem: cfg.NTP.WriteToSystem,
 	}, nil
 }
 

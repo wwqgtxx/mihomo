@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	N "github.com/metacubex/mihomo/common/net"
 	"github.com/metacubex/mihomo/common/utils"
@@ -20,6 +19,7 @@ import (
 	"github.com/metacubex/mihomo/component/resolver"
 	tlsC "github.com/metacubex/mihomo/component/tls"
 	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/ntp"
 	"github.com/metacubex/mihomo/transport/gun"
 	mihomoVMess "github.com/metacubex/mihomo/transport/vmess"
 
@@ -426,7 +426,7 @@ func NewVmess(option VmessOption) (*Vmess, error) {
 	if option.AuthenticatedLength {
 		options = append(options, vmess.ClientWithAuthenticatedLength())
 	}
-	options = append(options, vmess.ClientWithTimeFunc(time.Now))
+	options = append(options, vmess.ClientWithTimeFunc(ntp.Now))
 	client, err := vmess.NewClient(option.UUID, security, option.AlterID, options...)
 	if err != nil {
 		return nil, err

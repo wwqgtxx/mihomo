@@ -19,11 +19,12 @@ require (
 	github.com/metacubex/chacha v0.1.0
 	github.com/metacubex/quic-go v0.48.3-0.20241126053724-b69fea3888da
 	github.com/metacubex/randv2 v0.2.0
+	github.com/metacubex/reality v0.0.0-20250219003814-74e8d7850629
 	github.com/metacubex/sing-quic v0.0.0-20250119013740-2a19cce83925
 	github.com/metacubex/sing-shadowsocks v0.2.8
 	github.com/metacubex/sing-shadowsocks2 v0.2.2
 	github.com/metacubex/sing-tun v0.4.5
-	github.com/metacubex/sing-vmess v0.1.9-0.20240719134745-1df6fb20bbf9
+	github.com/metacubex/sing-vmess v0.1.14-0.20250203033000-f61322b3dbe3
 	github.com/metacubex/sing-wireguard v0.0.0-20241126021510-0827d417b589
 	github.com/metacubex/tfo-go v0.0.0-20241231083714-66613d49c422
 	github.com/metacubex/utls v1.6.6

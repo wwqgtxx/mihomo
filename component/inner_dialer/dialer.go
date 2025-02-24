@@ -49,3 +49,5 @@ func (d RemoteDialer) DialTCP(addr string, proxyName string) (net.Conn, error) {
 
 	return conn1, nil
 }
+
+var Inner = NewDialer(C.INNER)

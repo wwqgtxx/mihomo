@@ -27,10 +27,9 @@ import (
 
 type ShadowSocks struct {
 	*Base
-	//cipher core.Cipher
 	method shadowsocks.Method
-	option *ShadowSocksOption
 
+	option *ShadowSocksOption
 	// obfs
 	obfsMode        string
 	obfsOption      *simpleObfsOption
@@ -118,9 +117,6 @@ func (ss *ShadowSocks) StreamConnContext(ctx context.Context, c net.Conn, metada
 		useEarly = true
 	}
 	useEarly = useEarly || N.NeedHandshake(c)
-	//c = ss.cipher.StreamConn(c)
-	//_, err := c.Write(serializesSocksAddr(metadata))
-	//return c, err
 	if metadata.NetWork == C.UDP && ss.option.UDPOverTCP {
 		uotDestination := uot.RequestDestination(uint8(ss.option.UDPOverTCPVersion))
 		if useEarly {
@@ -157,14 +153,6 @@ func (ss *ShadowSocks) DialContextWithDialer(ctx context.Context, dialer C.Diale
 	defer func(c net.Conn) {
 		safeConnClose(c, err)
 	}(c)
-
-	switch ss.obfsMode {
-	case shadowtls.Mode:
-		c, err = shadowtls.NewShadowTLS(ctx, c, ss.shadowTLSOption)
-		if err != nil {
-			return nil, err
-		}
-	}
 
 	c, err = ss.StreamConnContext(ctx, c, metadata)
 	return NewConn(c, ss), err
@@ -244,9 +232,6 @@ func (ss *ShadowSocks) SupportUOT() bool {
 
 func NewShadowSocks(option ShadowSocksOption) (*ShadowSocks, error) {
 	addr := net.JoinHostPort(option.Server, strconv.Itoa(option.Port))
-	//cipher := option.Cipher
-	//password := option.Password
-	//ciph, err := core.PickCipher(cipher, nil, password)
 	method, err := shadowsocks.CreateMethod(context.Background(), option.Cipher, shadowsocks.MethodOptions{
 		Password: option.Password,
 	})
@@ -346,10 +331,9 @@ func NewShadowSocks(option ShadowSocksOption) (*ShadowSocks, error) {
 			rmark:  option.RoutingMark,
 			prefer: C.NewDNSPrefer(option.IPVersion),
 		},
-		//cipher: ciph,
 		method: method,
-		option: &option,
 
+		option:          &option,
 		obfsMode:        obfsMode,
 		v2rayOption:     v2rayOption,
 		obfsOption:      obfsOption,

@@ -12,12 +12,11 @@ import (
 	"github.com/metacubex/mihomo/component/ca"
 	"github.com/metacubex/mihomo/component/dialer"
 	"github.com/metacubex/mihomo/component/proxydialer"
+	tlsC "github.com/metacubex/mihomo/component/tls"
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/transport/gun"
 	"github.com/metacubex/mihomo/transport/shadowsocks/core"
 	"github.com/metacubex/mihomo/transport/trojan"
-
-	"golang.org/x/net/http2"
 )
 
 type Trojan struct {
@@ -28,26 +27,30 @@ type Trojan struct {
 	// for gun mux
 	gunTLSConfig *tls.Config
 	gunConfig    *gun.Config
-	transport    *http2.Transport
+	transport    *gun.TransportWrap
+
+	realityConfig *tlsC.RealityConfig
 
 	ssCipher core.Cipher
 }
 
 type TrojanOption struct {
 	BasicOption
-	Name           string         `proxy:"name"`
-	Server         string         `proxy:"server"`
-	Port           int            `proxy:"port"`
-	Password       string         `proxy:"password"`
-	ALPN           []string       `proxy:"alpn,omitempty"`
-	SNI            string         `proxy:"sni,omitempty"`
-	Fingerprint    string         `proxy:"fingerprint,omitempty"`
-	SkipCertVerify bool           `proxy:"skip-cert-verify,omitempty"`
-	UDP            bool           `proxy:"udp,omitempty"`
-	Network        string         `proxy:"network,omitempty"`
-	GrpcOpts       GrpcOptions    `proxy:"grpc-opts,omitempty"`
-	WSOpts         WSOptions      `proxy:"ws-opts,omitempty"`
-	SSOpts         TrojanSSOption `proxy:"ss-opts,omitempty"`
+	Name              string         `proxy:"name"`
+	Server            string         `proxy:"server"`
+	Port              int            `proxy:"port"`
+	Password          string         `proxy:"password"`
+	ALPN              []string       `proxy:"alpn,omitempty"`
+	SNI               string         `proxy:"sni,omitempty"`
+	SkipCertVerify    bool           `proxy:"skip-cert-verify,omitempty"`
+	Fingerprint       string         `proxy:"fingerprint,omitempty"`
+	UDP               bool           `proxy:"udp,omitempty"`
+	Network           string         `proxy:"network,omitempty"`
+	RealityOpts       RealityOptions `proxy:"reality-opts,omitempty"`
+	GrpcOpts          GrpcOptions    `proxy:"grpc-opts,omitempty"`
+	WSOpts            WSOptions      `proxy:"ws-opts,omitempty"`
+	SSOpts            TrojanSSOption `proxy:"ss-opts,omitempty"`
+	ClientFingerprint string         `proxy:"client-fingerprint,omitempty"`
 }
 
 // TrojanSSOption from https://github.com/p4gefau1t/trojan-go/blob/v0.10.6/tunnel/shadowsocks/config.go#L5
@@ -74,11 +77,9 @@ func (t *Trojan) plainStream(ctx context.Context, c net.Conn) (net.Conn, error) 
 		}
 
 		if len(t.option.WSOpts.Headers) != 0 {
-			header := http.Header{}
 			for key, value := range t.option.WSOpts.Headers {
-				header.Add(key, value)
+				wsOpts.Headers.Add(key, value)
 			}
-			wsOpts.Headers = header
 		}
 
 		return t.instance.StreamWebsocketConn(ctx, c, wsOpts)
@@ -90,8 +91,13 @@ func (t *Trojan) plainStream(ctx context.Context, c net.Conn) (net.Conn, error) 
 // StreamConnContext implements C.ProxyAdapter
 func (t *Trojan) StreamConnContext(ctx context.Context, c net.Conn, metadata *C.Metadata) (net.Conn, error) {
 	var err error
+
+	if tlsC.HaveGlobalFingerprint() && len(t.option.ClientFingerprint) == 0 {
+		t.option.ClientFingerprint = tlsC.GetGlobalFingerprint()
+	}
+
 	if t.transport != nil {
-		c, err = gun.StreamGunWithConn(c, t.gunTLSConfig, t.gunConfig)
+		c, err = gun.StreamGunWithConn(c, t.gunTLSConfig, t.gunConfig, t.realityConfig)
 	} else {
 		c, err = t.plainStream(ctx, c)
 	}
@@ -249,11 +255,12 @@ func NewTrojan(option TrojanOption) (*Trojan, error) {
 	addr := net.JoinHostPort(option.Server, strconv.Itoa(option.Port))
 
 	tOption := &trojan.Option{
-		Password:       option.Password,
-		ALPN:           option.ALPN,
-		ServerName:     option.Server,
-		SkipCertVerify: option.SkipCertVerify,
-		Fingerprint:    option.Fingerprint,
+		Password:          option.Password,
+		ALPN:              option.ALPN,
+		ServerName:        option.Server,
+		SkipCertVerify:    option.SkipCertVerify,
+		Fingerprint:       option.Fingerprint,
+		ClientFingerprint: option.ClientFingerprint,
 	}
 
 	if option.SNI != "" {
@@ -275,6 +282,13 @@ func NewTrojan(option TrojanOption) (*Trojan, error) {
 		instance: trojan.New(tOption),
 		option:   &option,
 	}
+
+	var err error
+	t.realityConfig, err = option.RealityOpts.Parse()
+	if err != nil {
+		return nil, err
+	}
+	tOption.Reality = t.realityConfig
 
 	if option.SSOpts.Enabled {
 		if option.SSOpts.Password == "" {
@@ -320,7 +334,8 @@ func NewTrojan(option TrojanOption) (*Trojan, error) {
 			return nil, err
 		}
 
-		t.transport = gun.NewHTTP2Client(dialFn, tlsConfig)
+		t.transport = gun.NewHTTP2Client(dialFn, tlsConfig, tOption.ClientFingerprint, t.realityConfig)
+
 		t.gunTLSConfig = tlsConfig
 		t.gunConfig = &gun.Config{
 			ServiceName: option.GrpcOpts.GrpcServiceName,

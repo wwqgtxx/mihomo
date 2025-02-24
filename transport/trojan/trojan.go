@@ -12,8 +12,10 @@ import (
 	"net/http"
 	"sync"
 
+	N "github.com/metacubex/mihomo/common/net"
 	"github.com/metacubex/mihomo/common/pool"
 	"github.com/metacubex/mihomo/component/ca"
+	tlsC "github.com/metacubex/mihomo/component/tls"
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/transport/socks5"
 	"github.com/metacubex/mihomo/transport/vmess"
@@ -33,17 +35,23 @@ var (
 
 type Command = byte
 
-var (
+const (
 	CommandTCP byte = 1
 	CommandUDP byte = 3
+
+	// deprecated XTLS commands, as souvenirs
+	commandXRD byte = 0xf0 // XTLS direct mode
+	commandXRO byte = 0xf1 // XTLS origin mode
 )
 
 type Option struct {
-	Password       string
-	ALPN           []string
-	ServerName     string
-	Fingerprint    string
-	SkipCertVerify bool
+	Password          string
+	ALPN              []string
+	ServerName        string
+	SkipCertVerify    bool
+	Fingerprint       string
+	ClientFingerprint string
+	Reality           *tlsC.RealityConfig
 }
 
 type WebsocketOption struct {
@@ -65,7 +73,6 @@ func (t *Trojan) StreamConn(ctx context.Context, conn net.Conn) (net.Conn, error
 	if len(t.option.ALPN) != 0 {
 		alpn = t.option.ALPN
 	}
-
 	tlsConfig := &tls.Config{
 		NextProtos:         alpn,
 		MinVersion:         tls.VersionTLS12,
@@ -79,16 +86,34 @@ func (t *Trojan) StreamConn(ctx context.Context, conn net.Conn) (net.Conn, error
 		return nil, err
 	}
 
+	if len(t.option.ClientFingerprint) != 0 {
+		if t.option.Reality == nil {
+			utlsConn, valid := vmess.GetUTLSConn(conn, t.option.ClientFingerprint, tlsConfig)
+			if valid {
+				ctx, cancel := context.WithTimeout(context.Background(), C.DefaultTLSTimeout)
+				defer cancel()
+
+				err := utlsConn.HandshakeContext(ctx)
+				return utlsConn, err
+			}
+		} else {
+			ctx, cancel := context.WithTimeout(context.Background(), C.DefaultTLSTimeout)
+			defer cancel()
+			return tlsC.GetRealityConn(ctx, conn, t.option.ClientFingerprint, tlsConfig, t.option.Reality)
+		}
+	}
+	if t.option.Reality != nil {
+		return nil, errors.New("REALITY is based on uTLS, please set a client-fingerprint")
+	}
+
 	tlsConn := tls.Client(conn, tlsConfig)
 
 	// fix tls handshake not timeout
 	ctx, cancel := context.WithTimeout(context.Background(), C.DefaultTLSTimeout)
 	defer cancel()
-	if err := tlsConn.HandshakeContext(ctx); err != nil {
-		return nil, err
-	}
 
-	return tlsConn, nil
+	err = tlsConn.HandshakeContext(ctx)
+	return tlsConn, err
 }
 
 func (t *Trojan) StreamWebsocketConn(ctx context.Context, conn net.Conn, wsOptions *WebsocketOption) (net.Conn, error) {
@@ -119,6 +144,7 @@ func (t *Trojan) StreamWebsocketConn(ctx context.Context, conn net.Conn, wsOptio
 		V2rayHttpUpgradeFastOpen: wsOptions.V2rayHttpUpgradeFastOpen,
 		TLS:                      true,
 		TLSConfig:                tlsConfig,
+		ClientFingerprint:        t.option.ClientFingerprint,
 	})
 }
 
@@ -222,6 +248,8 @@ func New(option *Option) *Trojan {
 	return &Trojan{option, hexSha224([]byte(option.Password))}
 }
 
+var _ N.EnhancePacketConn = (*PacketConn)(nil)
+
 type PacketConn struct {
 	net.Conn
 	remain int
@@ -314,8 +342,7 @@ func (pc *PacketConn) WaitReadFrom() (data []byte, put func(), addr net.Addr, er
 
 func hexSha224(data []byte) []byte {
 	buf := make([]byte, 56)
-	hash := sha256.New224()
-	hash.Write(data)
-	hex.Encode(buf, hash.Sum(nil))
+	hash := sha256.Sum224(data)
+	hex.Encode(buf, hash[:])
 	return buf
 }

@@ -21,6 +21,7 @@ import (
 
 	"github.com/metacubex/mihomo/common/buf"
 	N "github.com/metacubex/mihomo/common/net"
+	tlsC "github.com/metacubex/mihomo/component/tls"
 	"github.com/metacubex/mihomo/log"
 
 	"github.com/gobwas/ws"
@@ -63,6 +64,7 @@ type WebsocketConfig struct {
 }
 
 // Read implements net.Conn.Read()
+// modify from gobwas/ws/wsutil.readData
 func (wsc *websocketConn) Read(b []byte) (n int, err error) {
 	defer func() { // avoid gobwas/ws pbytes.GetLen panic
 		if value := recover(); value != nil {
@@ -352,7 +354,17 @@ func streamWebsocketConn(ctx context.Context, conn net.Conn, c *WebsocketConfig,
 			config.ServerName = uri.Host
 		}
 
-		conn = tls.Client(conn, config)
+		if len(c.ClientFingerprint) != 0 {
+			if fingerprint, exists := tlsC.GetFingerprint(c.ClientFingerprint); exists {
+				utlsConn := tlsC.UClient(conn, config, fingerprint)
+				if err = utlsConn.BuildWebsocketHandshakeState(); err != nil {
+					return nil, fmt.Errorf("parse url %s error: %w", c.Path, err)
+				}
+				conn = utlsConn
+			}
+		} else {
+			conn = tls.Client(conn, config)
+		}
 
 		if tlsConn, ok := conn.(interface {
 			HandshakeContext(ctx context.Context) error
@@ -578,5 +590,6 @@ func StreamUpgradedWebsocketConn(w http.ResponseWriter, r *http.Request) (net.Co
 		}
 
 	}
+
 	return conn, nil
 }

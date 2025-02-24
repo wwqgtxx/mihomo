@@ -2,6 +2,7 @@ package executor
 
 import (
 	"fmt"
+	tlsC "github.com/metacubex/mihomo/component/tls"
 	"net/netip"
 	"os"
 	"runtime"
@@ -137,21 +138,22 @@ func GetGeneral() *config.General {
 			InboundTfo:        inbound.Tfo(),
 			InboundMPTCP:      inbound.MPTCP(),
 		},
-		Mode:                   tunnel.Mode(),
-		LogLevel:               log.Level(),
-		IPv6:                   !resolver.DisableIPv6,
-		Interface:              dialer.DefaultInterface.Load(),
-		RoutingMark:            int(dialer.DefaultRoutingMark.Load()),
-		HealthCheckURL:         adapter.HealthCheckURL(),
-		HealthCheckLazyDefault: provider.HealthCheckLazyDefault(),
-		TouchAfterLazyPassNum:  provider.TouchAfterLazyPassNum(),
-		PreResolveProcessName:  tunnel.PreResolveProcessName(),
-		TCPConcurrent:          dialer.GetTcpConcurrent(),
-		GlobalUA:               mihomoHttp.UA(),
-		ETagSupport:            resource.ETag(),
-		KeepAliveInterval:      int(keepalive.KeepAliveInterval() / time.Second),
-		KeepAliveIdle:          int(keepalive.KeepAliveIdle() / time.Second),
-		DisableKeepAlive:       keepalive.DisableKeepAlive(),
+		Mode:                    tunnel.Mode(),
+		LogLevel:                log.Level(),
+		IPv6:                    !resolver.DisableIPv6,
+		Interface:               dialer.DefaultInterface.Load(),
+		RoutingMark:             int(dialer.DefaultRoutingMark.Load()),
+		HealthCheckURL:          adapter.HealthCheckURL(),
+		HealthCheckLazyDefault:  provider.HealthCheckLazyDefault(),
+		TouchAfterLazyPassNum:   provider.TouchAfterLazyPassNum(),
+		PreResolveProcessName:   tunnel.PreResolveProcessName(),
+		TCPConcurrent:           dialer.GetTcpConcurrent(),
+		GlobalUA:                mihomoHttp.UA(),
+		GlobalClientFingerprint: tlsC.GetGlobalFingerprint(),
+		ETagSupport:             resource.ETag(),
+		KeepAliveInterval:       int(keepalive.KeepAliveInterval() / time.Second),
+		KeepAliveIdle:           int(keepalive.KeepAliveIdle() / time.Second),
+		DisableKeepAlive:        keepalive.DisableKeepAlive(),
 	}
 
 	return general
@@ -362,6 +364,8 @@ func updateGeneral(general *config.General, logging bool) {
 
 	mihomoHttp.SetUA(general.GlobalUA)
 	resource.SetETag(general.ETagSupport)
+
+	tlsC.SetGlobalUtlsClient(general.GlobalClientFingerprint)
 }
 
 func updateUsers(users []auth.AuthUser) {
